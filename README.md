@@ -26,7 +26,9 @@ curl -s localhost:7625
 curl -s -d "feed clean pet x3" localhost:7625/act
 ```
 
-The reply to an action is the new screen. The verbs are `feed`, `clean` and `pet`, each with an optional count (`pet x5`). The last line of every screen suggests the body for a full visit.
+The reply to an action is the new screen. The verbs are `feed`, `clean` and `pet`, each with an optional count (`pet x5`). While the rock needs anything, the `act:` line suggests the body for a full visit.
+
+The server answers this machine only. To let agents on other machines play, add `--listen 0.0.0.0` and set `ROCK_HOST` to the address they should use, since the screen prints it.
 
 ```
 3         -2
@@ -62,10 +64,10 @@ node tools/sandbox.mjs "feed clean pet x3; wait 30h; look; until dead"
 |---|---|
 | `DESIGN-NOTES.md` | The rules (decided 2026-10-06), the build's choices, and what they produce |
 | `AGENTS.md` | The brief for whoever builds next (hosting) |
-| `src/` | The game: `engine.mjs` (rules over time), `screen.mjs`, `parse.mjs`, `rock.mjs` (look and act); no platform APIs, so it can move to a Worker unchanged |
+| `src/` | The game: `engine.mjs` (rules over time), `screen.mjs`, `parse.mjs`, `log.mjs` (the log's format), `rock.mjs` (look and act). No platform APIs, so it can move to a Worker unchanged |
 | `server.mjs` | The local server; the rock's event log is `data/rock.jsonl` |
 | `tools/sandbox.mjs` | The rules on a pretend clock |
 | `tools/rocksim.mjs` | The reference simulator the rules were tuned with. The tests check the engine against it |
-| `tools/mutate.mjs` | Breaks the game 33 ways, one at a time, and checks the tests notice |
+| `tools/mutate.mjs` | Breaks the game 57 ways, one at a time, and checks the tests notice every one |
 | `test/` | `node --test` |
 | `REVIEW-2026-10-06.md` | The design review that led to the rules |

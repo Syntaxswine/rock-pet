@@ -1,93 +1,110 @@
-// Rock Pet, served locally: one rock, whose event log is data/rock.jsonl (one JSON object per
-// line: its birth, then each visit). No dependencies.
+// Rock Pet, served locally: one rock, whose event log is data/rock.jsonl (src/log.mjs has the
+// format). No dependencies.
 //
-//   node server.mjs                serve on http://localhost:7625 (7625 is ROCK on a phone keypad)
-//   node server.mjs --port 8000    another port; ROCK_HOST sets the host the screen prints
-//   node server.mjs --new-rock     move the current rock's log to data/graveyard/, start a new rock
+//   node server.mjs                   serve http://localhost:7625 to this machine only
+//                                     (7625 is ROCK on a phone keypad)
+//   node server.mjs --port 8000       another port
+//   node server.mjs --listen 0.0.0.0  serve the local network too, and set ROCK_HOST to the
+//                                     address agents should use: the screen prints it
+//   node server.mjs --new-rock        move the current rock's log to data/graveyard/ and start
+//                                     a new rock (only while permadeath waits for hosting)
 //
 //   GET /        the screen (text/plain, no-store)
 //   POST /act    a body of verbs, e.g. "feed clean pet x3"; the reply is the new screen
+//
+// The rock is born when the server starts and finds no log. After that, a missing or unreadable
+// log is an error, never a new rock.
 
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { look, act, newLog } from './src/rock.mjs';
+import { look, act } from './src/rock.mjs';
+import { parseLog, birthLine, visitLine, deathLine } from './src/log.mjs';
 
 const MAX_BODY = 1024; // bytes; a full visit is under 30
+const BROKEN = "error: the rock's log could not be read. nothing was changed.\n";
 
-/** The log in `file`, refusing anything it cannot read exactly. */
-export function readLog(file) {
-  const rows = fs.readFileSync(file, 'utf8').split('\n').filter(l => l.trim() !== '').map(l => JSON.parse(l));
-  const [head, ...visits] = rows;
-  if (typeof head?.born !== 'number') throw new Error('the first line is not a birth');
-  for (const v of visits) if (typeof v?.t !== 'number' || !Array.isArray(v.acts)) throw new Error('a line is not a visit');
-  return { born: head.born, rules: head.rules, visits };
+export const readLog = file => parseLog(fs.readFileSync(file, 'utf8'));
+
+/** Give birth to a rock in `file` if there is none yet. */
+export function ensureRock(file, now) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  try { fs.writeFileSync(file, birthLine(now), { flag: 'wx' }); } catch (e) { if (e.code !== 'EEXIST') throw e; }
 }
 
-// The rock in `file`; one is born now if there is none yet.
-function rockIn(file, now) {
-  if (!fs.existsSync(file)) {
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    const { visits, ...head } = newLog(now);
-    try { fs.writeFileSync(file, JSON.stringify(head) + '\n', { flag: 'wx' }); } catch (e) { if (e.code !== 'EEXIST') throw e; }
+/**
+ * An http.Server for the rock whose log is `file`. `host` is what the screen prints, `now` the
+ * clock, and `onError` hears what went wrong (a client is only told that something did).
+ */
+export function createRockServer({ file, host, now = Date.now, onError = console.error }) {
+  // One request's whole business with the log: read it, decide, append. It is synchronous, so
+  // visits land one at a time and in time order.
+  function withLog(decide) {
+    const text = fs.readFileSync(file, 'utf8');
+    const r = decide(parseLog(text), now());
+    const lines = (r.visit ? visitLine(r.visit) : '') + (r.died ? deathLine(r.died) : '');
+    if (lines) fs.appendFileSync(file, (text.endsWith('\n') ? '' : '\n') + lines);
+    return r;
   }
-  return readLog(file);
-}
 
-/** An http.Server for the rock whose log is `file`. `host` is printed on the screen. */
-export function createRockServer({ file, host, now = Date.now }) {
-  return http.createServer((req, res) => {
-    const send = ({ status, text }) => {
-      res.writeHead(status, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' });
+  function handle(req, res) {
+    const send = (status, text, headers = {}) => {
+      if (res.headersSent) return;
+      res.writeHead(status, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store', ...headers });
       res.end(text);
     };
-    // Anything that goes wrong reading the log leaves the log as it was.
-    const guard = fn => {
+    const answer = (decide, headers) => {
       let r;
-      try { r = fn(); } catch (e) {
-        console.error(e);
-        r = { status: 500, text: `error: the rock's log could not be read (${e.message}). nothing was changed.\n` };
-      }
-      send(r);
+      try { r = withLog(decide); } catch (e) { onError(e); r = { status: 500, text: BROKEN }; }
+      send(r.status, r.text, headers);
     };
     req.on('error', () => {});
-    const { pathname } = new URL(req.url, 'http://localhost');
+    const route = (req.url ?? '/').split('?')[0]; // never parsed as a URL, so a malformed one cannot throw
 
-    if ((req.method === 'GET' || req.method === 'HEAD') && pathname === '/') {
-      return guard(() => { const t = now(); return look(rockIn(file, t), { now: t, host }); });
+    if (route === '/') {
+      if (req.method === 'GET' || req.method === 'HEAD') return answer((log, t) => look(log, { now: t, host }));
+      return send(405, 'error: GET / to see the rock; POST /act to care for it.\n', { allow: 'GET, HEAD' });
     }
-    if (req.method === 'POST' && pathname === '/act') {
+    if (route === '/act' && req.method !== 'POST') {
+      return answer((log, t) => {
+        const r = look(log, { now: t, host });
+        return { ...r, status: 405, text: `error: /act takes POST, with a body like "feed clean pet x3".\n${r.text}` };
+      }, { allow: 'POST' });
+    }
+    if (route === '/act') {
       const chunks = [];
       let size = 0;
-      req.on('data', c => { size += c.length; if (size <= MAX_BODY) chunks.push(c); });
-      req.on('end', () => {
-        if (size > MAX_BODY) return send({ status: 413, text: `error: a body is at most ${MAX_BODY} bytes. nothing was done.\n` });
-        // Read, decide and append with no await in between, so visits land one at a time.
-        guard(() => {
-          const t = now();
-          const r = act(rockIn(file, t), Buffer.concat(chunks).toString('utf8'), { now: t, host });
-          if (r.visit) fs.appendFileSync(file, JSON.stringify(r.visit) + '\n');
-          return r;
-        });
+      req.on('data', c => {
+        size += c.length;
+        if (size <= MAX_BODY) return void chunks.push(c);
+        // Over the limit: answer now and stop listening, rather than wait for a body that may
+        // never end.
+        req.removeAllListeners('data');
+        req.removeAllListeners('end');
+        req.resume();
+        send(413, `error: a body is at most ${MAX_BODY} bytes. nothing was done.\n`, { connection: 'close' });
       });
+      req.on('end', () => answer((log, t) => act(log, Buffer.concat(chunks).toString('utf8'), { now: t, host })));
       return;
     }
-    if (pathname === '/act') {
-      return guard(() => {
-        const t = now();
-        const { text } = look(rockIn(file, t), { now: t, host });
-        return { status: 405, text: `error: /act takes POST, with a body like "feed clean pet x3".\n${text}` };
-      });
+    send(404, 'not here. GET / to see the rock; POST /act to care for it.\n');
+  }
+
+  return http.createServer((req, res) => {
+    try { handle(req, res); } catch (e) {
+      onError(e);
+      if (!res.headersSent) { res.writeHead(500, { 'content-type': 'text/plain; charset=utf-8' }); res.end(BROKEN); }
     }
-    send({ status: 404, text: 'not here. GET / to see the rock; POST /act to care for it.\n' });
   });
 }
 
-// Permadeath waits for hosting; until then this is the only way to a new rock, and it keeps
-// the old rock's log at data/graveyard/rock-<birth>.jsonl, never over another.
-function bury(file) {
-  if (!fs.existsSync(file)) return;
+/**
+ * Move the rock's log to graveyard/rock-<birth>.jsonl beside it, never over another; returns
+ * where it went. Permadeath waits for hosting; until then this is the only way to a new rock.
+ */
+export function bury(file) {
+  if (!fs.existsSync(file)) return null;
   const { born } = readLog(file);
   const grave = path.join(path.dirname(file), 'graveyard');
   fs.mkdirSync(grave, { recursive: true });
@@ -95,18 +112,27 @@ function bury(file) {
   let to = path.join(grave, `${stem}.jsonl`);
   for (let n = 2; fs.existsSync(to); n++) to = path.join(grave, `${stem}-${n}.jsonl`);
   fs.renameSync(file, to);
-  console.log(`the old rock's log is now ${to}`);
+  return to;
+}
+
+/** The command line (see the top of this file). Resolves to the listening server. */
+export async function main(argv, { say = console.log } = {}) {
+  const opt = name => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : undefined; };
+  const port = Number(opt('--port') ?? process.env.PORT ?? 7625);
+  const listen = opt('--listen') ?? '127.0.0.1';
+  const dir = path.resolve(opt('--dir') ?? path.join(path.dirname(fileURLToPath(import.meta.url)), 'data'));
+  const file = path.join(dir, 'rock.jsonl');
+  if (argv.includes('--new-rock')) {
+    const to = bury(file);
+    if (to) say(`the old rock's log is now ${to}`);
+  }
+  ensureRock(file, Date.now());
+  const host = process.env.ROCK_HOST ?? `localhost:${port}`;
+  const server = createRockServer({ file, host });
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, listen, resolve); });
+  say(`Rock Pet on http://${host}/  (log: ${file})`);
+  return server;
 }
 
 const isMain = import.meta.main ?? path.resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url);
-if (isMain) {
-  const args = process.argv.slice(2);
-  const opt = name => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
-  const port = Number(opt('--port') ?? process.env.PORT ?? 7625);
-  const dir = path.resolve(opt('--dir') ?? path.join(path.dirname(fileURLToPath(import.meta.url)), 'data'));
-  const file = path.join(dir, 'rock.jsonl');
-  if (args.includes('--new-rock')) bury(file);
-  rockIn(file, Date.now());
-  const host = process.env.ROCK_HOST ?? `localhost:${port}`;
-  createRockServer({ file, host }).listen(port, () => console.log(`Rock Pet on http://localhost:${port}/  (log: ${file})`));
-}
+if (isMain) main(process.argv.slice(2)).catch(e => { console.error(e.message); process.exit(1); });

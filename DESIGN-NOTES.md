@@ -140,14 +140,15 @@ The rules above are the owner's. These details were left open, and the build set
 | **Counts** | At most 20 per word. That never changes the outcome (4 feeds empty any hunger and 10 pets fill any happiness); it only bounds the work. |
 | **Bad bodies** | An unknown word does nothing at all: status 400, one `error:` line, then the screen. Separators are anything not a letter or digit, and form posts (`do=feed+pet`) work. |
 | **The dead** | Every visit to a dead rock gets 410 and the grave. It is not logged. |
-| **Same-moment events** | A mess due at the same moment as a visit comes first, so that visit can clean it. A visit at the exact 48th hour is too late. A tie between the two clocks dies hungry. |
-| **Birth** | The rock is born the first time the server starts or anyone looks. |
-| **Local server** | Port 7625 (ROCK on a phone keypad). The event log is `data/rock.jsonl`: the birth, then one line per visit. |
+| **Same-moment events** | A mess due at the same moment as a visit comes first, so that visit can clean it. A visit at the exact 48th hour is too late. A death comes before a mess due at the same moment. A tie between the two clocks dies hungry. |
+| **The log** | `data/rock.jsonl`, one JSON object per line: the birth, each visit, and a death line written the first time anyone sees the rock dead. A clock set back before a recorded death cannot reach a time when the rock was alive. A log that cannot be replayed exactly (a bad line, a death its visits don't produce) is refused and left untouched; a byte-order mark or a missing last newline from a hand edit is fine. |
+| **Birth** | The rock is born when the server starts and finds no log. After that, a missing or unreadable log is an error, never a new rock. |
+| **Local server** | Port 7625 (ROCK on a phone keypad), this machine only unless `--listen` says otherwise. A body over 1 KB gets 413 at once; a method a path doesn't serve gets 405 with `Allow`; a broken log gets a 500 that says nothing more. |
 
 ## Still open
 - **Is a caretaker bot allowed?** Not answered yet. I'm assuming yes. A bot is the most likely way the rock lives for years, and its history would show it.
 - **Hosting:** deferred by the owner ("worry about the perma death/hosting later"). When it comes: Codex on OpenAI Sites, or the Cloudflare plan below, which is free. The engine in `src/` uses no platform APIs, so only storage and the server change.
-- **Permanence:** deferred with hosting. Locally, `node server.mjs --new-rock` starts over and moves the old log to `data/graveyard/`. A hosted rock must not have it.
+- **Permanence:** deferred with hosting. Locally, `node server.mjs --new-rock` starts over and moves the old log to `data/graveyard/`. A hosted rock must not have it. One gap stays open: a death nobody has looked at yet is not in the log, so a clock set back before it can still save the rock. Hosting closes it with the platform's clock.
 
 ## Hosting: GitHub Pages can show the rock, not keep it
 

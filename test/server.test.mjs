@@ -1,21 +1,28 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
+import net from 'node:net';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createRockServer, readLog } from '../server.mjs';
+import { createRockServer, ensureRock, readLog, bury, main } from '../server.mjs';
+import { replay } from '../src/engine.mjs';
 import { RULES } from '../src/rules.mjs';
 
 const HOUR = 3_600_000, DAY = 24 * HOUR;
 const NOW = Date.UTC(2026, 9, 6, 14, 5);
+const ROW1_NEWBORN = '0' + ' '.repeat(9) + '10';
 
-// A server on a free port over a fresh log directory; `seed` is the log's starting text.
+const tmpDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'rockpet-'));
+
+// A server on a free port over a fresh log. `seed` is the log's starting text; with no seed the
+// rock is born at NOW, as the command line does at start. `errors` collects what went wrong.
 async function withServer({ seed, now = () => NOW } = {}, fn) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rockpet-'));
+  const dir = tmpDir();
   const file = path.join(dir, 'rock.jsonl');
-  if (seed !== undefined) fs.writeFileSync(file, seed);
-  const server = createRockServer({ file, host: 'rock.test', now });
+  if (seed === undefined) ensureRock(file, NOW); else fs.writeFileSync(file, seed);
+  const errors = [];
+  const server = createRockServer({ file, host: 'rock.test', now, onError: e => errors.push(e) });
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   const port = server.address().port;
   const req = (method, url, body, headers = {}) => new Promise((resolve, reject) => {
@@ -28,7 +35,8 @@ async function withServer({ seed, now = () => NOW } = {}, fn) {
     r.on('error', reject);
     r.end(body);
   });
-  try { await fn({ req, file }); } finally {
+  try { await fn({ req, file, port, errors }); } finally {
+    server.closeAllConnections(); // a test that failed mid-request must not hold the server open
     await new Promise(r => server.close(r));
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -36,16 +44,15 @@ async function withServer({ seed, now = () => NOW } = {}, fn) {
 const lines = file => fs.readFileSync(file, 'utf8').split('\n').filter(Boolean);
 const birth = t => JSON.stringify({ born: t, rules: RULES.version }) + '\n';
 
-test('GET / is the screen: plain text, never cached; the first look gives birth to the rock', async () => {
+test('GET / is the screen, plain text and never cached', async () => {
   await withServer({}, async ({ req, file }) => {
     const r = await req('GET', '/');
     assert.equal(r.status, 200);
     assert.equal(r.headers['content-type'], 'text/plain; charset=utf-8');
     assert.equal(r.headers['cache-control'], 'no-store');
-    const rows = r.text.split('\n');
-    assert.equal(rows[0], '0' + ' '.repeat(9) + '10');
+    assert.equal(r.text.split('\n')[0], ROW1_NEWBORN);
     assert.ok(r.text.includes('\nact: POST rock.test/act  nothing needed now'), r.text);
-    assert.deepEqual(lines(file), [birth(NOW).trim()]);
+    assert.deepEqual(lines(file), [birth(NOW).trim()], 'a look writes nothing');
   });
 });
 
@@ -56,11 +63,23 @@ test('POST /act applies the verbs, answers with the new screen and appends one v
     assert.ok(before.text.includes('body e.g. feed x3 clean pet x'), before.text);
     const r = await req('POST', '/act', 'feed x3 clean pet x10');
     assert.equal(r.status, 200);
-    assert.ok(r.text.startsWith('0' + ' '.repeat(9) + '10\n'), r.text);
+    assert.ok(r.text.startsWith(ROW1_NEWBORN + '\n'), r.text);
     assert.ok(r.text.includes('last care just now'), r.text);
     assert.deepEqual(JSON.parse(lines(file)[1]), { t: NOW, acts: [['feed', 3], ['clean', 1], ['pet', 10]] });
-    now += 2 * HOUR;
+    now += 2 * HOUR + 40 * 60_000;
     assert.ok((await req('GET', '/')).text.includes('last care 2h ago'));
+  });
+});
+
+test('visits that arrive together all land, each in time order', async () => {
+  let n = NOW;
+  await withServer({ seed: birth(NOW - HOUR), now: () => n++ }, async ({ req, file }) => {
+    const replies = await Promise.all(Array.from({ length: 12 }, () => req('POST', '/act', 'pet')));
+    assert.deepEqual(replies.map(r => r.status), Array(12).fill(200));
+    const log = readLog(file); // refuses a log out of time order
+    assert.equal(log.visits.length, 12);
+    assert.equal(new Set(log.visits.map(v => v.t)).size, 12, 'twelve distinct moments');
+    assert.equal(replay(log, n).visits, 12);
   });
 });
 
@@ -75,6 +94,33 @@ test('a clock that steps backwards cannot put the log out of order', async () =>
   });
 });
 
+test('once seen dead, a rock stays dead: a clock set back cannot reach a time it was alive', async () => {
+  let now = NOW;
+  const seed = birth(NOW - 80 * HOUR); // nobody came: dead by NOW
+  await withServer({ seed, now: () => now }, async ({ req, file }) => {
+    const grave = await req('GET', '/');
+    assert.ok(grave.text.startsWith('died: lonely\n'), grave.text);
+    const died = JSON.parse(lines(file).at(-1));
+    assert.deepEqual(Object.keys(died), ['died', 'cause'], 'the first sight of the death is logged');
+    assert.equal((await req('GET', '/')).status, 200);
+    assert.equal(lines(file).length, 2, 'and only once');
+    now = NOW - 20 * HOUR; // before the death
+    const late = await req('POST', '/act', 'feed x4 clean pet x10');
+    assert.equal(late.status, 410);
+    assert.ok(late.text.startsWith('died: lonely\n'), late.text);
+    assert.equal(lines(file).length, 2, 'the visit is not logged');
+    // A new server on the same log, its clock still behind: the same.
+    const again = createRockServer({ file, host: 'rock.test', now: () => NOW - 20 * HOUR, onError: () => {} });
+    await new Promise(r => again.listen(0, '127.0.0.1', r));
+    const status = await new Promise(resolve => {
+      const r = http.request({ host: '127.0.0.1', port: again.address().port, method: 'POST', path: '/act' }, res => { res.resume(); resolve(res.statusCode); });
+      r.end('pet');
+    });
+    await new Promise(r => again.close(r));
+    assert.equal(status, 410);
+  });
+});
+
 test('a body it cannot read changes nothing: one error line, then the screen', async () => {
   await withServer({ seed: birth(NOW - HOUR) }, async ({ req, file }) => {
     const r = await req('POST', '/act', 'feed hug');
@@ -82,9 +128,23 @@ test('a body it cannot read changes nothing: one error line, then the screen', a
     const [first, second] = r.text.split('\n');
     assert.match(first, /^error: unknown word "hug".* nothing was done\.$/);
     assert.match(second, /^[0-9]+ +-?[0-9]+$/);
-    const big = await req('POST', '/act', 'pet '.repeat(300));
-    assert.equal(big.status, 413);
     assert.equal(lines(file).length, 1, 'no visit was logged');
+  });
+});
+
+test('a body over 1KB is refused at once, even one that never ends', async () => {
+  await withServer({ seed: birth(NOW - HOUR) }, async ({ req, port, file }) => {
+    assert.equal((await req('POST', '/act', 'pet '.repeat(300))).status, 413);
+    let r;
+    const status = await new Promise(resolve => {
+      r = http.request({ host: '127.0.0.1', port, method: 'POST', path: '/act', headers: { 'content-length': 100000 } }, res => resolve(res.statusCode));
+      r.on('error', () => {});
+      r.write('pet '.repeat(400)); // 1600 bytes of the promised 100000, and then silence
+      setTimeout(() => resolve('no answer within 2s'), 2000).unref();
+    });
+    r.destroy();
+    assert.equal(status, 413);
+    assert.equal(lines(file).length, 1);
   });
 });
 
@@ -95,16 +155,7 @@ test('a dead rock refuses every visit, and the visit is not logged', async () =>
     const r = await req('POST', '/act', 'feed x4 clean pet x10');
     assert.equal(r.status, 410);
     assert.equal(r.text, look.text);
-    assert.equal(lines(file).length, 1);
-  });
-});
-
-test('visits that arrive together all land', async () => {
-  await withServer({ seed: birth(NOW - HOUR) }, async ({ req, file }) => {
-    const replies = await Promise.all(Array.from({ length: 12 }, () => req('POST', '/act', 'pet')));
-    assert.deepEqual(replies.map(r => r.status), Array(12).fill(200));
-    assert.equal(lines(file).length, 13);
-    assert.equal(readLog(file).visits.length, 12);
+    assert.equal(lines(file).filter(l => l.includes('"t"')).length, 0);
   });
 });
 
@@ -116,29 +167,126 @@ test('the screen never repeats what a visitor sent: the host it prints is the co
   });
 });
 
-test('a log it cannot read is reported and left exactly as it was', async () => {
-  const seed = birth(NOW - HOUR) + '{"t": 1, "acts": [["pet", 1]]\n';
-  await withServer({ seed }, async ({ req, file }) => {
-    for (const [method, body] of [['GET'], ['POST', 'pet']]) {
-      const r = await req(method, method === 'GET' ? '/' : '/act', body);
-      assert.equal(r.status, 500);
-      assert.match(r.text, /^error: the rock's log could not be read .* nothing was changed\.\n$/);
-    }
-    assert.equal(fs.readFileSync(file, 'utf8'), seed);
+test('a log it cannot replay exactly is refused, left as it was, and the error stays private', async () => {
+  const head = birth(NOW - 5 * HOUR);
+  const longAgo = NOW - 10 * DAY, fate = replay({ born: longAgo, rules: RULES.version, visits: [] }, Infinity).dead;
+  const trueDeath = birth(longAgo) + JSON.stringify({ died: fate.t, cause: fate.cause }) + '\n';
+  assert.equal(fate.cause, 'lonely', 'the premise of "a death with another cause"');
+  const bad = {
+    'not JSON': head + '{"t": 1, "acts": [["pet", 1]]\n',
+    'a pet with no count': head + JSON.stringify({ t: NOW - HOUR, acts: [['pet']] }) + '\n',
+    'a negative count': head + JSON.stringify({ t: NOW - HOUR, acts: [['pet', -5]] }) + '\n',
+    'a count over 20': head + JSON.stringify({ t: NOW - HOUR, acts: [['pet', 21]] }) + '\n',
+    'an unknown verb': head + JSON.stringify({ t: NOW - HOUR, acts: [['hug', 1]] }) + '\n',
+    'a visit with no verbs': head + JSON.stringify({ t: NOW - HOUR, acts: [] }) + '\n',
+    'a time that is not a number': head + JSON.stringify({ t: 'soon', acts: [['pet', 1]] }) + '\n',
+    'a visit before birth': head + JSON.stringify({ t: NOW - 6 * HOUR, acts: [['pet', 1]] }) + '\n',
+    'visits out of order': head + JSON.stringify({ t: NOW - HOUR, acts: [['pet', 1]] }) + '\n' + JSON.stringify({ t: NOW - 2 * HOUR, acts: [['pet', 1]] }) + '\n',
+    'a visit after the death': head + JSON.stringify({ died: NOW - 2 * HOUR, cause: 'lonely' }) + '\n' + JSON.stringify({ t: NOW - HOUR, acts: [['pet', 1]] }) + '\n',
+    'a death its visits do not produce': head + JSON.stringify({ died: NOW - 2 * HOUR, cause: 'lonely' }) + '\n',
+    'a visit logged after a true death': trueDeath + JSON.stringify({ t: fate.t + HOUR, acts: [['pet', 1]] }) + '\n',
+    'a death with another cause': trueDeath.replace('"lonely"', '"hungry"'),
+    'other rules': JSON.stringify({ born: NOW - HOUR, rules: RULES.version + 1 }) + '\n',
+    'empty': '',
+  };
+  for (const [what, seed] of Object.entries(bad)) {
+    await withServer({ seed }, async ({ req, file, errors }) => {
+      for (const [method, url, body] of [['GET', '/'], ['POST', '/act', 'pet']]) {
+        const r = await req(method, url, body);
+        assert.equal(r.status, 500, `${what}: ${method} ${url}`);
+        assert.equal(r.text, "error: the rock's log could not be read. nothing was changed.\n", `${what}: nothing private in the reply`);
+      }
+      assert.equal(fs.readFileSync(file, 'utf8'), seed, `${what}: the log is untouched`);
+      assert.equal(errors.length, 2, `${what}: the operator hears of it`);
+    });
+  }
+});
+
+test('two hand-edits a log survives: a byte-order mark, and a last line without its newline', async () => {
+  const bom = String.fromCharCode(0xfeff) + birth(NOW - HOUR);
+  await withServer({ seed: bom }, async ({ req, file }) => {
+    assert.equal((await req('GET', '/')).status, 200);
+    assert.equal((await req('POST', '/act', 'pet')).status, 200);
+    assert.equal(readLog(file).visits.length, 1);
   });
-  const otherRules = JSON.stringify({ born: NOW - HOUR, rules: RULES.version + 1 }) + '\n';
-  await withServer({ seed: otherRules }, async ({ req, file }) => {
-    assert.equal((await req('POST', '/act', 'pet')).status, 500);
-    assert.equal(fs.readFileSync(file, 'utf8'), otherRules);
+  const unterminated = birth(NOW - 2 * HOUR) + JSON.stringify({ t: NOW - HOUR, acts: [['feed', 1]] });
+  await withServer({ seed: unterminated }, async ({ req, file }) => {
+    assert.equal((await req('POST', '/act', 'pet')).status, 200);
+    assert.equal(readLog(file).visits.length, 2);
+    assert.equal((await req('GET', '/')).status, 200);
   });
 });
 
-test('other paths say where to go', async () => {
+test('a log deleted while the server runs is an error, never a new rock', async () => {
+  await withServer({ seed: birth(NOW - 10 * DAY) }, async ({ req, file }) => {
+    fs.rmSync(file);
+    assert.equal((await req('POST', '/act', 'pet')).status, 500);
+    assert.equal((await req('GET', '/')).status, 500);
+    assert.equal(fs.existsSync(file), false);
+  });
+});
+
+test('methods and paths it does not serve are named, with Allow', async () => {
   await withServer({ seed: birth(NOW - HOUR) }, async ({ req }) => {
     const get = await req('GET', '/act');
     assert.equal(get.status, 405);
+    assert.equal(get.headers.allow, 'POST');
     assert.ok(get.text.startsWith('error: /act takes POST'), get.text);
+    for (const method of ['POST', 'PUT', 'OPTIONS', 'DELETE']) {
+      const r = await req(method, '/', '');
+      assert.equal(r.status, 405, method);
+      assert.equal(r.headers.allow, 'GET, HEAD', method);
+    }
     assert.equal((await req('GET', '/nope')).status, 404);
     assert.equal((await req('HEAD', '/')).status, 200);
+    assert.equal((await req('GET', '/?x=1')).status, 200, 'a query string is ignored');
   });
+});
+
+test('a malformed request cannot take the server down', async () => {
+  await withServer({ seed: birth(NOW - HOUR) }, async ({ req, port }) => {
+    const statusLine = target => new Promise(resolve => {
+      let got = '';
+      const sock = net.connect(port, '127.0.0.1', () => sock.write(`GET ${target} HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n`));
+      sock.on('data', d => (got += d));
+      sock.on('error', () => resolve(got.split('\r\n')[0]));
+      sock.on('close', () => resolve(got.split('\r\n')[0]));
+    });
+    // '//[' is no URL at all; it once threw outside every guard and stopped the process.
+    assert.equal(await statusLine('//['), 'HTTP/1.1 404 Not Found');
+    for (const target of ['http://[::1', '/%', '*']) await statusLine(target);
+    assert.equal((await req('GET', '/')).status, 200, 'still serving');
+  });
+});
+
+test('the command line serves this machine only, unless told otherwise', async () => {
+  const dir = tmpDir();
+  const server = await main(['--port', '0', '--dir', dir], { say: () => {} });
+  try {
+    assert.equal(server.address().address, '127.0.0.1');
+    assert.equal(readLog(path.join(dir, 'rock.jsonl')).visits.length, 0, 'a rock is born at start');
+  } finally {
+    await new Promise(r => server.close(r));
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('--new-rock keeps the old log in the graveyard, never over another', async () => {
+  const dir = tmpDir();
+  const file = path.join(dir, 'rock.jsonl');
+  const old = birth(Date.UTC(2026, 0, 1)) + JSON.stringify({ t: Date.UTC(2026, 0, 1, 2), acts: [['pet', 1]] }) + '\n';
+  try {
+    for (const n of [1, 2]) {
+      fs.writeFileSync(file, old);
+      const server = await main(['--new-rock', '--port', '0', '--dir', dir], { say: () => {} });
+      await new Promise(r => server.close(r));
+      const graves = fs.readdirSync(path.join(dir, 'graveyard')).sort();
+      assert.equal(graves.length, n);
+      for (const g of graves) assert.equal(fs.readFileSync(path.join(dir, 'graveyard', g), 'utf8'), old);
+      assert.equal(readLog(file).visits.length, 0, 'a new rock');
+    }
+    assert.equal(bury(path.join(dir, 'none.jsonl')), null, 'nothing to bury');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

@@ -35,22 +35,46 @@ const MUTANTS = [
   ['no sorrow danger line', 'src/screen.mjs', 'if (s.sorrowSince !== null) lines.push(', 'if (false) lines.push('],
   ['hunger shows 10 before it is there', 'src/screen.mjs', 'Math.min(9, Math.round(s.hunger))', 'Math.round(s.hunger)'],
   ['sad eyes from -6', 'src/screen.mjs', "if (s.happy < -5) return ';  ;';", "if (s.happy < -6) return ';  ;';"],
-  ['the suggestion counts feeds from the rounded hunger', 'src/screen.mjs', 'Math.floor((s.hunger - 0.5) / R.feed) + 1', 'Math.ceil(Math.min(9, Math.round(s.hunger)) / R.feed)'],
+  ['a tie dies of sorrow', 'src/engine.mjs', "if (end === starve) s.dead = { t: end, cause: 'hungry' };", "if (end === starve && end !== sorrow) s.dead = { t: end, cause: 'hungry' };"],
+  ['a starving clock due after the death survives it', 'src/engine.mjs', 'if (s.starvingSince !== null && s.starvingSince > end) s.starvingSince = null;', ''],
+  ['a sorrow clock due after the death survives it', 'src/engine.mjs', 'if (s.sorrowSince !== null && s.sorrowSince > end) s.sorrowSince = null;', ''],
+  ['the suggestion counts feeds from the rounded hunger', 'src/screen.mjs', 'while (Math.max(0, s.hunger - R.feed * feeds) >= 0.5) feeds++;', 'feeds = Math.ceil(Math.min(9, Math.round(s.hunger)) / R.feed);'],
+  ['one pet too many when sad', 'src/screen.mjs', 'while (Math.min(10, s.happy + R.pet * pets) < 9.5) pets++;', 'while (Math.min(10, s.happy + R.pet * pets) < 9.5) pets++;\n  if (s.happy < -5) pets++;'],
   ['the first mess one column right', 'src/screen.mjs', '[7, 8], [7, 2]', '[7, 9], [7, 2]'],
+  ['danger hours rounded', 'src/screen.mjs', 'const hours = ms => Math.max(0, Math.floor(ms / HOUR));', 'const hours = ms => Math.max(0, Math.round(ms / HOUR));'],
+  ['days rounded', 'src/screen.mjs', 'return `${Math.floor(m / 1440)}d`;', 'return `${Math.round(m / 1440)}d`;'],
+  ['hours rounded', 'src/screen.mjs', 'return `${Math.floor(m / 60)}h`;', 'return `${Math.round(m / 60)}h`;'],
+  ['(max N) stops at -9', 'src/screen.mjs', '` (max ${ceilingOf(s.messes)})`', '` (max ${Math.max(-9, ceilingOf(s.messes))})`'],
   ['counts not clamped', 'src/parse.mjs', 'acts.push([w, Math.min(n, RULES.maxCount)]);', 'acts.push([w, n]);'],
   ['x0 accepted', 'src/parse.mjs', 'if (n < 1) return', 'if (false) return'],
   ['unknown words accepted', 'src/parse.mjs', 'if (!VERBS.includes(w)) return', 'if (false) return'],
-  ['a dead rock accepts visits', 'src/rock.mjs', "if (s.dead) return { status: 410", "if (false) return { status: 410"],
-  ['a clock that steps back is trusted', 'src/rock.mjs', 'return Math.max(now, log.visits.at(-1)?.t ?? log.born);', 'return now;'],
-  ['a refused body is still logged', 'server.mjs', 'if (r.visit) fs.appendFileSync(file, JSON.stringify(r.visit)', 'fs.appendFileSync(file, JSON.stringify(r.visit ?? { t: t, acts: [] })'],
+  ['percent-encoding not decoded', 'src/parse.mjs', '  else text = text.replace(/%([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));', ''],
+  ['log lines not trimmed (a byte-order mark breaks the log)', 'src/log.mjs', ".map(l => l.trim())", ''],
+  ['the log takes any act', 'src/log.mjs', 'row.acts.every(isAct)', 'row.acts.every(Array.isArray)'],
+  ['the log takes a line after the death', 'src/log.mjs', 'if (log.died) throw new Error(`${where} comes after the death`);', ''],
+  ['the engine replays visits out of order', 'src/engine.mjs', "if (!(v.t >= last)) throw new Error(`visits out of time order at ${v.t}`);", ''],
+  ['a dead rock accepts visits', 'src/rock.mjs', 'if (s.dead) return { status: 410', 'if (false) return { status: 410'],
+  ['a clock that steps back is trusted', 'src/rock.mjs', 'log.visits.at(-1)?.t ?? -Infinity, ', ''],
+  ['a recorded death does not hold the clock', 'src/rock.mjs', ', log.died?.t ?? -Infinity)', ')'],
+  ['a death is never recorded', 'src/rock.mjs', 'const firstSight = (log, s) => (s.dead && !log.died ? { died: s.dead } : {});', 'const firstSight = () => ({});'],
+  ['a recorded death is not checked', 'src/rock.mjs', 'if (log.died && !(s.dead', 'if (false && !(s.dead'],
+  ['a refused body is still logged', 'server.mjs', "(r.visit ? visitLine(r.visit) : '')", "visitLine(r.visit ?? { t: Date.now() + 1e7, acts: [['pet', 1]] })"],
+  ['the append waits a moment (a race)', 'server.mjs', "if (lines) fs.appendFileSync(file, (text.endsWith('\\n') ? '' : '\\n') + lines);", "if (lines) setTimeout(() => fs.appendFileSync(file, (text.endsWith('\\n') ? '' : '\\n') + lines), Math.random() * 20);"],
+  ['no newline before an append', 'server.mjs', "(text.endsWith('\\n') ? '' : '\\n') + lines", 'lines'],
+  ['a missing log gives birth', 'server.mjs', "    const text = fs.readFileSync(file, 'utf8');\n    const r = decide", "    ensureRock(file, now());\n    const text = fs.readFileSync(file, 'utf8');\n    const r = decide"],
+  ['the 500 says what went wrong', 'server.mjs', 'r = { status: 500, text: BROKEN };', 'r = { status: 500, text: `error: ${e.message}. nothing was changed.` };'],
   ['no cache-control', 'server.mjs', "'cache-control': 'no-store'", "'x-cache-control': 'no-store'"],
-  ['no body limit', 'server.mjs', 'if (size > MAX_BODY) return send(', 'if (false) return send('],
-  ['the screen prints the Host header', 'server.mjs', "return guard(() => { const t = now(); return look(rockIn(file, t), { now: t, host }); });", "return guard(() => { const t = now(); return look(rockIn(file, t), { now: t, host: req.headers.host }); });"],
+  ['405 without Allow', 'server.mjs', "{ allow: 'GET, HEAD' }", '{}'],
+  ['no body limit', 'server.mjs', 'if (size <= MAX_BODY) return void chunks.push(c);', 'return void chunks.push(c);'],
+  ['the 413 waits for the end of the body', 'server.mjs', '        req.resume();', "        return void req.on('end', () => send(413, 'too big', { connection: 'close' }));"],
+  ['the request path is parsed as a URL', 'server.mjs', "const route = (req.url ?? '/').split('?')[0];", "const route = new URL(req.url, 'http://localhost').pathname;"],
+  ['the screen prints the Host header', 'server.mjs', "return answer((log, t) => look(log, { now: t, host }));", "return answer((log, t) => look(log, { now: t, host: req.headers.host }));"],
+  ['listens on every interface', 'server.mjs', "opt('--listen') ?? '127.0.0.1'", "opt('--listen') ?? '::'"],
 ];
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'rockpet-mutate-'));
-for (const p of ['src', 'test', 'tools/rocksim.mjs', 'server.mjs', 'package.json']) fs.cpSync(path.join(root, p), path.join(work, p), { recursive: true });
+for (const p of ['src', 'test', 'tools/rocksim.mjs', 'tools/sandbox.mjs', 'server.mjs', 'package.json']) fs.cpSync(path.join(root, p), path.join(work, p), { recursive: true });
 
 // The suite's verdict: the names of the top-level tests that failed (TAP, one process).
 function suite() {

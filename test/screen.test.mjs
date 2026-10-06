@@ -37,9 +37,10 @@ function sampleRocks(n, seed) {
   return out;
 }
 
+// Times in the mocks sit late in their unit (6h40m, 41d20h), so a rounding mutant shows.
 test('the alive screen is the DESIGN-NOTES mock', () => {
   const now = Date.UTC(2026, 10, 16, 14, 5);
-  const s = state({ born: now - 41 * DAY - 3 * HOUR, t: now, hunger: 3.2, happy: -2.2, messes: 1, lastCare: now - 6 * HOUR - 10 * MIN, visits: 9 });
+  const s = state({ born: now - 41 * DAY - 20 * HOUR, t: now, hunger: 3.2, happy: -2.2, messes: 1, lastCare: now - 6 * HOUR - 40 * MIN, visits: 9 });
   assert.equal(show(s), [
     '3         -2', '', '', '   .----.', '  ( -  - )', "   '----'", '', '        @', '', '', '', '',
     'hunger 3/10 (10=starving)  happy -2 (max 7)  mess 1 (@)',
@@ -50,7 +51,7 @@ test('the alive screen is the DESIGN-NOTES mock', () => {
 
 test('the dead screen is the DESIGN-NOTES mock', () => {
   const died = Date.UTC(2026, 10, 16, 3, 14), now = died + 9 * HOUR;
-  const s = state({ born: died - 41 * DAY - 2 * HOUR, t: died, hunger: 10, happy: -10, messes: 3, starvingSince: died - 30 * HOUR, sorrowSince: died - 48 * HOUR, lastCare: now - 3 * DAY - HOUR, dead: { t: died, cause: 'lonely' } });
+  const s = state({ born: died - 41 * DAY - 20 * HOUR, t: died, hunger: 10, happy: -10, messes: 3, starvingSince: died - 30 * HOUR, sorrowSince: died - 48 * HOUR, lastCare: now - 3 * DAY - 20 * HOUR, dead: { t: died, cause: 'lonely' } });
   assert.equal(show(s, now), [
     'died: lonely', '', '', '   .----.', '  ( x  x )', "   '----'", '', '  @     @', '     @', '', '', '',
     'age 41d  died 2026-11-16 03:14Z',
@@ -59,7 +60,18 @@ test('the dead screen is the DESIGN-NOTES mock', () => {
 });
 
 test('every epitaph fills the top row exactly', () => {
-  for (const cause of ['lonely', 'filthy', 'hungry']) assert.equal(`died: ${cause}`.length, W, cause);
+  for (const cause of ['lonely', 'filthy', 'hungry']) {
+    const row1 = show(state({ t: DAY, hunger: 10, happy: -10, starvingSince: 0, sorrowSince: 0, dead: { t: DAY, cause } }), 2 * DAY).split('\n')[0];
+    assert.equal(row1, `died: ${cause}`);
+    assert.equal(row1.length, W, cause);
+  }
+});
+
+test('the ceiling bottoms out at -10, and the named line says so', () => {
+  for (const [messes, max] of [[1, 7], [3, 1], [6, -8], [7, -10], [9, -10]]) {
+    const text = show(state({ t: HOUR, hunger: 2, happy: Math.min(-8, max), messes }), HOUR);
+    assert.ok(text.includes(` (max ${max})  mess ${messes} (@)\n`), `${messes} messes: ${text}`);
+  }
 });
 
 test('every screen: a 12x12 grid with no trailing spaces, an @ per mess, the rock intact', () => {
@@ -127,27 +139,32 @@ test('an extreme shows only while the stat is truly there', () => {
   assert.equal(Object.is(shownHappy(state({ happy: -0.3 })), 0), true, 'no "-0"');
 });
 
-test('danger lines count the hours at the extreme', () => {
+test('danger lines count the whole hours at the extreme', () => {
   const now = T0 + 50 * HOUR;
-  const text = show(state({ born: T0, t: now, hunger: 10, happy: -10, starvingSince: now - 17 * HOUR - 5 * MIN, sorrowSince: now - 3 * HOUR }), now);
+  const text = show(state({ born: T0, t: now, hunger: 10, happy: -10, starvingSince: now - 17 * HOUR - 35 * MIN, sorrowSince: now - 3 * HOUR - 40 * MIN }), now);
   assert.ok(text.includes('\nsorrow: at -10 for 3h of 48\n'), text);
   assert.ok(text.includes('\nhunger: at 10 for 17h of 48\n'), text);
   assert.ok(text.includes('\n10       -10\n') || text.startsWith('10       -10\n'), text);
 });
 
-test('the suggested body is a full visit: sent as is, the screen reads hunger 0, happy 10, mess 0', () => {
-  let checked = 0;
-  for (const { s } of sampleRocks(400, 9)) {
-    if (s.dead) continue;
+test('the suggested body is the smallest full visit: sent as is, the screen reads hunger 0, happy 10, mess 0', () => {
+  const after = (s, acts) => { const c = structuredClone(s); applyVisit(c, acts); return [shownHunger(c), shownHappy(c), c.messes]; };
+  const rocks = sampleRocks(400, 9).map(r => r.s).filter(s => !s.dead);
+  // Float edges the sample would never hit: happiness a hair below -6.5 and -8.5.
+  rocks.push(state({ happy: -6.500000000000002 }), state({ happy: -8.500000000000002 }), state({ hunger: 0.5 }), state({ hunger: 3.5000000000000004 }));
+  for (const s of rocks) {
     const body = fullCare(s);
-    const after = structuredClone(s);
-    if (body) applyVisit(after, parseActions(body).acts);
-    assert.deepEqual([shownHunger(after), shownHappy(after), after.messes], [0, 10, 0], `"${body}" from ${JSON.stringify(s)}`);
+    const acts = body ? parseActions(body).acts : [];
+    assert.deepEqual(after(s, acts), [0, 10, 0], `"${body}" from ${JSON.stringify(s)}`);
+    for (const [i, [verb, n]] of acts.entries()) { // one fewer of any verb is not enough
+      if (verb === 'clean') continue;
+      const fewer = acts.map((a, j) => (j === i ? [verb, n - 1] : a)).filter(([, k]) => k > 0);
+      assert.notDeepEqual(after(s, fewer), [0, 10, 0], `"${body}" is not the smallest from ${JSON.stringify(s)}`);
+    }
     if (body) assert.ok(show(s).includes(`body e.g. ${body}\n`));
     else assert.ok(show(s).includes('nothing needed now'));
-    checked++;
   }
-  assert.ok(checked > 150, `only ${checked} live rocks`);
+  assert.ok(rocks.length > 150, `only ${rocks.length} live rocks`);
 });
 
 test('a rock never shows more messes than the grid has spots for', () => {

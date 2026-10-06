@@ -157,6 +157,19 @@ test('a rock pinned to -10 by its messes starts the sorrow clock the moment the 
   assert.equal(s.messes, 10, 'three more messes before death; the fourth is due at the moment of death');
 });
 
+test('a tie between the two clocks dies hungry', () => {
+  // Fed and petted hourly to 60h, never cleaned; then petted only. Hunger reaches 10 at 84h,
+  // the same moment the 7th mess pins happiness to -10.
+  const visits = [];
+  for (let t = 1; t <= 60; t++) visits.push({ t: T0 + h(t), acts: [['feed', 4], ['pet', 10]] });
+  for (let t = 61; t <= 83; t++) visits.push({ t: T0 + h(t), acts: [['pet', 10]] });
+  visits.push({ t: T0 + h(83.75), acts: [['pet', 10]] });
+  const s = replay(log(T0, ...visits), Infinity);
+  assert.equal(s.starvingSince, T0 + h(84), 'the starving clock starts at 84h');
+  assert.equal(s.sorrowSince, T0 + h(84), 'and so does the sorrow clock');
+  assert.deepEqual(s.dead, { t: T0 + h(132), cause: 'hungry' });
+});
+
 test('a visit at or after the moment of death changes nothing', () => {
   const alone = replay(log(T0), Infinity);
   for (const dt of [0, 1, h(1), h(100)]) {
@@ -179,6 +192,15 @@ test('death is computed, not ticked: every look after the death agrees on its mo
   }
 });
 
+// The state's own invariants: stats in range, and a stat at its extreme exactly while its 48h
+// clock runs, with the clock started no later than the state's moment.
+function assertWhole(s, what) {
+  assert.ok(s.hunger >= 0 && s.hunger <= 10 && s.happy >= -10 && s.happy <= ceilingOf(s.messes), `${what}: out of range ${JSON.stringify(s)}`);
+  assert.equal(s.starvingSince !== null, s.hunger === 10, `${what}: starving clock vs hunger ${s.hunger}`);
+  assert.equal(s.sorrowSince !== null, s.happy === -10, `${what}: sorrow clock vs happiness ${s.happy}`);
+  for (const since of [s.starvingSince, s.sorrowSince]) if (since !== null) assert.ok(since <= s.t, `${what}: a clock started after ${s.t}`);
+}
+
 test('every action is benevolent: an extra visit never brings death sooner or leaves any stat worse', () => {
   const rnd = mulberry(11);
   const VERBS = ['feed', 'clean', 'pet'];
@@ -193,10 +215,14 @@ test('every action is benevolent: an extra visit never brings death sooner or le
     const withIt = log(b, ...[...visits, extra].sort((x, y) => x.t - y.t));
     const B = replay(withIt, Infinity);
     assert.ok(B.dead.t >= A.dead.t, `run ${run}: the extra visit brought death ${(A.dead.t - B.dead.t) / HOUR}h sooner`);
+    assertWhole(A, `run ${run} at death`);
+    assertWhole(B, `run ${run} at death, with the extra visit`);
     for (let k = 0; k < 8; k++) {
       const t = extra.t + rnd() * (A.dead.t - extra.t);
       if (!(t > extra.t)) continue;
       const a = replay(without, t), c = replay(withIt, t);
+      assertWhole(a, `run ${run} at ${t}`);
+      assertWhole(c, `run ${run} at ${t}, with the extra visit`);
       assert.ok(c.hunger <= a.hunger + 1e-9, `run ${run}: hungrier`);
       assert.ok(c.happy >= a.happy - 1e-9, `run ${run}: sadder`);
       assert.ok(c.messes <= a.messes, `run ${run}: messier`);

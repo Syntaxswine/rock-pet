@@ -14,9 +14,12 @@ test('any non-alphanumeric separates words; case does not matter', () => {
   assert.deepEqual(parseActions('  feed+pet+x3  '), { acts: [['feed', 1], ['pet', 3]] });
 });
 
-test('a form post is read for its values', () => {
+test('a form post is read for its values, and a percent-encoded body is decoded', () => {
   assert.deepEqual(parseActions('do=feed+clean+pet+x3'), { acts: [['feed', 1], ['clean', 1], ['pet', 3]] });
   assert.deepEqual(parseActions('body=feed%20pet%20x2'), { acts: [['feed', 1], ['pet', 2]] });
+  // curl --data-urlencode "feed clean pet x3"
+  assert.deepEqual(parseActions('feed%20clean%20pet%20x3'), { acts: [['feed', 1], ['clean', 1], ['pet', 3]] });
+  assert.deepEqual(parseActions('pet%2C%20feed'), { acts: [['pet', 1], ['feed', 1]] });
 });
 
 test('counts are clamped at 20, where no larger count could change the outcome', () => {

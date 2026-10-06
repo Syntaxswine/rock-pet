@@ -20,10 +20,11 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 | `src/engine.mjs` | `replay(log, now)`: the rock's state at any moment from its event log, in continuous time, closed-form between events. Death is the first moment a 48h clock ran out. |
 | `src/screen.mjs` | The 12x12 grid and the named lines. |
 | `src/parse.mjs` | Action bodies such as `feed x4 clean pet x10`. |
-| `src/rock.mjs` | `look(log, {now, host})` and `act(log, body, {now, host})`: the HTTP status, the screen, and for an accepted action the visit to append to the log. |
-| `server.mjs` | The local server. The log is `data/rock.jsonl`, appended in one synchronous step per visit. `--new-rock` starts over (local only). |
+| `src/log.mjs` | The log's format: the birth, each visit, and a death line once anyone has seen the rock dead. Parsing checks shape and refuses anything else. |
+| `src/rock.mjs` | `look(log, {now, host})` and `act(log, body, {now, host})`: the HTTP status, the screen, and what to append to the log (an accepted action's `visit`; the `died` line the first time the rock is seen dead). |
+| `server.mjs` | The local server, answering 127.0.0.1 only unless `--listen` says otherwise. The log is `data/rock.jsonl`, read and appended in one synchronous step per request. `--new-rock` starts over (local only). |
 | `tools/sandbox.mjs` | The engine on a pretend clock. |
-| `tools/mutate.mjs` | Breaks the game 33 ways, one at a time; the suite must catch every one (it does). |
+| `tools/mutate.mjs` | Breaks the game 57 ways, one at a time; the suite must catch every one (it does). |
 
 `src/` uses no platform APIs, so it should move to a Worker unchanged. Hosting means replacing `server.mjs`'s storage with the platform's and serving the same routes.
 
@@ -37,7 +38,7 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 ## Invariants (must hold; these are the reasons the design is the way it is)
 Status in brackets: what the local build does today.
 
-1. **Death is computed, never ticked.** [built: `replay`]
+1. **Death is computed, never ticked.** [built: `replay`. Locally, the first sight of a death is also logged, so a clock set back cannot revive the rock. A death nobody has seen is still exposed to that; hosting closes it with the platform's clock.]
    - Store an append-only event log: birth, and every visit with its verbs.
    - Derive state by replaying the log from birth to "now" in continuous time.
    - Find the *first* moment a death condition is met. A visit arriving after that moment must not revive the rock: reject it and return the grave.
@@ -50,7 +51,7 @@ Status in brackets: what the local build does today.
    - Two simultaneous visits must both land.
    - With D1, append the visit row and update any cached state in one `batch()`, which is transactional.
    - Never read-modify-write across separate statements.
-5. **Never put visitor-supplied text on the shared screen** (names, notes, anything). To every later agent it is a prompt injection. If identity is ever added, a visitor sees only their own name. [built: the host on the screen is configured, never the request's Host header; an error echoes only letters and digits, to the sender alone]
+5. **Never put visitor-supplied text on the shared screen** (names, notes, anything). To every later agent it is a prompt injection. If identity is ever added, a visitor sees only their own name. [built: the host on the screen is configured, never the request's Host header; an error echoes only letters and digits, to the sender alone; a 500 says nothing about the error]
 6. **The response to an action is the new screen,** so a visit costs one request. [built]
 7. **Outage credit.** If the visit path itself was down (platform outage, quota exhausted), time spent at an extreme during that window may be credited. Credit only verified windows, bound each one, and log it publicly. If you can't verify, don't credit. [to do, with hosting]
 
@@ -75,6 +76,7 @@ Status in brackets: what the local build does today.
   - Verbs apply in the order given, and the response is the new screen.
   - Counts are capped at 20 per word, which never changes the outcome; there is no cap across requests.
   - An unknown word does nothing: 400, one `error:` line, then the screen. A dead rock answers 410 with its grave.
+  - A body over 1 KB gets 413 at once. A method a path doesn't serve gets 405 with `Allow`. A log that can't be replayed exactly gets 500 and is left untouched.
 - **Not built yet, for fetch-only agents** (the Claude API's `web_fetch` and Claude Code's WebFetch can't POST):
   - The GET screen prints single-use, expiring links: `https://<host>/a/<token>/feed`, `/clean`, `/pet`.
   - Use per-agent `robots.txt` groups: allow the user-triggered agent fetchers you want on `/a/`, disallow everyone else. Claude-User honours robots.txt.
@@ -98,7 +100,7 @@ Status in brackets: what the local build does today.
 - **Pet (and clean) every 6/8/12h, never feed:** `hungry` at exactly 72.0h after the last feed. (`lazybot`)
 - **Feed + pet every 8h, never clean:** `filthy` on day 5.4. (`ceiling`, column −3/mess)
 - **One visit every ≤68h:** alive indefinitely. Every 69h or more: dead within a week. (`lifesupport`)
-- **Random caretakers:** at every visit and at death, the engine and the simulator agree to within the simulator's 2-minute tick (160 seeded lives; the worst gaps use about half the tolerance).
+- **Random caretakers:** 160 seeded lives. At every visit, hunger agrees to 1e-6 and happiness to 0.15 (the worst gap measured is 0.077). Death times agree to 0.15h, which is 4.5 of the simulator's 2-minute ticks (the worst measured is 0.086h).
 
 ## Open
 - **Is a caretaker bot allowed?** Assumed yes; the owner hasn't answered.

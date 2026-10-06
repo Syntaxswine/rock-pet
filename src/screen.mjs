@@ -32,11 +32,13 @@ export function eyes(s) {
 /**
  * The body for a full visit right now: the fewest feeds and pets after which the screen reads
  * hunger 0 and happy 10 (shown values round, so under 0.5 and from 9.5), and a clean if there
- * is a mess. Empty when nothing is needed.
+ * is a mess (which lifts the ceiling to 10). Empty when nothing is needed. Counted forward with
+ * the engine's own arithmetic, so float rounding cannot leave it one short.
  */
 export function fullCare(s) {
-  const feeds = s.hunger < 0.5 ? 0 : Math.floor((s.hunger - 0.5) / R.feed) + 1;
-  const pets = s.happy >= 9.5 ? 0 : Math.ceil((9.5 - s.happy) / R.pet);
+  let feeds = 0, pets = 0;
+  while (Math.max(0, s.hunger - R.feed * feeds) >= 0.5) feeds++;
+  while (Math.min(10, s.happy + R.pet * pets) < 9.5) pets++;
   const words = [];
   if (feeds > 0) words.push(feeds > 1 ? `feed x${feeds}` : 'feed');
   if (s.messes > 0) words.push('clean');

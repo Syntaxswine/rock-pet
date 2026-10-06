@@ -11,8 +11,10 @@ const COUNT = /^x?([0-9]+)$/;
 /** { acts: [[verb, count], ...] } or { error: one line, safe to show the sender } */
 export function parseActions(body) {
   let text = String(body ?? '');
-  // A form post ("do=feed+pet+x3") is read for its values.
+  // A form post ("do=feed+pet+x3") is read for its values; a percent-encoded body without a
+  // key (curl --data-urlencode) is decoded byte by byte.
   if (/^[A-Za-z_]+=/.test(text.trim())) text = [...new URLSearchParams(text.trim()).values()].join(' ');
+  else text = text.replace(/%([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
   const words = text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
   if (words.length === 0) return { error: 'nothing to do: send verbs, e.g. feed clean pet x3' };
   if (words.length > MAX_WORDS) return { error: `too many words (at most ${MAX_WORDS})` };

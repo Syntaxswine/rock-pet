@@ -93,9 +93,15 @@ function flow(s, te) {
   const dt = (end - s.t) / HOUR;
   s.happy = Math.max(-10, s.happy - drain(s.hunger, s.messes, dt)); // drain reads the starting hunger
   s.hunger = Math.min(10, s.hunger + R.hungerPerHour * dt);
-  if (s.starvingSince !== null && end >= s.starvingSince) s.hunger = 10;
-  if (s.sorrowSince !== null && end >= s.sorrowSince) s.happy = -10;
   s.t = end;
+  // At `end`, a stat sits at its extreme exactly while its clock runs. A clock due to start
+  // after `end` (death came first) has not started; a float hair at the extreme starts it now.
+  if (s.starvingSince !== null && s.starvingSince > end) s.starvingSince = null;
+  if (s.sorrowSince !== null && s.sorrowSince > end) s.sorrowSince = null;
+  if (s.starvingSince !== null) s.hunger = 10;
+  else if (s.hunger >= 10) s.starvingSince = end;
+  if (s.sorrowSince !== null) s.happy = -10;
+  else if (s.happy <= -10) s.sorrowSince = end;
   // A deadline that falls exactly on the next event still comes first: a visit at the 48th
   // hour is too late. A tie between the two clocks dies hungry.
   if (end === starve) s.dead = { t: end, cause: 'hungry' };
