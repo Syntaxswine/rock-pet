@@ -21,6 +21,12 @@
 //      WINDOW      the cap's sliding window in hours (default = the rule set's, else 1)
 //      CEIL        happiness ceiling lost per visible mess (default = the rule set's, 3; 0 = none)
 // The comparison modes (caps, solo, readings, grace, ceiling) build on the `rock` rules with CEIL applied.
+//
+// Importable: test/sim.test.mjs checks the game's engine (src/engine.mjs) against this model.
+// The CLI runs only when the file is executed.
+
+import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 
 const DT = 2 / 60; // hours per tick
 const DAY = 24;
@@ -289,7 +295,9 @@ function maxGapStat(gen, days = 30, runs = 400) {
 }
 
 // ---- CLI ---------------------------------------------------------------------
-const mode = process.argv[2] || 'all';
+export { DT, RULESETS, newRock, tick, visit, live, absence, ceilingOf, graceOf, survey, fam, rng };
+const isMain = import.meta.main ?? (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url));
+const mode = isMain ? process.argv[2] || 'all' : null; // imported: no mode runs
 const pick = process.argv[3];
 const RULE = withCeil(withCap(RULESETS[pick] ?? RULESETS.rock, ENV_CAP, ENV_WINDOW), ENV_CEIL);
 
