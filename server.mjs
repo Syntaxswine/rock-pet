@@ -1,7 +1,7 @@
 // Rock Pet, served locally: one rock, whose event log is data/rock.jsonl (src/log.mjs has the
 // format). No dependencies.
 //
-//   node server.mjs                   serve http://localhost:7625 to this machine only
+//   node server.mjs                   serve http://127.0.0.1:7625 to this machine only
 //                                     (7625 is ROCK on a phone keypad)
 //   node server.mjs --port 8000       another port
 //   node server.mjs --listen 0.0.0.0  serve the local network too, and set ROCK_HOST to the
@@ -101,18 +101,36 @@ export function createRockServer({ file, host, now = Date.now, onError = console
 
 /**
  * Move the rock's log to graveyard/rock-<birth>.jsonl beside it, never over another; returns
- * where it went. Permadeath waits for hosting; until then this is the only way to a new rock.
+ * where it went. A log too broken to say when its rock was born is named for when it was
+ * buried instead. Permadeath waits for hosting; until then this is the only way to a new rock.
  */
-export function bury(file) {
+export function bury(file, now = Date.now()) {
   if (!fs.existsSync(file)) return null;
-  const { born } = readLog(file);
+  let stem;
+  try { stem = `rock-${new Date(readLog(file).born).toISOString()}`; } catch { stem = `rock-unreadable-${new Date(now).toISOString()}`; }
+  stem = stem.replace(/[:.]/g, '-');
   const grave = path.join(path.dirname(file), 'graveyard');
   fs.mkdirSync(grave, { recursive: true });
-  const stem = `rock-${new Date(born).toISOString().replace(/[:.]/g, '-')}`;
   let to = path.join(grave, `${stem}.jsonl`);
   for (let n = 2; fs.existsSync(to); n++) to = path.join(grave, `${stem}-${n}.jsonl`);
   fs.renameSync(file, to);
   return to;
+}
+
+// One server per log: two would interleave their appends and break it. The lock holds the
+// server's pid; a lock whose process is gone (a hard kill) is stale and taken over.
+const lockOf = file => `${file}.lock`;
+const alive = pid => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
+function takeLock(file) {
+  for (;;) {
+    try { return void fs.writeFileSync(lockOf(file), String(process.pid), { flag: 'wx' }); } catch (e) { if (e.code !== 'EEXIST') throw e; }
+    const pid = Number(fs.readFileSync(lockOf(file), 'utf8'));
+    if (pid > 0 && alive(pid)) throw new Error(`another server (pid ${pid}) is already serving ${file}`);
+    fs.rmSync(lockOf(file), { force: true });
+  }
+}
+function releaseLock(file) {
+  try { if (fs.readFileSync(lockOf(file), 'utf8') === String(process.pid)) fs.rmSync(lockOf(file)); } catch {}
 }
 
 /** The command line (see the top of this file). Resolves to the listening server. */
@@ -122,17 +140,33 @@ export async function main(argv, { say = console.log } = {}) {
   const listen = opt('--listen') ?? '127.0.0.1';
   const dir = path.resolve(opt('--dir') ?? path.join(path.dirname(fileURLToPath(import.meta.url)), 'data'));
   const file = path.join(dir, 'rock.jsonl');
-  if (argv.includes('--new-rock')) {
-    const to = bury(file);
-    if (to) say(`the old rock's log is now ${to}`);
+  // 127.0.0.1, not localhost: where localhost means ::1 first, some clients wait 2s per request.
+  const host = process.env.ROCK_HOST ?? `127.0.0.1:${port}`;
+  fs.mkdirSync(dir, { recursive: true });
+  takeLock(file);
+  const release = () => releaseLock(file);
+  try {
+    if (argv.includes('--new-rock')) {
+      const to = bury(file);
+      if (to) say(`the old rock's log is now ${to}`);
+    }
+    ensureRock(file, Date.now());
+    look(readLog(file), { now: Date.now(), host }); // refuse to serve a log that cannot be replayed
+    const server = createRockServer({ file, host });
+    await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, listen, resolve); });
+    process.on('exit', release);
+    server.on('close', () => { release(); process.off('exit', release); });
+    say(`Rock Pet on http://${host}/  (log: ${file})`);
+    return server;
+  } catch (e) {
+    release();
+    throw e;
   }
-  ensureRock(file, Date.now());
-  const host = process.env.ROCK_HOST ?? `localhost:${port}`;
-  const server = createRockServer({ file, host });
-  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, listen, resolve); });
-  say(`Rock Pet on http://${host}/  (log: ${file})`);
-  return server;
 }
 
 const isMain = import.meta.main ?? path.resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url);
-if (isMain) main(process.argv.slice(2)).catch(e => { console.error(e.message); process.exit(1); });
+if (isMain) {
+  // Ctrl+C and kill run the exit handlers, which release the lock.
+  for (const [signal, code] of [['SIGINT', 130], ['SIGTERM', 143]]) process.once(signal, () => process.exit(code));
+  main(process.argv.slice(2)).catch(e => { console.error(`not serving: ${e.message}`); process.exit(1); });
+}

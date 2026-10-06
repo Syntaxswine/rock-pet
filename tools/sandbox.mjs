@@ -15,16 +15,24 @@ import { look, act, newLog } from '../src/rock.mjs';
 import { replay } from '../src/engine.mjs';
 import { readLog } from '../server.mjs';
 
-const HOST = 'localhost:7625';
+const HOST = '127.0.0.1:7625';
 const HELP = `commands: feed | clean | pet (with counts, e.g. "feed clean pet x3"), wait 6h | 90m | 2d,
 look, until dead (nobody comes: jump to the moment it dies), log, help, quit`;
 
 const args = process.argv.slice(2);
 const opt = name => { const i = args.indexOf(name); return i >= 0 ? args.splice(i, 2)[1] : undefined; };
 const from = opt('--from'), at = opt('--at');
-let log = from ? readLog(from) : newLog(at ? Date.parse(at) : Date.now());
-let clock = from ? Math.max(Date.now(), log.visits.at(-1)?.t ?? log.born) : log.born;
-if (!Number.isFinite(clock)) { console.error(`--at ${at}: not a time (try 2026-10-06T08:00Z)`); process.exit(1); }
+const bornAt = at === undefined ? Date.now() : Date.parse(at);
+if (!Number.isFinite(bornAt)) { console.error(`sandbox: --at ${at} is not a time (try 2026-10-06T08:00Z)`); process.exit(1); }
+let log;
+try {
+  log = from ? readLog(from) : newLog(bornAt);
+  look(log, { now: Date.now(), host: HOST }); // refuse a log this build cannot replay now, not mid-game
+} catch (e) {
+  console.error(`sandbox: ${from}: ${e.code === 'ENOENT' ? 'no such file' : e.message}`);
+  process.exit(1);
+}
+let clock = from ? Math.max(Date.now(), log.visits.at(-1)?.t ?? log.born, log.died?.t ?? -Infinity) : log.born;
 
 // "1d 6h", "90m", "1.5h" -> ms, or null.
 function span(text) {

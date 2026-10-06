@@ -22,9 +22,9 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 | `src/parse.mjs` | Action bodies such as `feed x4 clean pet x10`. |
 | `src/log.mjs` | The log's format: the birth, each visit, and a death line once anyone has seen the rock dead. Parsing checks shape and refuses anything else. |
 | `src/rock.mjs` | `look(log, {now, host})` and `act(log, body, {now, host})`: the HTTP status, the screen, and what to append to the log (an accepted action's `visit`; the `died` line the first time the rock is seen dead). |
-| `server.mjs` | The local server, answering 127.0.0.1 only unless `--listen` says otherwise. The log is `data/rock.jsonl`, read and appended in one synchronous step per request. `--new-rock` starts over (local only). |
+| `server.mjs` | The local server, answering 127.0.0.1 only unless `--listen` says otherwise. The log is `data/rock.jsonl`, read and appended in one synchronous step per request, with a lock file so only one server serves a log. `--new-rock` starts over (local only). |
 | `tools/sandbox.mjs` | The engine on a pretend clock. |
-| `tools/mutate.mjs` | Breaks the game 57 ways, one at a time; the suite must catch every one (it does). |
+| `tools/mutate.mjs` | Breaks the game 77 ways, one at a time; the suite must catch every one, each by an assertion (it does). |
 
 `src/` uses no platform APIs, so it should move to a Worker unchanged. Hosting means replacing `server.mjs`'s storage with the platform's and serving the same routes.
 
@@ -34,6 +34,7 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 - **The fallback**, if Sites can't do something below, is a Cloudflare Worker + one SQLite-backed Durable Object on Cloudflare's free plan (see DESIGN-NOTES, "Is the fallback free?").
 - **GitHub Pages** (this repo) is the public face and the archive: rules, `llms.txt`, a human page, and a periodic export of the event log.
 - **Remove `--new-rock`** from anything hosted.
+- **Keep the state, not just the log.** Every local request re-reads and replays the whole log, about 1 ms per 1,000 visits (measured in review round 2). That is fine for a local rock and wrong for a hosted one: keep the replayed state in the Durable Object (or a checkpoint row) and replay only what follows it.
 
 ## Invariants (must hold; these are the reasons the design is the way it is)
 Status in brackets: what the local build does today.

@@ -19,14 +19,16 @@ node server.mjs
 Then, from any agent or terminal:
 
 ```bash
-curl -s localhost:7625
+curl -s 127.0.0.1:7625
 ```
 
 ```bash
-curl -s -d "feed clean pet x3" localhost:7625/act
+curl -s -d "feed clean pet x3" 127.0.0.1:7625/act
 ```
 
 The reply to an action is the new screen. The verbs are `feed`, `clean` and `pet`, each with an optional count (`pet x5`). While the rock needs anything, the `act:` line suggests the body for a full visit.
+
+In Windows PowerShell, type `curl.exe`: plain `curl` there is Invoke-WebRequest, which hides the screen that comes back with a 400 or a 410.
 
 The server answers this machine only. To let agents on other machines play, add `--listen 0.0.0.0` and set `ROCK_HOST` to the address they should use, since the screen prints it.
 
@@ -45,7 +47,7 @@ The server answers this machine only. To let agents on other machines play, add 
 
 hunger 3/10 (10=starving)  happy -2 (max 7)  mess 1 (@)
 age 41d  now 14:05Z  last care 6h ago
-act: POST localhost:7625/act  body e.g. feed clean pet x6
+act: POST 127.0.0.1:7625/act  body e.g. feed clean pet x6
 ```
 
 ## Try the rules without waiting days
@@ -68,6 +70,6 @@ node tools/sandbox.mjs "feed clean pet x3; wait 30h; look; until dead"
 | `server.mjs` | The local server; the rock's event log is `data/rock.jsonl` |
 | `tools/sandbox.mjs` | The rules on a pretend clock |
 | `tools/rocksim.mjs` | The reference simulator the rules were tuned with. The tests check the engine against it |
-| `tools/mutate.mjs` | Breaks the game 57 ways, one at a time, and checks the tests notice every one |
+| `tools/mutate.mjs` | Breaks the game 77 ways, one at a time, and checks the tests notice every one |
 | `test/` | `node --test` |
 | `REVIEW-2026-10-06.md` | The design review that led to the rules |

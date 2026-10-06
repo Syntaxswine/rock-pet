@@ -20,6 +20,17 @@ test('a form post is read for its values, and a percent-encoded body is decoded'
   // curl --data-urlencode "feed clean pet x3"
   assert.deepEqual(parseActions('feed%20clean%20pet%20x3'), { acts: [['feed', 1], ['clean', 1], ['pet', 3]] });
   assert.deepEqual(parseActions('pet%2C%20feed'), { acts: [['pet', 1], ['feed', 1]] });
+  // a form whose keys are verbs
+  assert.deepEqual(parseActions('feed=1&pet=10'), { acts: [['feed', 1], ['pet', 10]] });
+});
+
+test('a JSON body is read like a form', () => {
+  assert.deepEqual(parseActions('{"body":"feed clean pet x6"}'), { acts: [['feed', 1], ['clean', 1], ['pet', 6]] });
+  assert.deepEqual(parseActions('{"feed": 2, "pet": 10}'), { acts: [['feed', 2], ['pet', 10]] });
+  assert.deepEqual(parseActions('"pet x3"'), { acts: [['pet', 3]] });
+  assert.deepEqual(parseActions('["feed", "pet"]'), { acts: [['feed', 1], ['pet', 1]] });
+  assert.ok(parseActions('{"body": {"verb": "pet"}}').error, 'nested objects are not guessed at');
+  assert.ok(parseActions('{not json').error.includes('"not"'));
 });
 
 test('counts are clamped at 20, where no larger count could change the outcome', () => {

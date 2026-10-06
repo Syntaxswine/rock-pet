@@ -70,6 +70,29 @@ const MUTANTS = [
   ['the request path is parsed as a URL', 'server.mjs', "const route = (req.url ?? '/').split('?')[0];", "const route = new URL(req.url, 'http://localhost').pathname;"],
   ['the screen prints the Host header', 'server.mjs', "return answer((log, t) => look(log, { now: t, host }));", "return answer((log, t) => look(log, { now: t, host: req.headers.host }));"],
   ['listens on every interface', 'server.mjs', "opt('--listen') ?? '127.0.0.1'", "opt('--listen') ?? '::'"],
+  // Round 2: behaviours from round 1 that no test could fail.
+  ['a restart replaces the rock', 'server.mjs', "{ flag: 'wx' }); } catch (e) { if (e.code !== 'EEXIST') throw e; }\n}", "{ flag: 'w' }); } catch (e) { if (e.code !== 'EEXIST') throw e; }\n}"],
+  ['a clock behind the birth is trusted', 'src/rock.mjs', 'Math.max(now, log.born, ', 'Math.max(now, '],
+  ['a refused act never records the death', 'src/rock.mjs', "{ status: 410, text: render(s, { now: t, host }), ...firstSight(log, s) }", "{ status: 410, text: render(s, { now: t, host }) }"],
+  ['a recorded death at the wrong moment passes', 'src/rock.mjs', 's.dead.t === log.died.t && ', ''],
+  ['the 413 still acts on the part it read', 'server.mjs', "        req.removeAllListeners('end');\n", ''],
+  ['the log takes a count of 1.5', 'src/log.mjs', 'Number.isInteger(a[1])', 'Number.isFinite(a[1])'],
+  ['the log takes a count of 0', 'src/log.mjs', 'a[1] >= 1 &&', 'a[1] >= 0 &&'],
+  ['the log takes an act of three parts', 'src/log.mjs', 'a.length === 2 &&', ''],
+  ['the log takes a birth that is not a time', 'src/log.mjs', 'Number.isFinite(head?.born)', "head?.born !== undefined"],
+  ['the log takes a death at no time', 'src/log.mjs', '!Number.isFinite(row.died) || ', ''],
+  ['the log takes a death of any cause', 'src/log.mjs', ' || !CAUSES.includes(row.cause)', ''],
+  // Round 2: the fixes.
+  ['the screen prints localhost', 'server.mjs', '`127.0.0.1:${port}`', '`localhost:${port}`'],
+  ['no lock', 'server.mjs', "    try { return void fs.writeFileSync(lockOf(file), String(process.pid), { flag: 'wx' }); }", "    try { return void fs.writeFileSync(lockOf(file), String(process.pid), { flag: 'w' }); }"],
+  ['a stale lock is never taken over', 'server.mjs', 'if (pid > 0 && alive(pid)) throw', 'if (pid > 0) throw'],
+  ['closing keeps the lock', 'server.mjs', "server.on('close', () => { release(); process.off('exit', release); });", "server.on('close', () => { process.off('exit', release); });"],
+  ['a refused start keeps the lock', 'server.mjs', '  } catch (e) {\n    release();\n    throw e;', '  } catch (e) {\n    throw e;'],
+  ['a torn log cannot be buried', 'server.mjs', "catch { stem = `rock-unreadable-${new Date(now).toISOString()}`; }", 'catch (e) { throw e; }'],
+  ['a log that cannot be replayed is served', 'server.mjs', "    look(readLog(file), { now: Date.now(), host }); // refuse to serve a log that cannot be replayed\n", ''],
+  ['JSON bodies read as words', 'src/parse.mjs', "  try { json = /^[{\"]/.test(text) ? JSON.parse(text) : undefined; } catch { /* not JSON after all: words */ }\n", ''],
+  ['the sandbox meets a bad log mid-game', 'tools/sandbox.mjs', '  look(log, { now: Date.now(), host: HOST }); // refuse a log this build cannot replay now, not mid-game\n', ''],
+  ['a form key that is a verb is dropped', 'src/parse.mjs', "(VERBS.includes(String(k).toLowerCase()) ? `${k} ${v}` : String(v))", 'String(v)'],
 ];
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -78,7 +101,7 @@ for (const p of ['src', 'test', 'tools/rocksim.mjs', 'tools/sandbox.mjs', 'serve
 
 // The suite's verdict: the names of the top-level tests that failed (TAP, one process).
 function suite() {
-  const r = spawnSync(process.execPath, ['--test', '--test-reporter=tap'], { cwd: work, encoding: 'utf8', timeout: 180_000 });
+  const r = spawnSync(process.execPath, ['--test', '--test-force-exit', '--test-reporter=tap'], { cwd: work, encoding: 'utf8', timeout: 120_000 });
   if (r.error?.code === 'ETIMEDOUT') return { failed: ['(timed out)'] };
   const failed = [...r.stdout.matchAll(/^not ok [0-9]+ - (.*)$/gm)].map(m => m[1]);
   if (r.status !== 0 && failed.length === 0) failed.push(`(exit ${r.status}) ${r.stderr.split('\n')[0]}`);

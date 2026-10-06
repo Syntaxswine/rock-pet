@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import net from 'node:net';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -148,6 +149,29 @@ test('a body over 1KB is refused at once, even one that never ends', async () =>
   });
 });
 
+test('a body is refused by its size, not its word count: 1024 bytes in, 1025 out', async () => {
+  await withServer({ seed: birth(NOW - HOUR) }, async ({ req, file }) => {
+    assert.equal((await req('POST', '/act', 'pet' + ' '.repeat(1021))).status, 200);
+    assert.equal((await req('POST', '/act', 'pet' + ' '.repeat(1022))).status, 413);
+    assert.equal(readLog(file).visits.length, 1);
+  });
+});
+
+test('a 413 never acts on the part of the body it read', async () => {
+  await withServer({ seed: birth(NOW - HOUR) }, async ({ port, file }) => {
+    // Two chunks, so the first is buffered before the second crosses the limit.
+    const status = await new Promise(resolve => {
+      const r = http.request({ host: '127.0.0.1', port, method: 'POST', path: '/act' }, res => { res.resume(); resolve(res.statusCode); });
+      r.on('error', () => {});
+      r.write('feed' + ' '.repeat(500));
+      setTimeout(() => r.end(' '.repeat(600)), 50);
+    });
+    await new Promise(r => setTimeout(r, 100));
+    assert.equal(status, 413);
+    assert.equal(readLog(file).visits.length, 0);
+  });
+});
+
 test('a dead rock refuses every visit, and the visit is not logged', async () => {
   await withServer({ seed: birth(NOW - 10 * DAY) }, async ({ req, file }) => {
     const look = await req('GET', '/');
@@ -232,6 +256,7 @@ test('methods and paths it does not serve are named, with Allow', async () => {
     assert.equal(get.status, 405);
     assert.equal(get.headers.allow, 'POST');
     assert.ok(get.text.startsWith('error: /act takes POST'), get.text);
+    assert.equal(get.text.split('\n').slice(1).join('\n'), (await req('GET', '/')).text, 'then the screen');
     for (const method of ['POST', 'PUT', 'OPTIONS', 'DELETE']) {
       const r = await req(method, '/', '');
       assert.equal(r.status, 405, method);
@@ -259,14 +284,82 @@ test('a malformed request cannot take the server down', async () => {
   });
 });
 
-test('the command line serves this machine only, unless told otherwise', async () => {
+test('the command line serves this machine only, and prints the address it serves', async () => {
   const dir = tmpDir();
-  const server = await main(['--port', '0', '--dir', dir], { say: () => {} });
+  const said = [];
+  const server = await main(['--port', '0', '--dir', dir], { say: s => said.push(s) });
   try {
     assert.equal(server.address().address, '127.0.0.1');
+    // Not "localhost": where that means ::1 first, PowerShell and Python wait 2s per request.
+    assert.ok(said.at(-1).startsWith('Rock Pet on http://127.0.0.1:'), said.at(-1));
     assert.equal(readLog(path.join(dir, 'rock.jsonl')).visits.length, 0, 'a rock is born at start');
   } finally {
     await new Promise(r => server.close(r));
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a restart keeps the rock', async () => {
+  const dir = tmpDir();
+  const file = path.join(dir, 'rock.jsonl');
+  const old = birth(Date.now() - HOUR) + JSON.stringify({ t: Date.now() - 1000, acts: [['pet', 1]] }) + '\n';
+  fs.writeFileSync(file, old);
+  try {
+    const server = await main(['--port', '0', '--dir', dir], { say: () => {} });
+    await new Promise(r => server.close(r));
+    assert.equal(fs.readFileSync(file, 'utf8'), old);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// A start that must be refused. Should it start after all, the server is closed before the
+// test fails, so a failure can never leave the test process running.
+async function refusedStart(argv, reason) {
+  let server;
+  try { server = await main(argv, { say: () => {} }); } catch (e) { return assert.match(e.message, reason); }
+  await new Promise(r => server.close(r));
+  assert.fail(`it started; it should have refused (${reason})`);
+}
+
+test('one server per log: a second is refused while the first runs; a dead one\'s lock is taken over', async () => {
+  const dir = tmpDir();
+  const lock = path.join(dir, 'rock.jsonl.lock');
+  const running = [];
+  const start = async () => running[running.push(await main(['--port', '0', '--dir', dir], { say: () => {} })) - 1];
+  const stop = server => new Promise(r => server.close(r));
+  try {
+    const first = await start();
+    assert.equal(fs.readFileSync(lock, 'utf8'), String(process.pid));
+    await refusedStart(['--port', '0', '--dir', dir], /already serving/);
+    await stop(first);
+    assert.equal(fs.existsSync(lock), false, 'closing releases the lock');
+    const gone = spawnSync(process.execPath, ['-e', '']).pid; // a pid whose process has exited
+    fs.writeFileSync(lock, String(gone));
+    await start();
+    assert.equal(fs.readFileSync(lock, 'utf8'), String(process.pid), 'a stale lock is taken over');
+  } finally {
+    for (const server of running) if (server.listening) await stop(server);
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a log too broken to serve stops the start with the reason; --new-rock still gets out', async () => {
+  const dir = tmpDir();
+  const file = path.join(dir, 'rock.jsonl');
+  const torn = birth(NOW - HOUR) + '{"t":17913';
+  fs.writeFileSync(file, torn);
+  try {
+    await refusedStart(['--port', '0', '--dir', dir], /line 2 is not JSON/);
+    assert.equal(fs.existsSync(file + '.lock'), false, 'a refused start releases the lock');
+    assert.equal(fs.readFileSync(file, 'utf8'), torn, 'and leaves the log alone');
+    const server = await main(['--new-rock', '--port', '0', '--dir', dir], { say: () => {} });
+    await new Promise(r => server.close(r));
+    const [grave] = fs.readdirSync(path.join(dir, 'graveyard'));
+    assert.match(grave, /^rock-unreadable-/);
+    assert.equal(fs.readFileSync(path.join(dir, 'graveyard', grave), 'utf8'), torn);
+    assert.equal(readLog(file).visits.length, 0, 'a new rock');
+  } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });

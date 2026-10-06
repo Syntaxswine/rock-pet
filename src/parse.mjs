@@ -10,10 +10,17 @@ const COUNT = /^x?([0-9]+)$/;
 
 /** { acts: [[verb, count], ...] } or { error: one line, safe to show the sender } */
 export function parseActions(body) {
-  let text = String(body ?? '');
-  // A form post ("do=feed+pet+x3") is read for its values; a percent-encoded body without a
-  // key (curl --data-urlencode) is decoded byte by byte.
-  if (/^[A-Za-z_]+=/.test(text.trim())) text = [...new URLSearchParams(text.trim()).values()].join(' ');
+  let text = String(body ?? '').trim();
+  // Bodies agents send besides plain words. A JSON object or a form is read for its values, and
+  // a key that is itself a verb is kept: {"body":"feed pet x3"}, do=feed+pet+x3 and
+  // feed=1&pet=3 all read as words. A percent-encoded body without a key (curl
+  // --data-urlencode) is decoded byte by byte.
+  const fields = entries => entries.map(([k, v]) => (VERBS.includes(String(k).toLowerCase()) ? `${k} ${v}` : String(v))).join(' ');
+  let json;
+  try { json = /^[{"]/.test(text) ? JSON.parse(text) : undefined; } catch { /* not JSON after all: words */ }
+  if (typeof json === 'string') text = json;
+  else if (json !== null && typeof json === 'object' && !Array.isArray(json)) text = fields(Object.entries(json));
+  else if (/^[A-Za-z_]+=/.test(text)) text = fields([...new URLSearchParams(text)]);
   else text = text.replace(/%([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
   const words = text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
   if (words.length === 0) return { error: 'nothing to do: send verbs, e.g. feed clean pet x3' };

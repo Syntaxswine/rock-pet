@@ -22,6 +22,25 @@ test('the sandbox plays the real engine on a pretend clock', () => {
   assert.ok(r.stdout.includes(`died: ${fate.dead.cause}\n`));
 });
 
+test('the sandbox refuses a log it cannot use in one line, not a stack trace', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rockpet-'));
+  try {
+    const other = path.join(dir, 'other.jsonl');
+    fs.writeFileSync(other, JSON.stringify({ born: Date.now(), rules: RULES.version + 1 }) + '\n');
+    for (const [file, says] of [[path.join(dir, 'missing.jsonl'), 'no such file'], [other, 'rules v2']]) {
+      const r = run('--from', file, 'look');
+      assert.equal(r.status, 1);
+      assert.ok(r.stderr.startsWith('sandbox: ') && r.stderr.includes(says), r.stderr);
+      assert.equal(r.stderr.trim().split('\n').length, 1, r.stderr);
+    }
+    const bad = run('--at', 'yesterday', 'look');
+    assert.equal(bad.status, 1);
+    assert.match(bad.stderr, /^sandbox: --at yesterday is not a time/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('the sandbox reads a real log and never writes to it', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rockpet-'));
   const file = path.join(dir, 'rock.jsonl');
