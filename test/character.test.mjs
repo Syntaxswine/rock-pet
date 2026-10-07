@@ -4,7 +4,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { nature, occasion, placeAt, weatherAt, inDanger, KINDS, VOICES } from '../src/character.mjs';
+import { nature, occasion, placeAt, inDanger, KINDS, VOICES } from '../src/character.mjs';
+import { mossAt } from '../src/marks.mjs';
+import { NAMED } from '../src/name.mjs';
 import { reaction, remark, LINES } from '../src/story.mjs';
 import { render, W } from '../src/screen.mjs';
 import { replay, born, applyVisit, HOUR } from '../src/engine.mjs';
@@ -18,7 +20,6 @@ const FULL = [['feed', 4], ['clean', 1], ['pet', 10]];
 const opts = now => ({ now, host: 'rock.test' });
 const quirks = text => text.split('\n').filter(l => l.startsWith('quirk: '));
 const grid = text => text.split('\n').slice(0, W);
-const marks = rows => rows.join('').split('').filter(c => ".',".includes(c)).length;
 
 function mulberry(seed) {
   let a = seed >>> 0;
@@ -88,29 +89,9 @@ test('a rock born before this build keeps its voice: its old line is still one o
   }
 });
 
-test('grit settles while nobody comes, and any care brushes it off', () => {
-  const grit = h => weatherAt({ ...born(T), t: T + h * HOUR, lastCare: T }, T + h * HOUR).grit;
-  assert.deepEqual([0, 11.99, 12, 23.99, 24, 47.99, 48, 70].map(grit), [0, 0, 1, 1, 2, 2, 3, 3]);
-  assert.equal(weatherAt(born(T), T + 12 * HOUR).grit, 1, 'never cared for: counted from birth');
-  const log = { ...newLog(T), visits: [{ t: T + HOUR, acts: [['pet', 1]] }] };
-  for (const [h, n] of [[11, 0], [12, 1], [24, 2], [48, 3]]) {
-    assert.equal(marks(grid(look(log, opts(T + HOUR + h * HOUR)).text).slice(1, 3)), n, `${h}h`);
-  }
-  assert.equal(marks(grid(act(log, 'pet', opts(T + 40 * HOUR)).text).slice(1, 3)), 0, 'a visit brushes it off');
-});
-
-test('moss creeps over a grave: after a week, a month, a season', () => {
-  const s = replay(newLog(T), Infinity); // nobody ever comes
-  const moss = d => weatherAt(s, s.dead.t + d).moss;
-  assert.deepEqual([0, 7 * DAY - 1, 7 * DAY, 30 * DAY - 1, 30 * DAY, 90 * DAY - 1, 90 * DAY, 900 * DAY].map(moss), [0, 0, 1, 1, 2, 2, 3, 3]);
-  assert.equal(weatherAt(s, s.dead.t + 90 * DAY).grit, 0, 'no grit on a grave');
-  const commas = d => grid(look(newLog(T), opts(s.dead.t + d)).text).join('').split(',').length - 1;
-  assert.deepEqual([0, 7 * DAY, 30 * DAY, 90 * DAY].map(commas), [0, 4, 7, 10]);
-  assert.match(grid(look(newLog(T), opts(s.dead.t + 90 * DAY)).text)[4], /^ ,        ,$/, 'down its sides, and no face');
-});
-
 test('a close call is being brought back after a day or more at an extreme; it leaves a vein', () => {
-  const at = (o, acts) => { const s = { ...born(T), t: T + 100 * HOUR, ...o }; applyVisit(s, acts); return s.closeCalls; };
+  const visit = (o, acts) => { const s = { ...born(T), t: T + 100 * HOUR, ...o }; applyVisit(s, acts); return s; };
+  const at = (o, acts) => visit(o, acts).closeCalls;
   const t = T + 100 * HOUR;
   assert.equal(at({ happy: -10, sorrowSince: t - DAY + 1 }, [['pet', 1]]), 0, 'a millisecond short of a day');
   assert.equal(at({ happy: -10, sorrowSince: t - DAY }, [['pet', 1]]), 1);
@@ -118,7 +99,22 @@ test('a close call is being brought back after a day or more at an extreme; it l
   assert.equal(at({ hunger: 10, starvingSince: t - DAY, happy: -10, sorrowSince: t - DAY }, FULL), 1, 'one visit, one close call');
   assert.equal(at({ happy: -10, sorrowSince: t - 2 * DAY + 1 }, [['clean', 1]]), 0, 'not brought back');
   assert.equal(at({ hunger: 10, starvingSince: t - 2 * DAY + 1 }, [['pet', 1]]), 0, 'petted, but still starving');
-  assert.equal(at({ hunger: 10, starvingSince: t - 30 * HOUR, happy: -10, sorrowSince: t - 30 * HOUR }, [['pet', 1]]), 1, 'brought back from one');
+  // Lifted off one extreme while the other runs on, it has not been saved yet: the close call
+  // counts once, at the visit that ends the stretch (review round 1).
+  const half = visit({ hunger: 10, starvingSince: t - 30 * HOUR, happy: -10, sorrowSince: t - 30 * HOUR }, [['pet', 1]]);
+  assert.deepEqual([half.closeCalls, half.brink], [0, true], 'petted, but still starving: not yet');
+  const whole = { ...half, t: t + HOUR };
+  applyVisit(whole, [['feed', 4]]);
+  assert.deepEqual([whole.closeCalls, whole.brink], [1, false], 'then fed: one close call for the stretch');
+  const sandbox = (...visits) => replay({ ...newLog(T), visits }, Infinity);
+  const low = replay(newLog(T), Infinity).sorrowSince; // nobody comes: it reaches -10 here, and starves from 24h
+  const pets = { t: low + 30 * HOUR, acts: [['pet', 10]] }; // at -10 for 30h, starving all the while
+  assert.ok(pets.t < T + 72 * HOUR && low > T + 18 * HOUR, 'alive, and starving, when the pets come');
+  assert.equal(sandbox(pets, { t: pets.t + HOUR, acts: [['feed', 4]] }).closeCalls, 1, 'one vein, not two');
+  const grave = sandbox(pets);
+  assert.deepEqual([grave.dead?.cause, grave.closeCalls], ['hungry', 0], 'a rock that died before it was saved keeps no vein');
+  const r1 = act({ ...newLog(T), visits: [pets] }, 'feed x4', opts(pets.t + HOUR));
+  assert.deepEqual(quirks(r1.text), ['quirk: it was nearly lost. a vein seals the crack.'], 'its first vein, not "again"');
   // Through the game: nobody comes until happiness has been at -10 for a day.
   const floor = replay(newLog(T), Infinity).sorrowSince;
   const visitAt = v => ({ ...newLog(T), visits: [{ t: v, acts: FULL }] });
@@ -299,7 +295,7 @@ test('a well-kept rock has something to say on about a quarter of looks', () => 
 
 test('every line is in its voice: about it, never to anyone, short and plain', () => {
   const years = Array.from({ length: 30 }, (_, i) => remark({ what: 'birthday', years: i + 1 }).slice(7, -1));
-  for (const line of [...LINES, ...years]) {
+  for (const line of [...LINES, ...years, NAMED]) {
     assert.match(line, /^it [a-z0-9 ,.'-]+\.$/, `starts "it", lowercase plain ASCII, ends with a full stop: ${line}`);
     assert.ok(line.length <= 44, `${line.length} characters: ${line}`);
     assert.ok(!/\b(you|your|please|must|should)\b/.test(line), `asks or addresses: ${line}`);
@@ -342,7 +338,7 @@ test('the character only reads the rock: drawing it and describing it never chan
     const before = JSON.stringify(s);
     for (const pose of ['front', 'away']) render(s, { now, host: 'x', pose });
     remark(occasion(s, now));
-    weatherAt(s, now);
+    mossAt(s, now);
     reaction(log.born, s, s);
     assert.equal(JSON.stringify(s), before);
     assert.ok(Number.isInteger(s.closeCalls) && s.closeCalls >= 0 && s.closeCalls <= s.visits);

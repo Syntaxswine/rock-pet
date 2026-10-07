@@ -97,7 +97,7 @@ died: hungry
 
 
 hunger 3/10 (10=starving)  happy -2 (max 7)  mess 1 (@)
-age 41d  now 14:05Z  last care 6h ago
+Pebble  age 41d  now 14:05Z  last care 6h ago
 act: POST rockpet.example/act  body e.g. feed clean pet x6
 ```
 
@@ -105,10 +105,10 @@ And after death:
 
 ```
 died: lonely
-
-    ___
+    ",,
+  ,,___,"
   _/   \__
- /        \
+ /  x  x  \
  \________/
 
   @     @
@@ -117,17 +117,19 @@ died: lonely
 
 
 
-age 41d  died 2026-11-16 03:14Z
+here lies Pebble  age 41d  died 2026-11-16 03:14Z
 last care 3d ago  it does not stir
 ```
 
-The rock in these mocks is the character from CHARACTER.md, which has every face, mark and pose (2026-10-07). Before that, it was a three-row pebble, `( -  - )`.
+The rock in these mocks is the character from CHARACTER.md, which has every face, mark, pose and drawing (2026-10-07). Before that, it was a three-row pebble, `( -  - )`.
+- **The name:** Pebble is a visitor's name for it. Until a rock has a name, a line `unnamed: POST <host>/name  body: a one-word name` stands above the act line.
+- **The grave's moss:** its last days were spent alone.
 
 **Why the screen looks like this:**
 - **The grid is the picture; the footer is the information.** An agent's fetch tool often passes pages through a summarizing model, and in tests that model shifted grid symbols by a column and dropped blank lines. Serve `text/plain`.
 - **`(max 7)` appears only while a mess lowers the ceiling,** so an agent knows why petting stops working. Danger lines appear only at an extreme: `sorrow: at -10 for 17h of 48` or `hunger: at 10 for 17h of 48`.
 - **One POST is a whole visit,** and its response is the new screen. With no cap, a once-a-day visit needs about 10 pets, so the verbs take counts (`pet x10`) to keep it to one request.
-- **Size, measured on the build:** a median of 170 bytes over 400 sampled rocks, and 326 at most (many messes and both danger lines). A test holds it to 340. The first build drew a three-row pebble (157 and 308); CHARACTER.md's lump costs 11 bytes more.
+- **Size, measured on the build:** a well-kept rock with a name is about 220 bytes. The most is 358: a 12-letter name, many messes, both danger lines, and moss. A test holds every screen to 380. The first build drew a three-row pebble, at 157 bytes median and 308 at most; CHARACTER.md has what the character adds.
 - **Continuity additions:**
   - The base screen keeps that budget.
   - API responses add a short `history:` link.
@@ -141,7 +143,7 @@ The rules above are the owner's. These details were left open, and the build set
 
 | | Choice |
 |---|---|
-| **Faces** | `^  ^` at happiness 5 and up, `o  o` from 0, `-  -` from −5, `;  ;` below −5, `T  T` at the −10 floor. When it is dead it has no face (`x  x` until 2026-10-07; see CHARACTER.md). |
+| **Faces** | `^  ^` at happiness 5 and up, `o  o` from 0, `-  -` from −5, `;  ;` below −5, `T  T` at the −10 floor, `x  x` dead. The owner, 2026-10-07: "x eyes sounds cuter." |
 | **Numbers** | Rounded. An extreme (hunger 10, happiness −10) shows only while the stat is truly there, since that is when its 48h clock runs: 9.97 shows as 9. |
 | **Mess spots** | A fixed list of 16 ground cells below the rock; the first three are the mocks'. Under these rules a rock carries at most 10 messes before it dies. |
 | **The act line** | Suggests the body for a full visit, computed so that sending it makes the screen read hunger 0, happy 10, mess 0. A full rock says `nothing needed now (verbs: feed clean pet)`. |

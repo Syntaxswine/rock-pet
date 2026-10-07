@@ -6,6 +6,7 @@
 import { HOUR } from './engine.mjs';
 import { activeElapsed } from './outages.mjs';
 import { hash, nature, inDanger, placeAt } from './character.mjs';
+import { marksOf, POLISH_AT, CRYSTALS_AT } from './marks.mjs';
 
 // Care, by voice. The first line of each is the reaction that voice had before (a6ef9c8).
 const CARE = {
@@ -36,7 +37,7 @@ const WASHED = {
   quartzite: 'it glints like sugar where it is clean.',
   obsidian: 'it shines like dark glass, which it is.',
   schist: 'it glitters with mica, now it is clean.',
-  flint: 'it shows dark glass under its white rind.',
+  flint: 'it shows dark flint under its chalky rind.',
 };
 const KIND = {
   granite: 'a granite pebble: feldspar, quartz and mica',
@@ -46,11 +47,11 @@ const KIND = {
   quartzite: 'a quartzite pebble: sandstone baked hard and glassy',
   obsidian: 'an obsidian pebble: volcanic glass',
   schist: 'a schist pebble: layered, glittering with mica',
-  flint: 'a flint pebble: dark glassy chert in a white rind',
+  flint: 'a flint pebble: dark chert in a white chalky rind',
 };
 
-// Brought back after a day or more at an extreme: the screen keeps each as a vein, the way a
-// cracked rock heals with quartz.
+// A close call: a stretch at an extreme, a day or more of it, ended by care. The screen keeps
+// each as a vein, the way a cracked rock heals with quartz.
 const CLOSE = ['it was nearly lost. a vein seals the crack.', 'it nearly broke again. a new vein seals it.'];
 // Brought back from the -10 floor, or from hunger 10, within a day.
 const MISSED = ['it seems to have missed someone.', 'it had gone very still, even for a rock.', 'it warms slowly, the way stone does.'];
@@ -66,7 +67,7 @@ const BIRTHDAY = { 7: 'it is one week old today.', 30: 'it is thirty days old to
 const VISITORS = [
   'it is sheltering a woodlouse.', "it carries a snail's silver trail.", "it is anchoring a spider's thread.",
   'it has a beetle living under it.', 'it watches an ant carry a crumb past.', 'it has a feather resting against it.',
-  'it has a moth asleep on it.', 'it is beaded with dew.',
+  'it has a moth asleep on it.', 'it has a ladybird resting on it.',
 ];
 
 const SAILED = 'it moved this morning. no one saw it go.';
@@ -131,8 +132,10 @@ export function biography(log, s, now) {
   const credited = (log.outages ?? []).reduce((sum, o) => sum + o.end - o.start, 0);
   const n = nature(log.born);
   const moves = placeAt(log.born, end).moves;
+  const m = marksOf(s);
   const lines = [
     'one rock, one shared life',
+    `name: ${log.name ? `${log.name.name} (since ${date(log.name.t)})` : 'none yet'}`,
     `born: ${date(log.born)}`,
     `age: ${Math.floor((end - log.born) / (24 * HOUR))}d`,
     `visits: ${s.visits}`,
@@ -143,6 +146,8 @@ export function biography(log, s, now) {
     `nature: ${n.voice}; it likes ${LIKES[n.likes]} best`,
     `habit: it faces the wall on ${WEEKDAYS[n.wallDay]} (utc)`,
     `close calls: ${s.closeCalls} (each kept as a vein)`,
+    `petting received: ${Math.floor(s.petted)} points of happiness (polished at ${POLISH_AT.join(' and ')})`,
+    `meals: ${Math.floor(m.meals)} (crystals at ${CRYSTALS_AT.join(' and ')})`,
     `moved on its own: ${moves === 1 ? 'once' : `${moves} times`}`,
   ];
   if (s.dead) lines.push(`died: ${date(s.dead.t)} (${s.dead.cause})`);

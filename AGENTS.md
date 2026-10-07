@@ -26,8 +26,11 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 | `tools/sandbox.mjs` | The engine on a pretend clock. |
 | `tools/mutate.mjs` | Applies deliberate faults in a temporary copy; every mutant must be caught. LF and CRLF checkouts are supported. |
 | `src/story.mjs` | The rock's authored lines: one reaction after effective care, one line on a look on a day that is not ordinary, and the shared biography at `GET /history`. Never changes the engine. |
-| `src/character.mjs` | The rock's character: its nature, fixed at birth (kind, voice, the care it likes, its weekday for facing the wall), its days, and the marks time leaves (grit, moss, where it has moved to). `CHARACTER.md` is the design. |
-| `tools/model-sheet.mjs` | Every face, mark and pose, drawn by the real renderer. CHARACTER.md shows its output, and a test fails if the two differ. |
+| `src/character.mjs` | The rock's character: its nature (kind, voice, the care it likes, its weekday for facing the wall), its days, and where it has moved to. `CHARACTER.md` is the design. |
+| `src/marks.mjs` | The marks its life leaves: moss while nobody comes and on a grave; veins, polish and crystals, kept for life. |
+| `src/drawings.mjs` | The drawings it can have, for the owner to choose from (`DRAWING`), each with its back and its mark slots. |
+| `src/name.mjs` | Its name: one word, given once, never twice. |
+| `tools/model-sheet.mjs` | Every face, mark, pose and drawing, drawn by the real renderer. CHARACTER.md shows its output, and a test fails if the two differ. |
 | `src/outages.mjs`, `tools/credit-outage.mjs` | Validated outage intervals and the offline operator tool. Independent verification/detection remains a hosting responsibility. |
 
 `src/` uses no platform APIs, so it should move to a Worker unchanged. Hosting means replacing `server.mjs`'s storage with the platform's and serving the same routes.
@@ -38,6 +41,8 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 - **The fallback**, if Sites can't do something below, is a Cloudflare Worker + one SQLite-backed Durable Object on Cloudflare's free plan (see DESIGN-NOTES, "Is the fallback free?").
 - **GitHub Pages** (this repo) is the public face and the archive: rules, `llms.txt`, a human page, and a periodic export of the event log.
 - **Remove `--new-rock`** from anything hosted.
+- **Keep every name a rock has had,** as permanently as the rock: a name is never given twice.
+- **Freeze the character's formulas once hosted:** its kind, days, moves, visitors and mark thresholds. Each is computed again from the log on every request, so a change would rewrite a living rock's past. If one must change, version it like `RULES.version` (CHARACTER.md, "Size, and staying the same").
 - **Keep the state, not just the log.** Every local request re-reads and replays the whole log, about 1 ms per 1,000 visits (measured in review round 2). That is fine for a local rock and wrong for a hosted one: keep the replayed state in the Durable Object (or a checkpoint row) and replay only what follows it.
 
 ## Invariants (must hold; these are the reasons the design is the way it is)
@@ -58,6 +63,9 @@ Status in brackets: what the local build does today.
    - A write batch alone does not protect an earlier read. Serialize the whole read/decide/write operation, or use a state revision check and retry conflicts before accepting the visit.
    - Never read-modify-write across separate statements.
 5. **Never put visitor-supplied text on the shared screen** (names, notes, anything). To every later agent it is a prompt injection. If identity is ever added, a visitor sees only their own name. [built: the host on the screen is configured, never the request's Host header; an error echoes only letters and digits, to the sender alone; a 500 says nothing about the error]
+   - **The one exception is the rock's own name**, by the owner's decision (2026-10-07): "the user names the rock and the name is single use, once that pet is gone that name can not be used again".
+   - So a name is as small as one can be: one word of 2–12 letters a–z, kept capitalized, shown in one place, and never inside the rock's lines. One word leaves no room for an instruction.
+   - It can still be rude, and there is no moderation. That is a risk the owner takes on, and a hosted rock may want an operator veto.
 6. **The response to an action is the new screen,** so a visit costs one request. [built]
 7. **Outage credit.** The owner approved pausing all pet time for verified host downtime, equal to its duration. Individual caretaker absence gets no credit. Hunger, happiness and extreme timers pause; messes during `[start,end)` are skipped, then resume on the UTC schedule. Death at or before the outage start, or any recorded death, cannot be undone. [built: engine, offline operator tool and public `/history` receipts; independent detection still to do with hosting]
    - Record finite completed intervals with an evidence ID before reopening care. Never infer an outage from missing visits. No public action verb or HTTP route awards credit.
@@ -80,11 +88,14 @@ Status in brackets: what the local build does today.
 
 ## The API (built locally; keep it this small)
 - **`GET /`** returns `text/plain`, `Cache-Control: no-store`: the screen.
-- **`GET /history`** returns the shared biography and exact verified outage receipts; no visitor identities. Both read routes support HEAD.
-  - Effective care adds one short authored reaction to its response.
-  - Ordinary reads stay quiet. A read on a day that is not ordinary (a birthday, a morning it moved, its wall day, a small visitor) adds one line. About a quarter of a well-kept rock's reads do.
+  - Ordinary reads stay quiet.
+  - A read on a day that is not ordinary adds one line: a birthday, a morning it moved, its wall day, a small visitor. About a quarter of a well-kept rock's reads do.
+  - Effective care adds one short authored reaction to its response instead.
   - Neither happens while it is at an extreme or dead. See CHARACTER.md.
-- **`POST /act`** takes a body of verbs with optional counts, e.g. `feed x4 clean pet x10`.
+- **`GET /history`** returns the shared biography and exact verified outage receipts; no visitor identities. Both read routes support HEAD.
+- **`POST /name`** takes one word, 2–12 letters a–z, and names the rock: once, for life, and never with a name a rock before it had (409 otherwise; 400 for a bad name; 410 for a grave).
+  - Naming is not care. It changes nothing but the name, and logs a `{"named","t"}` line.
+  - Locally, the names already used are read from `data/graveyard/`. Hosted, keep them as permanently as the rock.
   - Verbs apply in the order given, and the response is the new screen.
   - Counts are capped at 20 per word, which never changes the outcome; there is no cap across requests.
   - An unknown word does nothing: 400, one `error:` line, then the screen. A dead rock answers 410 with its grave.
@@ -97,10 +108,10 @@ Status in brackets: what the local build does today.
 ## The screen (exact shape in DESIGN-NOTES; built in `src/screen.mjs`)
 - A 12x12 grid:
   - Row 1 is hunger left-aligned and happiness right-aligned, or the epitaph.
-  - The rock is a lump with a flat base in rows 2-5 (row 1 is the air above it). Its eyes follow its mood.
-    - When it is dead it has no face.
+  - The rock is drawn in rows 3-6, with row 2 the air above it, from one of the drawings in `src/drawings.mjs` (the owner chooses).
+    - Its eyes follow its mood, and are `x  x` when it is dead.
     - On its wall day a look draws it from behind.
-    - Grit, veins, moss and a trail mark its history (CHARACTER.md).
+    - Moss, veins, polish, crystals and a trail mark its life (CHARACTER.md).
   - Each mess is an `@` at a fixed position.
   - Trailing spaces are trimmed.
 - Then the named lines:
@@ -120,7 +131,9 @@ Status in brackets: what the local build does today.
 ## Open
 - **Is a caretaker bot allowed?** Assumed yes; the owner hasn't answered.
 - **Rockbot's softer requests:** the character (CHARACTER.md) and the shared biography are built. Optional individual recognition ("remembers you") remains phase 2. None may touch the death clock.
-- **The character's open calls are the owner's.** CHARACTER.md, "The owner's calls", lists them: the drawing, the faceless grave, veins, the wall, moving, its kind, a name.
+- **The character's open calls are the owner's** (CHARACTER.md, "The owner's calls"):
+  - which drawing;
+  - a personality that comes from how the rock is treated, under way separately.
 - **Does OpenAI Sites fit the invariants?** Not researched on this side. If something above can't be met there (consistency, anonymous public access, no-store, uptime), say so in an issue before building around it.
 
 ## Working here

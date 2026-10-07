@@ -4,8 +4,10 @@
 
 - **The code:**
   - `src/character.mjs`: its nature and its days.
+  - `src/marks.mjs`: the moss, veins, polish and crystals its life leaves.
+  - `src/name.mjs`: its name.
   - `src/story.mjs`: its lines.
-  - `src/screen.mjs`: the drawing.
+  - `src/screen.mjs` draws it, from one of the drawings in `src/drawings.mjs`.
 - **The checks:** `test/character.test.mjs` holds all of it to this page. `node tools/model-sheet.mjs` draws the model sheet below with the game's own renderer.
 
 ## Who it is
@@ -14,9 +16,13 @@ It is a pebble with a face, sitting on a floor, looked after by visitors who mos
 
 **It keeps a record.** Rocks are records of what happened to them:
 - a cracked rock heals with a vein of quartz;
-- a stone left alone gathers grit, then moss.
+- hands polish a stone that is often handled;
+- water seeping through a rock leaves crystals in its hollows;
+- a rolling stone gathers no moss, but a stone left alone does.
 
-This one keeps the record its visitors can't keep for themselves. Each time someone brings it back from the brink, it keeps a vein. The history page counts the veins with everything else that was done, and names nobody.
+This one keeps the record its visitors can't keep for themselves. Each time someone brings it back from the brink, it keeps a vein. A lot of petting polishes it, and a lot of meals grow crystals in it. The history page counts all of these with everything else that was done, and names nobody.
+
+**It has a name, once.** Whoever names it first gives it its name, for life, and no rock after it can have that name.
 
 **It never speaks.** Every line about it is an observation, the way a field guide describes an animal: *it leans into the attention.*
 - It doesn't plead, and it doesn't blame.
@@ -37,33 +43,36 @@ This one needs feeding, cleaning and attention, and it can die. The owner made t
 | preferences | it likes one kind of care best, and reacts to that first |
 | odd habits | one day a week it faces the wall |
 | "occasional surprises that I don't fully control" | small visitors, and a few winter mornings when it moves by itself |
-| "let the pet miss me or get scruffy" | grit settles while nobody comes, and a visit brushes it off |
-| "a little memory" | veins for close calls, birthdays, round numbers of visits, the history page |
+| "let the pet miss me or get scruffy" | moss grows on it while nobody comes, and a visit brushes it off |
+| "a little memory" | veins for close calls, polish from petting, crystals from meals, birthdays, round numbers of visits, its name, the history page |
 
 ## What it never does
 
 1. **It never changes the game.** Nothing here moves hunger, happiness, messes or death.
-   - The engine only counts close calls, alongside everything else.
+   - The engine only counts what its care did, alongside everything else: close calls, the happiness petting gave, the hunger feeding took away.
    - A test draws and describes frozen states, where any write would throw.
 2. **It is described, never heard.** Every line follows the same rules, and a test checks every line:
    - it starts with "it";
    - it is lowercase, plain ASCII, and at most 44 characters;
    - it never says "you", "please" or "must".
-3. **It never pleads or blames.** Absence shows as grit, and as having missed *someone*.
+3. **It never pleads or blames.** Absence shows as moss, and as having missed *someone*.
 4. **One line at most, and none at the edge.**
    - There is no line while it is at an extreme: the danger lines need the room, and whimsy at the brink would be wrong.
    - There is none in death.
 5. **It is the same for everyone.** Two visitors at the same moment see the same rock, and anyone can work out why:
    - its nature follows from its birth time;
    - its days follow from the UTC date.
-6. **It never shows visitor text.** This is AGENTS.md invariant 5.
+6. **It never shows visitor text, except its name.** This is AGENTS.md invariant 5.
+   - The owner chose to let a visitor name it (2026-10-07).
+   - So a name is as small as one can be: one word of 2–12 letters, a–z, in one place on the screen.
+   - None of its lines ever says the name.
 
 ## The model sheet
 
 The game draws this itself (`node tools/model-sheet.mjs`). The numbers in the corners are hunger and happiness, as in play.
 
 ```text
-faces, by happiness
+the rock, as drawn now (lump): faces, by happiness
 
 5 and up        0 to 5          -5 to 0         below -5        at -10
 |2          9|  |2          2|  |2         -2|  |2         -7|  |2        -10|
@@ -79,23 +88,23 @@ faces, by happiness
 |            |  |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |  |            |
 
-grit: hours since anyone came
+moss: hours since anyone came (cared for every 8h until then)
 
-under 12        12              24              48
-|2          6|  |2          1|  |2         -6|  |2        -10|
-|            |  |            |  |            |  |     ,      |
-|    ___     |  |    ___ .   |  |  ' ___ .   |  |  ' ___ .   |
+6               12              24              48
+|3          6|  |5          5|  |10       -10|  |10       -10|
+|            |  |     ,,     |  |    ",,     |  |    ",,     |
+|    ___     |  |    ___     |  |    ___,    |  |  ,,___,"   |
 |  _/   \__  |  |  _/   \__  |  |  _/   \__  |  |  _/   \__  |
-| /  ^  ^  \ |  | /  o  o  \ |  | /  ;  ;  \ |  | /  T  T  \ |
+| /  ^  ^  \ |  | /  o  o  \ |  | /  T  T  \ |  | /  T  T  \ |
 | \________/ |  | \________/ |  | \________/ |  | \________/ |
 |            |  |            |  |            |  |            |
-|            |  |            |  |            |  |            |
-|            |  |            |  |            |  |            |
-|            |  |            |  |            |  |            |
+|        @   |  |        @   |  |  @     @   |  |  @     @   |
+|            |  |            |  |            |  |     @      |
+|            |  |            |  |            |  |         @  |
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
 
-veins: close calls
+marks of a long life: veins (close calls)
 
 one             two             three or more
 |2          6|  |2          6|  |2          6|
@@ -111,13 +120,29 @@ one             two             three or more
 |            |  |            |  |            |
 |            |  |            |  |            |
 
+marks of a long life: polish (petting) and crystals (meals)
+
+polished        worn smooth     a crystal       two
+|2          6|  |2          6|  |2          6|  |2          6|
+|            |  |            |  |            |  |            |
+|    ___     |  |    ___     |  |    ___     |  |    ___     |
+|  _/   \__  |  |  _/'  \__  |  |  _/   \__  |  |  _/   \__  |
+| /' ^  ^  \ |  | /' ^  ^  \ |  | /  ^  ^  \ |  | /  ^  ^  \ |
+| \________/ |  | \________/ |  | \______*_/ |  | \_*____*_/ |
+|            |  |            |  |            |  |            |
+|            |  |            |  |            |  |            |
+|            |  |            |  |            |  |            |
+|            |  |            |  |            |  |            |
+|            |  |            |  |            |  |            |
+|            |  |            |  |            |  |            |
+
 its days: the wall, a morning it moved
 
 facing the wall  moved left
 |2          6|  |2          6|
 |            |  |            |
 |     ___    |  |   ___      |
-|  __/ \ \_  |  | _/   \__   |
+|  __/   \_  |  | _/   \__   |
 | /        \ |  |/  ^  ^  \  |
 | \________/ |  |\________/..|
 |            |  |            |
@@ -127,26 +152,91 @@ facing the wall  moved left
 |            |  |            |
 |            |  |            |
 
-the grave: at death, then moss
+the grave: at death, then more moss
 
 died            a week          a month         a season
 |died: lonely|  |died: lonely|  |died: lonely|  |died: lonely|
-|            |  |    , ,     |  |    ,,,     |  |    ,,,     |
-|    ___     |  |  , ___ ,   |  |  ,,___ ,,  |  |  ,,___,,,  |
-|  _/ / \__  |  |  _/   \__  |  |  _/   \__  |  |  _/   \__  |
-| /        \ |  | /        \ |  | /        \ |  | ,        , |
-| \________/ |  | \________/ |  | \________/ |  | \________/ |
+|    ",,     |  |    ",,     |  |    ",,     |  |    ",,     |
+|  ,,___,"   |  |  ,,___,",  |  |  ,,___,",  |  |  ,,___,",  |
+|  _/ / \__  |  | "_/ / \__  |  | "_/ / \__, |  | "_/ / \__, |
+| /  x  x  \ |  | /  x  x  \ |  |,/  x  x  \ |  |,/  x  x  \"|
+| \________/ |  | \________/ |  | \________/ |  |,\________/,|
 |            |  |            |  |            |  |            |
 |  @     @   |  |  @     @   |  |  @     @   |  |  @     @   |
 |     @      |  |     @      |  |     @      |  |     @      |
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
+
+the drawings to choose from (src/drawings.mjs)
+
+lump: a lump with a flat base (drawn now)
+happy           at -10, mossy   a long life     the wall        dead a month
+|2          9|  |2        -10|  |2          6|  |2          6|  |died: lonely|
+|            |  |    ",,     |  |            |  |            |  |    ",,     |
+|    ___     |  |  ,,___,"   |  |    ___     |  |     ___    |  |  ,,___,",  |
+|  _/   \__  |  |  _/   \__  |  |  _/ / \__  |  |  __/   \_  |  | "_/ / \__, |
+| /  ^  ^  \ |  | /  T  T  \ |  | /' ^  ^  \ |  | /        \ |  |,/  x  x  \ |
+| \________/ |  | \________/ |  | \______*_/ |  | \________/ |  | \________/ |
+
+googly: googly eyes, the craft-table pet rock
+happy           at -10, mossy   a long life     the wall        dead a month
+|2          9|  |2        -10|  |2          6|  |2          6|  |died: lonely|
+|            |  |    ",,,    |  |            |  |            |  |    ",,,    |
+|    ____    |  |  ,,____"   |  |    ____    |  |    ____    |  |  ,,____",  |
+|  .'    '.  |  |  .'    '.  |  |  .'  / '.  |  |  .'    '.  |  | ".'  / '., |
+| / (^)(^) \ |  | / (T)(T) \ |  | /'(^)(^) \ |  | /        \ |  |,/ (x)(x) \ |
+| \________/ |  | \________/ |  | \______*_/ |  | \________/ |  | \________/ |
+
+boulder: round and solid
+happy           at -10, mossy   a long life     the wall        dead a month
+|2          9|  |2        -10|  |2          6|  |2          6|  |died: lonely|
+|            |  |   ,",,,"   |  |            |  |            |  |   ,",,,"   |
+|   .----.   |  |  ,.----.   |  |   .----.   |  |   .----.   |  |  ,.----.,  |
+|  /      \  |  |  /      \  |  |  / ' /  \  |  |  /      \  |  | "/   /  \, |
+| |  ^  ^  | |  | |  T  T  | |  | |  ^  ^  | |  | |        | |  |,|  x  x  | |
+|  \______/  |  |  \______/  |  |  \____*_/  |  |  \______/  |  |  \______/  |
+
+cairn: a small stone perched on a flat one
+happy           at -10, mossy   a long life     the wall        dead a month
+|2          9|  |2        -10|  |2          6|  |2          6|  |died: lonely|
+|            |  |    ",,,    |  |            |  |            |  |    ",,,    |
+|    .--.    |  |   ,.--."   |  |    .'-.    |  |    .--.    |  |   ,.--."   |
+|   (^  ^)   |  |  ,(T  T)   |  |   (^  ^)   |  |   (    )   |  |  ,(x  x),  |
+|  .------.  |  |  .------.  |  |  .--/---.  |  |  .------.  |  | ".--/---., |
+| (________) |  | (________) |  | (_______*) |  | (________) |  |,(________) |
+
+cobble: a squared paving stone, a sett
+happy           at -10, mossy   a long life     the wall        dead a month
+|2          9|  |2        -10|  |2          6|  |2          6|  |died: lonely|
+|            |  |            |  |            |  |            |  |            |
+|            |  |  ,,",,,"   |  |            |  |            |  |  ,,",,,"," |
+|  ._______. |  |  ._______. |  |  .___/___. |  |  ._______. |  | ,.___/___.,|
+|  | ^   ^ | |  |  | T   T | |  |  |'^   ^ | |  |  |       | |  |  | x   x | |
+|  |_______| |  |  |_______| |  |  |_____*_| |  |  |_______| |  |  |_______| |
+
+hoodoo: a little spire with a cap stone
+happy           at -10, mossy   a long life     the wall        dead a month
+|2          9|  |2        -10|  |2          6|  |2          6|  |died: lonely|
+|            |  |   ,",,,"   |  |            |  |            |  |   ,",,,"   |
+|   ______   |  |  ,______   |  |   ______   |  |   ______   |  |  ,______,  |
+|  (______)  |  |  (______)  |  |  (______)  |  |  (______)  |  | "(______), |
+|   | ^^ |   |  |   | TT |   |  |   |'^^ |   |  |   |    |   |  |  ,| xx |   |
+|   |____|   |  |   |____|   |  |   |_/*_|   |  |   |____|   |  |   |_/__|   |
+
+pebble: the first drawing, a small pebble
+happy           at -10, mossy   a long life     the wall        dead a month
+|2          9|  |2        -10|  |2          6|  |2          6|  |died: lonely|
+|            |  |            |  |            |  |            |  |            |
+|            |  |   ,",,,"   |  |            |  |            |  |   ,",,,"   |
+|   .----.   |  |  ,.----.   |  |   .--/-.   |  |   .----.   |  |  ,.--/-.,  |
+|  ( ^  ^ )  |  |  ( T  T )  |  |  ('^  ^*)  |  |  (      )  |  | "( x  x ), |
+|   '----'   |  |   '----'   |  |   '----'   |  |   '----'   |  |  ,'----'   |
 ```
 
 ## Its face
 
-The eyes show its mood. They are the build's faces from 2026-10-06, except in death.
+The eyes show its mood. They are the build's faces from 2026-10-06.
 
 | happiness | eyes |
 |---|---|
@@ -155,27 +245,75 @@ The eyes show its mood. They are the build's faces from 2026-10-06, except in de
 | −5 to 0 | `-  -` |
 | below −5 | `;  ;` |
 | at −10, its 48h running | `T  T` |
-| dead | none: the face goes, and it is a stone again |
+| dead | `x  x` (the owner: "x eyes sounds cuter") |
 
-**The drawing is a lump with a flat base.** It reads as a stone sitting on the ground, not a pill floating in the air. It takes four rows instead of three, at a cost of 11 bytes a screen.
+Each drawing puts the same eyes in its own way: `(x)(x)` on the googly one.
+
+## The drawings
+
+The owner asked to see new drawings. They are all in the model sheet above, in the same five states, and `src/drawings.mjs` holds them. `DRAWING` names the one the screen uses, so choosing is a one-word edit.
+
+| drawing | what it is | bytes |
+|---|---|---|
+| **lump** (drawn now) | a lump with a flat base | 43 |
+| **googly** | googly eyes, the craft-table pet rock | 44 |
+| **boulder** | round and solid | 44 |
+| **cairn** | a small stone perched on a flat one | 42 |
+| **cobble** | a squared paving stone, a sett | 37 |
+| **hoodoo** | a little spire with a cap stone, like the eroded pillars of Bryce Canyon | 41 |
+| **pebble** | the first drawing (2026-10-06) | 32 |
+
+What every drawing has:
+- a front, with two eye cells;
+- a back, for its wall day;
+- three slots for veins, two for polish and two for crystals;
+- moss that grows along whatever its top is, then down its sides.
+
+Each stays within columns 1–10, so a rock that has moved a column either way still fits. The screen tests hold every drawing to these rules.
 
 ## The marks
 
 | Mark | Means | Appears | Goes |
 |---|---|---|---|
-| grit `.` `'` `,` above it | nobody has come | after 12h, 24h and 48h without care | any visit brushes it off |
+| moss `,` `"` on top of it | nobody has come | after 12h, 24h and 48h without care | any visit brushes it off |
+| more moss, down its sides | it is a grave | a week, a month and a season after death (compressed: bare stone takes months or years to green over) | never |
 | a vein `/` in it | a close call | a visit brings hunger or happiness back after a day or more at its extreme | never; three are drawn, and `/history` counts the rest |
-| moss `,` over it | it is a grave | a week, a month and a season after death | never |
+| polish `'` on it | it has been petted a lot | after 500 points of happiness given by petting, and again after 3,000 | never |
+| crystals `*` in it | it has been fed a lot | after 100 meals, and again after 500 | never |
 | a trail `..` beside it | it moved | for the rest of that UTC day | the next day |
 
+A meal is one feed's worth of hunger taken away. Both polish and crystals count only what the care did, not what was asked for: a pet at full happiness, or a feed when it isn't hungry, adds nothing. So spamming the verbs can't polish it, and neither can a crowd.
+
+Cared for in full twice a day, a rock is polished and has its first crystal at about a month (days 30 and 31 in the test). It is worn smooth, with two crystals, at five to six months (days 175 and 151).
+
 **Veins.** When a rock cracks, water carrying dissolved minerals seeps in and seals the crack, often with white quartz or calcite. The healed crack is a vein.
-- Crack-seal veins can record hundreds of cracks and seals, each a stress the rock survived (Ramsay 1980).
-- This rock's veins are its close calls: the times someone came when it had less than a day left.
+- A real vein can grow through hundreds of small cracks and seals, each a stress the rock survived (Ramsay 1980). Here each close call makes a whole vein.
+- This rock's close calls are the stretches it spent at an extreme, a day or more of them at it, that someone ended. It was within a day of death, and someone brought it all the way back.
+- A close call counts once, when the last of its extremes ends. Lifting it off one while the other runs on hasn't saved it yet, and a rock that dies first keeps no vein for it.
 - A vein is the one mark that never goes. That is honest, because the rock was nearly lost. It is also kind, because a vein is a crack that healed.
 
-**Grit and moss** are Rockbot's "scruffy".
-- Grit is what absence costs, and a visit undoes it.
-- Moss is what a grave gets: an undisturbed stone greens over. Someone who comes months later finds the grave mossed over, and can tell how long it has been.
+**Moss** is Rockbot's "scruffy", and the owner's choice ("i like the idea that you might grow moss").
+- A rolling stone gathers no moss; a stone left alone does.
+- On the living rock, moss is what absence costs, and a visit undoes it.
+- A grave keeps the moss of its last days alone, and greens over as the months go by. Someone who comes long after can see how long it has been.
+- Real moss needs weeks of damp to take hold on stone. This rock's grows in hours, because it lives fast.
+
+**Polish.** Stone that is handled a lot wears smooth and takes a shine: a worry stone under a thumb, a step under feet. A rock that has been petted a great deal shows it.
+
+**Crystals.** In a real rock, water carrying dissolved minerals seeps into the hollows and leaves crystals there. That is how a geode, or any crystal-lined cavity (a vug), fills. Feeding this rock is the nearest thing it has, so a well-fed life leaves crystals in a hollow.
+
+## Its name
+
+Whoever names it first gives it its name: `POST /name` with one word. It is the owner's rule: "the user names the rock and the name is single use, once that pet is gone that name can not be used again."
+
+- **The name:** one word, 2–12 letters, a–z, kept capitalized. `pebble` and `PEBBLE` are both Pebble.
+- **Once:** a rock is named once, for life. A second name is refused (409).
+- **Never twice:** a name a rock before it had is refused too (409), in any case. Locally, those rocks are the logs in `data/graveyard/`, which `--new-rock` moves the old rock into. Once hosted, the names must be kept as permanently as the rock.
+- **Where it shows:** the screen shows it in one place, first on the age line (`Pebble  age 41d …`). A grave reads `here lies Pebble`. `/history` says when it was named.
+- **Until then:** while it has no name and isn't at an extreme, the screen has a line `unnamed: POST <host>/name  body: a one-word name`. It costs about 55 bytes, until someone names it.
+- **Naming isn't care.** It changes nothing about the rock but its name. The rock's reply is `quirk: it has a name now.`, and none of its lines ever says the name.
+
+A name is the one piece of visitor text on the shared screen, and every later agent reads it. That is why it is one short word of letters only: there is no room in it for an instruction. What a single word can still be is rude. There is no moderation, so a rude name is a risk the owner takes on.
 
 ## Its nature, fixed at birth
 
@@ -188,7 +326,7 @@ The eyes show its mood. They are the build's faces from 2026-10-06, except in de
 
 Each choice comes up about equally often; a test checks 2,100 births.
 
-**The kinds are common pebbles,** and a clean shows what each kind shows when wet:
+**The kinds are pebbles you could find,** obsidian only near young volcanoes. A clean shows what each kind shows when wet:
 - granite, its pink feldspar and grey quartz;
 - basalt, the gas bubbles it cooled around;
 - limestone, a fossil;
@@ -200,13 +338,13 @@ Wet stone shows its true colour and grain, which is why geologists lick rocks.
 
 A look on an ordinary day says nothing. A look on another kind of day adds one line, taken in this order:
 
-| Occasion | Line | Share of looks (400 rock-years) |
+| Occasion | Line | Share of looks in its first year (600 rocks) |
 |---|---|---|
-| its birthday: 7, 30 and 100 days, then every year | `it is one week old today.` | 1.1% |
+| its birthday: 7, 30 and 100 days, then every year | `it is one week old today.` | 1.0%: four days, then one a year |
 | it moved this morning | `it moved this morning. no one saw it go.` | 0.7% |
-| its wall day | `it is facing the wall today.` (drawn from behind) | 14.0% |
-| a small visitor | `it is sheltering a woodlouse.` | 10.4% |
-| an ordinary day | nothing | 73.7% |
+| its wall day | `it is facing the wall today.` (drawn from behind) | 14.1% |
+| a small visitor | `it is sheltering a woodlouse.` | 10.5% |
+| an ordinary day | nothing | 73.8% |
 
 **Facing the wall.** This was the example of a quirk in the 2026-10-06 design review. On its day, a look shows it from behind: mirrored, with no face. A visitor who cares for it gets its face, because it turns round for them.
 
@@ -215,7 +353,7 @@ A look on an ordinary day says nothing. A look on another kind of day adds one l
 - Wind pushes panels of ice 3–6 mm thick. They break up in the late-morning sun and shove the rocks along at 2–5 m a minute.
 
 This rock may do the same:
-- on a winter morning, December to February, about one day in twenty, at 10:00 UTC;
+- on a winter morning, December to February, about one day in twenty, at 10:00 UTC. That is late morning by the rock's own clock; at the Playa itself, late morning is about 19:00 UTC.
 - by one column, leaving a trail for the rest of that day;
 - never after it dies.
 
@@ -225,7 +363,7 @@ Real stones also need a shallow winter pond, and can sit still for years, so thi
 - woodlice and beetles shelter under it;
 - snails cross it;
 - spiders tie threads to it;
-- moths rest on it.
+- moths and ladybirds rest on it.
 
 ## After care
 
@@ -262,19 +400,20 @@ Every set of reactions starts with the old line, so nothing it said before is lo
 - **Sailing stones:** Norris, R.D., Norris, J.M., Lorenz, R.D., Ray, J., Jackson, B. (2014). *Sliding rocks on Racetrack Playa, Death Valley National Park: first observation of rocks in motion.* PLoS ONE 9(8): e105948. doi:10.1371/journal.pone.0105948. See also the National Park Service, [mystery solved](https://www.nps.gov/deva/learn/news/racetrack.htm).
 - **Veins:** Ramsay, J.G. (1980). *The crack–seal mechanism of rock deformation.* Nature 284: 135–139. doi:10.1038/284135a0.
 - **Wet stone:** wetting makes mineral and fossil textures stand out. Jan Zalasiewicz's essay on licking rocks won the 2023 Ig Nobel Prize for Chemistry and Geology ([University of Leicester](https://le.ac.uk/news/2023/september/ig-nobel-zalasiewicz)).
-- **The Pet Rock:** Gary Dahl, 1975. Stones from Rosarito Beach, sold with *The Care and Training of Your Pet Rock* ([The Strong museum](https://www.museumofplay.org/blog/rock-on-gary-dahl)).
+- **The Pet Rock:** Gary Dahl, 1975. Stones from Rosarito Beach, sold in a pet-carrier box with a training manual ([The Strong museum](https://www.museumofplay.org/blog/rock-on-gary-dahl)).
 
 ## The owner's calls
 
-These choices are mine, and each is a small edit to change. The default is in brackets.
+**Decided (2026-10-07):**
+- **The grave:** `x  x` eyes.
+- **Veins:** kept for life. Polish and crystals were added as other marks of a complex life.
+- **Moss:** it grows on the living rock while nobody comes.
+- **A name:** a visitor gives it, once, and never to a second rock.
+- **The wall and moving by itself:** no preference, so both stay as they are.
 
-1. **The drawing** [the lump]. The old pebble is three lines in `sprite()`.
-2. **The grave** [faceless]. `x  x` is one line in `eyes()`.
-3. **Veins** [kept for life].
-4. **The wall** [weekly]. It could be rarer, or never.
-5. **Moving by itself** [yes].
-6. **Its kind** [chosen at birth, from eight]. You could choose it instead.
-7. **A name** [none, only "it"]. A name is the plainest way to make it yours, and only you can give it.
+**Open:**
+1. **The drawing.** It is `DRAWING` in `src/drawings.mjs`, the lump until the owner picks.
+2. **Its nature.** The owner wants it to come from how the rock is treated, not from its birth. That work is under way separately, and "Its nature, fixed at birth" above describes the build as it stands.
 
 ## Not built
 
@@ -282,18 +421,29 @@ These choices are mine, and each is a small edit to change. The default is in br
 - **"It remembers you."** This needs visitor identity, which is phase 2.
 - **Lichen as age.** Lichenometry dates rock surfaces by the size of lichens such as *Rhizocarpon*, which grow about a millimetre a year or less. That is too slow to see in a pet's life, so moss on the grave stands in for it.
 
-## Size
+## Size, and staying the same
 
-Token efficiency comes first, so here is what the character costs. The figures are bytes over 300 sampled lives, on the commit before this work (a6ef9c8) and after it.
+**What it costs.** Token efficiency comes first. The figures are bytes over 300 sampled well-kept lives (full care every 4–14h), with a 9-character host, on the commit before this work (a6ef9c8) and now.
 
-| Well kept (full care every 4–14h) | before, median | after, median | after, largest |
+| Well kept | a6ef9c8, median | now, named, median (largest) | now, unnamed, median |
 |---|---|---|---|
-| the screen | 202 | 213 | 224 |
-| a look | 229 | 245 | 290 |
-| a visit's reply | 272 | 279 | 292 |
+| the screen | 202 | 221 (237) | 265 |
+| a look | 229 | 253 (304) | 297 |
+| a visit's reply | 272 | 287 (300) | 331 |
 
-The costs come from two places:
+The costs come from four places:
 - **The drawing:** 11 bytes on every screen.
-- **The look line:** about 50 bytes, on a quarter of looks.
+- **The name:** its length plus 2 (8 bytes for Pebble).
+- **The naming line:** about 55 bytes, until someone names it.
+- **The look line:** 38 bytes when there is one, on about a quarter of looks, so about 10 bytes a look overall.
 
-A visit's reply already carried a reaction line, and its lines are a few characters longer now. Under random care, with many rocks dead or at an extreme, the largest look is 347 bytes and the largest screen 326. The screen test holds every screen to 340 bytes, and the character test holds every look and visit to under 440.
+The largest screen is 358 bytes: a 12-letter name, nine messes, both danger lines, and moss. The screen tests hold every screen to 380 (it was 340 before moss and names), and every look and visit to under 440.
+
+**Staying the same.** Once the rock is hosted, these formulas must not change, or a living rock's past would change under it:
+- its kind;
+- its weekday;
+- when it moves;
+- its visitors;
+- the thresholds for veins, polish and crystals.
+
+Every one is computed again from the log on every request. If one has to change, it needs a version, the way `RULES.version` guards the rules. `test/days.test.mjs` pins one rock's winter of moves, so a change can't happen by accident.

@@ -1,8 +1,8 @@
-// The rock's character: what it is, what it is doing today, and the marks time leaves on it.
+// The rock's character: what it is, what it is doing today, and where it has moved to.
 // Everything here follows from the log and the clock, so anyone can work out why the rock looks
 // and behaves as it does, and nothing here feeds back into the engine: no hunger, happiness, mess
-// or death depends on it. The words are in story.mjs, the drawing in screen.mjs, and the design
-// (with the real things it is built on) in CHARACTER.md.
+// or death depends on it. The marks of its life are in marks.mjs, the words in story.mjs, the
+// drawing in screen.mjs, and the design (with the real things it is built on) in CHARACTER.md.
 
 import { HOUR } from './engine.mjs';
 
@@ -37,13 +37,17 @@ export function nature(born) {
   };
 }
 
-/** At an extreme: hunger 10 or happiness -10, with its 48h running. Then it does nothing odd. */
+/**
+ * At an extreme: hunger 10 or happiness -10, with its 48h running. Then it has no habits, no
+ * days and no reactions; only the ice may still have moved it.
+ */
 export const inDanger = s => s.starvingSince !== null || s.sorrowSince !== null;
 
 // Sailing stones. On Racetrack Playa in Death Valley, rocks slide across the dry lake bed in
 // winter, pushed by wind on panels of ice 3-6 mm thick that break up in the late-morning sun
 // (Norris et al. 2014, PLoS ONE 9: e105948, the first time anyone saw it happen). This one may
-// move on a winter morning, December to February, about one day in twenty, at 10:00 UTC: from the
+// move on a winter morning, December to February, about one day in twenty: at 10:00 UTC, late
+// morning by the rock's own clock (at the Playa itself, about 19:00 UTC). It moves from the
 // middle of the screen one column to either side, or back. It does not move after it dies.
 const SAILS_PER_MILLE = 50;
 const SAILS_AT = 10 * HOUR;
@@ -66,20 +70,6 @@ export function placeAt(born, t) {
     moves++;
   }
   return { col, from, moves };
-}
-
-/**
- * The marks of time on it. While it lives, grit settles when nobody tends it: a fleck after 12h
- * without care, another after a day, a leaf after two (it cannot live a third). Any care brushes
- * it off. Once it is dead, moss creeps over it: after a week, a month, a season.
- */
-export function weatherAt(s, now) {
-  if (s.dead) {
-    const d = now - s.dead.t;
-    return { grit: 0, moss: d >= 90 * DAY ? 3 : d >= 30 * DAY ? 2 : d >= 7 * DAY ? 1 : 0 };
-  }
-  const quiet = now - (s.lastCare ?? s.born);
-  return { grit: quiet >= 48 * HOUR ? 3 : quiet >= 24 * HOUR ? 2 : quiet >= 12 * HOUR ? 1 : 0, moss: 0 };
 }
 
 const BIRTHDAYS = [7, 30, 100]; // days; then each year on the calendar date
