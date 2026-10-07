@@ -11,6 +11,7 @@ import { look, act, newLog, creditOutage, history } from '../src/rock.mjs';
 import { replay, HOUR } from '../src/engine.mjs';
 import { recordOutage } from '../tools/credit-outage.mjs';
 import { reaction } from '../src/story.mjs';
+import { occasion } from '../src/character.mjs';
 import * as sim from '../tools/rocksim.mjs';
 
 const T = Date.UTC(2026, 9, 6);
@@ -208,7 +209,11 @@ test('a stable short reaction follows effective care only and cannot change the 
   assert.match(r.text, /quirk: it /);
   for (let i = 0; i < 6; i++) assert.equal(r.text, act(log, 'feed x4 clean pet x10', options(h(20))).text);
   assert.equal(JSON.stringify(log), before);
-  assert.equal(look(log, options(h(20))).text.includes('quirk:'), false);
+  // Ordinary reads stay quiet. Not every day is ordinary: this rock faces the wall on Tuesdays,
+  // and a look then says so (test/character.test.mjs), so this look is the next morning.
+  const cared = { ...log, visits: [r.visit] };
+  assert.equal(occasion(replay(cared, h(30)), h(30)), null);
+  assert.equal(look(cared, options(h(30))).text.includes('quirk:'), false);
   assert.equal(act(log, 'feed clean pet x10', options(T)).text.includes('quirk:'), false);
   assert.equal(act(log, 'hug', options(h(20))).text.includes('quirk:'), false);
   assert.equal(act(log, 'pet', options(h(100))).text.includes('quirk:'), false);

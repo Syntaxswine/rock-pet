@@ -62,6 +62,7 @@ export function born(t) {
     sorrowSince: null,   // when happiness reached -10, while it stays there
     dead: null,          // { t, cause: 'hungry' | 'filthy' | 'lonely' }
     lastCare: null, visits: 0,
+    closeCalls: 0,       // visits that brought it back after a day or more at an extreme
   };
 }
 
@@ -73,6 +74,10 @@ export function applyVisit(s, acts) {
     else if (verb === 'pet') s.happy = Math.min(ceilingOf(s.messes), s.happy + R.pet * n);
     else throw new Error(`unknown verb: ${verb}`);
   }
+  // A close call: a stat brought back off its extreme after a day or more there. It is only
+  // counted, for the screen; it changes nothing else.
+  const long = since => since !== null && s.t - since >= GRACE_MS / 2;
+  if ((s.hunger < 10 && long(s.starvingSince)) || (s.happy > -10 && long(s.sorrowSince))) s.closeCalls++;
   // An extreme's clock resets when the stat LEAVES the extreme, not merely because someone came.
   if (s.hunger < 10) s.starvingSince = null;
   if (s.happy > -10) s.sorrowSince = null;

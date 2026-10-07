@@ -4,10 +4,11 @@
 
 import { RULES as R } from './rules.mjs';
 import { HOUR, ceilingOf } from './engine.mjs';
+import { placeAt, weatherAt } from './character.mjs';
 
 export const W = 12; // the grid is W x W
 
-// Where the k-th visible mess lies, [row, col] from 0. Row 0 holds the numbers and rows 3-5
+// Where the k-th visible mess lies, [row, col] from 0. Row 0 holds the numbers and rows 1-5
 // the rock, so messes keep to the ground below it. The first three are the DESIGN-NOTES mocks.
 export const MESS_SPOTS = [
   [7, 8], [7, 2], [8, 5], [9, 9], [10, 1], [6, 11], [10, 6], [11, 10],
@@ -19,9 +20,9 @@ export const MESS_SPOTS = [
 export const shownHunger = s => (s.starvingSince !== null ? 10 : Math.min(9, Math.round(s.hunger)));
 export const shownHappy = s => (s.sorrowSince !== null ? -10 : Math.max(-9, Math.round(s.happy)) || 0);
 
-/** The rock's eyes follow its mood. */
+/** The rock's eyes follow its mood. In death the face goes: it is a stone again. */
 export function eyes(s) {
-  if (s.dead) return 'x  x';
+  if (s.dead) return '    ';
   if (s.sorrowSince !== null) return 'T  T';
   if (s.happy < -5) return ';  ;';
   if (s.happy < 0) return '-  -';
@@ -46,6 +47,30 @@ export function fullCare(s) {
   return words.join(' ');
 }
 
+// The rock: a lump with a flat base, in a box of 5 rows across the grid's width, drawn at rows
+// 1-5 (the box's first row is the air above it, where things settle). Marks are [row, col] in the
+// box: the first three veins (close calls); grit, one more mark for each level; moss by level.
+const VEINS = [[2, 5, '/'], [4, 7, '/'], [2, 8, '/']];
+const GRIT = [[1, 8, '.'], [1, 2, "'"], [0, 5, ',']];
+const MOSS = [[[0, 4], [0, 6], [1, 2], [1, 8]], [[0, 5], [1, 3], [1, 9]], [[1, 7], [3, 1], [3, 10]]];
+
+/** The rock's box, 5 rows of W characters. Facing the wall (pose 'away'), it is mirrored and shows no face. */
+export function sprite(s, now, pose = 'front') {
+  const b = Array.from({ length: 5 }, () => Array(W).fill(' '));
+  const put = (row, col, text) => { for (let i = 0; i < text.length; i++) b[row][col + i] = text[i]; };
+  put(1, 4, '___');
+  put(2, 2, '_/   \\__');
+  put(3, 1, `/  ${pose === 'away' ? '    ' : eyes(s)}  \\`);
+  put(4, 1, '\\________/');
+  for (const [row, col, mark] of VEINS.slice(0, s.closeCalls)) b[row][col] = mark;
+  const { grit, moss } = weatherAt(s, now);
+  for (const [row, col, mark] of GRIT.slice(0, grit)) b[row][col] = mark;
+  for (const level of MOSS.slice(0, moss)) for (const [row, col] of level) b[row][col] = ',';
+  const flip = { '/': '\\', '\\': '/' };
+  if (pose === 'away') for (const row of b) row.reverse().forEach((c, i) => { row[i] = flip[c] ?? c; });
+  return b.map(row => row.join(''));
+}
+
 // 3d, 6h, 12m: the largest whole unit.
 function span(ms) {
   const m = Math.max(0, Math.floor(ms / 60_000));
@@ -56,16 +81,23 @@ function span(ms) {
 const hours = ms => Math.max(0, Math.floor(ms / HOUR));
 const iso = t => new Date(t).toISOString();
 
-/** The whole screen for state `s` (from replay) as seen at `now`, ending in a newline. */
-export function render(s, { now, host }) {
+/**
+ * The whole screen for state `s` (from replay) as seen at `now`, ending in a newline. `pose` is
+ * 'away' only for a look on its day for facing the wall (story.mjs says so on the screen).
+ */
+export function render(s, { now, host, pose = 'front' }) {
   const g = Array.from({ length: W }, () => Array(W).fill(' '));
   const put = (row, col, text) => { for (let i = 0; i < text.length; i++) g[row][col + i] = text[i]; };
   const hunger = String(shownHunger(s)), happy = String(shownHappy(s));
   if (s.dead) put(0, 0, `died: ${s.dead.cause}`);
   else { put(0, 0, hunger); put(0, W - happy.length, happy); }
-  put(3, 3, '.----.');
-  put(4, 2, `( ${eyes(s)} )`);
-  put(5, 3, "'----'");
+  // Where it has sailed to (it stops when it dies), and on the day it moved, its trail.
+  const { col: dx, from } = placeAt(s.born, s.dead ? s.dead.t : now);
+  sprite(s, now, pose).forEach((row, r) => { for (let c = 0; c < W; c++) if (row[c] !== ' ') g[1 + r][c + dx] = row[c]; });
+  if (!s.dead && from !== null) {
+    if (dx > from) for (let c = 0; c <= dx; c++) g[5][c] = '.';
+    else for (let c = W - 1 + dx; c < W; c++) g[5][c] = '.';
+  }
   for (const [row, col] of MESS_SPOTS.slice(0, s.messes)) g[row][col] = '@';
   const lines = g.map(row => row.join('').trimEnd());
 

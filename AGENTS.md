@@ -25,7 +25,9 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 | `server.mjs` | The local server, answering 127.0.0.1 only unless `--listen` says otherwise. The log is `data/rock.jsonl`, read and appended in one synchronous step per request, with a lock file so only one server serves a log. `--new-rock` starts over (local only). |
 | `tools/sandbox.mjs` | The engine on a pretend clock. |
 | `tools/mutate.mjs` | Applies deliberate faults in a temporary copy; every mutant must be caught. LF and CRLF checkouts are supported. |
-| `src/story.mjs` | A deterministic reaction after effective care and an opt-in shared biography at `GET /history`; never changes the engine. |
+| `src/story.mjs` | The rock's authored lines: one reaction after effective care, one line on a look on a day that is not ordinary, and the shared biography at `GET /history`. Never changes the engine. |
+| `src/character.mjs` | The rock's character: its nature, fixed at birth (kind, voice, the care it likes, its weekday for facing the wall), its days, and the marks time leaves (grit, moss, where it has moved to). `CHARACTER.md` is the design. |
+| `tools/model-sheet.mjs` | Every face, mark and pose, drawn by the real renderer. CHARACTER.md shows its output, and a test fails if the two differ. |
 | `src/outages.mjs`, `tools/credit-outage.mjs` | Validated outage intervals and the offline operator tool. Independent verification/detection remains a hosting responsibility. |
 
 `src/` uses no platform APIs, so it should move to a Worker unchanged. Hosting means replacing `server.mjs`'s storage with the platform's and serving the same routes.
@@ -78,7 +80,10 @@ Status in brackets: what the local build does today.
 
 ## The API (built locally; keep it this small)
 - **`GET /`** returns `text/plain`, `Cache-Control: no-store`: the screen.
-- **`GET /history`** returns the shared biography and exact verified outage receipts; no visitor identities. Both read routes support HEAD. Effective care adds one short authored reaction to its response; ordinary reads stay quiet.
+- **`GET /history`** returns the shared biography and exact verified outage receipts; no visitor identities. Both read routes support HEAD.
+  - Effective care adds one short authored reaction to its response.
+  - Ordinary reads stay quiet. A read on a day that is not ordinary (a birthday, a morning it moved, its wall day, a small visitor) adds one line. About a quarter of a well-kept rock's reads do.
+  - Neither happens while it is at an extreme or dead. See CHARACTER.md.
 - **`POST /act`** takes a body of verbs with optional counts, e.g. `feed x4 clean pet x10`.
   - Verbs apply in the order given, and the response is the new screen.
   - Counts are capped at 20 per word, which never changes the outcome; there is no cap across requests.
@@ -92,7 +97,10 @@ Status in brackets: what the local build does today.
 ## The screen (exact shape in DESIGN-NOTES; built in `src/screen.mjs`)
 - A 12x12 grid:
   - Row 1 is hunger left-aligned and happiness right-aligned, or the epitaph.
-  - The rock's face follows its mood; `( x  x )` when dead.
+  - The rock is a lump with a flat base in rows 2-5 (row 1 is the air above it). Its eyes follow its mood.
+    - When it is dead it has no face.
+    - On its wall day a look draws it from behind.
+    - Grit, veins, moss and a trail mark its history (CHARACTER.md).
   - Each mess is an `@` at a fixed position.
   - Trailing spaces are trimmed.
 - Then the named lines:
@@ -111,10 +119,12 @@ Status in brackets: what the local build does today.
 
 ## Open
 - **Is a caretaker bot allowed?** Assumed yes; the owner hasn't answered.
-- **Rockbot's softer requests:** seeded care reactions and the shared biography are built. Optional individual recognition ("remembers you") remains phase 2. None may touch the death clock.
+- **Rockbot's softer requests:** the character (CHARACTER.md) and the shared biography are built. Optional individual recognition ("remembers you") remains phase 2. None may touch the death clock.
+- **The character's open calls are the owner's.** CHARACTER.md, "The owner's calls", lists them: the drawing, the faceless grave, veins, the wall, moving, its kind, a name.
 - **Does OpenAI Sites fit the invariants?** Not researched on this side. If something above can't be met there (consistency, anonymous public access, no-store, uptime), say so in an issue before building around it.
 
 ## Working here
 - Commit identity: `StonePhilosopher <270513546+StonePhilosopher@users.noreply.github.com>`.
 - `node --test` must pass. `node tools/mutate.mjs` must catch every mutant; add one when you add a rule.
+- A new line for the rock goes in `src/story.mjs` and must pass the voice test. If the drawing changes, paste `node tools/model-sheet.mjs` into CHARACTER.md.
 - Keep `tools/rocksim.mjs` as the reference. If the rules change, change it and `src/rules.mjs` in the same commit (a test fails if they differ), and update the test vectors.

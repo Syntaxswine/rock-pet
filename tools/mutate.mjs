@@ -105,13 +105,42 @@ const MUTANTS = [
   ['future downtime can be credited', 'src/rock.mjs', ' || outage.end > now', ''],
   ['credit without evidence', 'src/outages.mjs', "typeof o.evidence !== 'string' || !EVIDENCE.test(o.evidence)", 'false'],
   ['care inside an outage is accepted', 'src/outages.mjs', 'log.visits.some(v => v.t >= o.start && v.t < o.end)', 'false'],
-  ['personality changes on every reply', 'src/story.mjs', 'Math.abs(Math.trunc(birth / 1000)) % 3', '((globalThis.__mutantQuirk = (globalThis.__mutantQuirk ?? 0) + 1) % 3)'],
+  ['personality changes on every reply', 'src/character.mjs', 'Math.abs(Math.trunc(born / 1000)) % 3', '((globalThis.__mutantQuirk = (globalThis.__mutantQuirk ?? 0) + 1) % 3)'],
   ['biography includes downtime in quiet stretches', 'src/outages.mjs', 'ms -= Math.max(0, Math.min(end, o.end) - Math.max(start, o.start));', 'ms -= 0;'],
+  // The character (CHARACTER.md): its marks, its days, its lines, and that it stays out of the game.
+  ['a close call needs no time at the extreme', 'src/engine.mjs', 's.t - since >= GRACE_MS / 2', 's.t - since >= 0'],
+  ['close calls are never counted', 'src/engine.mjs', 'long(s.sorrowSince))) s.closeCalls++;', 'long(s.sorrowSince))) s.closeCalls += 0;'],
+  ['a close call counts while still starving', 'src/engine.mjs', '(s.hunger < 10 && long(s.starvingSince))', 'long(s.starvingSince)'],
+  ['grit settles after 6h', 'src/character.mjs', 'quiet >= 12 * HOUR ? 1', 'quiet >= 6 * HOUR ? 1'],
+  ['care does not brush the grit off', 'src/character.mjs', 'now - (s.lastCare ?? s.born)', 'now - s.born'],
+  ['no moss on a grave', 'src/character.mjs', 'moss: d >= 90 * DAY ? 3 : d >= 30 * DAY ? 2 : d >= 7 * DAY ? 1 : 0', 'moss: 0'],
+  ['the dead keep a face', 'src/screen.mjs', "if (s.dead) return '    ';", "if (s.dead) return 'x  x';"],
+  ['a fourth vein is drawn', 'src/screen.mjs', "const VEINS = [[2, 5, '/'], [4, 7, '/'], [2, 8, '/']];", "const VEINS = [[2, 5, '/'], [4, 7, '/'], [2, 8, '/'], [3, 2, '/']];"],
+  ['facing the wall is not mirrored', 'src/screen.mjs', "  if (pose === 'away') for (const row of b) row.reverse().forEach((c, i) => { row[i] = flip[c] ?? c; });\n", ''],
+  ['it faces the wall the day after its day', 'src/character.mjs', '=== nature(s.born).wallDay', '=== (nature(s.born).wallDay + 1) % 7'],
+  ['it does odd things at an extreme', 'src/character.mjs', 'if (s.dead || inDanger(s)) return null;', 'if (s.dead) return null;'],
+  ['care leaves it facing the wall', 'src/rock.mjs', 'render(after, { now: t, host }) + reaction', "render(after, { now: t, host, pose: occasion(after, t)?.what === 'wall' ? 'away' : 'front' }) + reaction"],
+  ['it moves in summer too', 'src/character.mjs', '(month === 11 || month <= 1) && ', ''],
+  ['it moves before the ice breaks up', 'src/character.mjs', ' || (d === today && t - d * DAY < SAILS_AT)', ''],
+  ['it wanders off the screen', 'src/character.mjs', 'col = col !== 0 ? 0 : hash(born, 5, d) % 2 ? 1 : -1;', 'col += hash(born, 5, d) % 2 ? 1 : -1;'],
+  ['it moves after it dies', 'src/screen.mjs', 'placeAt(s.born, s.dead ? s.dead.t : now)', 'placeAt(s.born, now)'],
+  ['no trail', 'src/screen.mjs', 'if (!s.dead && from !== null) {', 'if (false) {'],
+  ['a grave keeps its last trail', 'src/screen.mjs', 'if (!s.dead && from !== null) {', 'if (from !== null) {'],
+  ['birthdays every 360 days', 'src/character.mjs', 'days % 365 === 0', 'days % 360 === 0'],
+  ['a visitor every day', 'src/character.mjs', 'hash(s.born, 6, day) % 8 === 0', 'hash(s.born, 6, day) % 1 === 0'],
+  ['two lines on a special day', 'src/rock.mjs', '+ remark(o) +', '+ remark(o) + remark(o) +'],
+  ['whimsy at the brink', 'src/story.mjs', "if (after.dead || inDanger(after)) return '';", "if (after.dead) return '';"],
+  ['a close call goes unremarked', 'src/story.mjs', 'if (after.closeCalls > before.closeCalls)', 'if (false)'],
+  ['it never misses anyone', 'src/story.mjs', 'else if (before.sorrowSince !== null) line = pick(MISSED);', ''],
+  ['it ignores what it likes', 'src/story.mjs', 'did[n.likes] ? n.likes : ', ''],
+  ['every visit gets the same line', 'src/story.mjs', 'lines[hash(birth, 8, after.visits) % lines.length]', 'lines[0]'],
+  ['an old line is lost', 'src/story.mjs', "'it leans into the attention.'", "'it leans in.'"],
+  ['the biography forgets its close calls', 'src/story.mjs', '`close calls: ${s.closeCalls} (each kept as a vein)`', '`close calls: 0 (each kept as a vein)`'],
 ];
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'rockpet-mutate-'));
-for (const p of ['src', 'test', 'tools/rocksim.mjs', 'tools/sandbox.mjs', 'tools/credit-outage.mjs', 'server.mjs', 'package.json']) fs.cpSync(path.join(root, p), path.join(work, p), { recursive: true });
+for (const p of ['src', 'test', 'tools/rocksim.mjs', 'tools/sandbox.mjs', 'tools/credit-outage.mjs', 'tools/model-sheet.mjs', 'server.mjs', 'package.json', 'CHARACTER.md']) fs.cpSync(path.join(root, p), path.join(work, p), { recursive: true });
 
 // The suite's verdict: the names of the top-level tests that failed (TAP, one process).
 function suite() {

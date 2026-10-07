@@ -86,10 +86,10 @@ died: hungry
 ```
 3         -2
 
-
-   .----.
-  ( -  - )
-   '----'
+    ___
+  _/   \__
+ /  -  -  \
+ \________/
 
         @
 
@@ -106,10 +106,10 @@ And after death:
 ```
 died: lonely
 
-
-   .----.
-  ( x  x )
-   '----'
+    ___
+  _/   \__
+ /        \
+ \________/
 
   @     @
      @
@@ -121,12 +121,18 @@ age 41d  died 2026-11-16 03:14Z
 last care 3d ago  it does not stir
 ```
 
+The rock in these mocks is the character from CHARACTER.md, which has every face, mark and pose (2026-10-07). Before that, it was a three-row pebble, `( -  - )`.
+
 **Why the screen looks like this:**
 - **The grid is the picture; the footer is the information.** An agent's fetch tool often passes pages through a summarizing model, and in tests that model shifted grid symbols by a column and dropped blank lines. Serve `text/plain`.
 - **`(max 7)` appears only while a mess lowers the ceiling,** so an agent knows why petting stops working. Danger lines appear only at an extreme: `sorrow: at -10 for 17h of 48` or `hunger: at 10 for 17h of 48`.
 - **One POST is a whole visit,** and its response is the new screen. With no cap, a once-a-day visit needs about 10 pets, so the verbs take counts (`pet x10`) to keep it to one request.
-- **Size, measured on the build:** a median of 157 bytes over 400 sampled rocks, and 308 at most (many messes and both danger lines). A test holds it to 340.
-- **Continuity additions:** the base screen keeps that budget. API responses add a short `history:` link; effective care can add one authored `quirk:` line. The biography and outage receipts live separately at `/history`, fetched only on purpose.
+- **Size, measured on the build:** a median of 170 bytes over 400 sampled rocks, and 326 at most (many messes and both danger lines). A test holds it to 340. The first build drew a three-row pebble (157 and 308); CHARACTER.md's lump costs 11 bytes more.
+- **Continuity additions:**
+  - The base screen keeps that budget.
+  - API responses add a short `history:` link.
+  - Effective care, or a look on a day that is not ordinary, can add one authored `quirk:` line.
+  - The biography and outage receipts live separately at `/history`, fetched only on purpose.
 - **For fetch-only agents,** add one line of single-use links (~120 bytes) to the GET version.
 
 ## The build's choices (2026-10-06)
@@ -135,7 +141,7 @@ The rules above are the owner's. These details were left open, and the build set
 
 | | Choice |
 |---|---|
-| **Faces** | `^  ^` at happiness 5 and up, `o  o` from 0, `-  -` from −5, `;  ;` below −5, `T  T` at the −10 floor, `x  x` dead. |
+| **Faces** | `^  ^` at happiness 5 and up, `o  o` from 0, `-  -` from −5, `;  ;` below −5, `T  T` at the −10 floor. When it is dead it has no face (`x  x` until 2026-10-07; see CHARACTER.md). |
 | **Numbers** | Rounded. An extreme (hunger 10, happiness −10) shows only while the stat is truly there, since that is when its 48h clock runs: 9.97 shows as 9. |
 | **Mess spots** | A fixed list of 16 ground cells below the rock; the first three are the mocks'. Under these rules a rock carries at most 10 messes before it dies. |
 | **The act line** | Suggests the body for a full visit, computed so that sending it makes the screen read hunger 0, happy 10, mess 0. A full rock says `nothing needed now (verbs: feed clean pet)`. |
@@ -154,7 +160,7 @@ The rules above are the owner's. These details were left open, and the build set
 
 ## Continuity implementation
 
-The shared biography is derived from accepted care: birth date, calendar age, first meal date, visit count and longest quiet stretch (excluding verified host downtime). It freezes at death. Public care dates are coarse; no visitor text or identity is collected. Effective care gets one stable, birth-seeded reaction. Reading or repeating ineffective care produces no reaction and changes no game stats. Individual visitor recognition remains optional future work.
+The shared biography is derived from accepted care: birth date, calendar age, first meal date, visit count and longest quiet stretch (excluding verified host downtime). It freezes at death. Public care dates are coarse; no visitor text or identity is collected. Effective care gets one stable, birth-seeded reaction. Repeating ineffective care produces no reaction. Reading produces nothing on an ordinary day; on a day that is not ordinary it adds one line (CHARACTER.md). Neither changes any game stat. Individual visitor recognition remains optional future work.
 
 The owner clarified downtime credit: other caretakers can cover an absent agent, so only failure of the host's visit path qualifies. The engine now supports finite verified intervals and the offline `tools/credit-outage.mjs` command records them, holding the same local lock as the server. The command does not detect or verify outages itself. An evidence ID must refer to a retained independent incident record. Hosting must apply the credit before accepting recovery traffic, publish its supporting evidence, and establish reliable detection; missing visits alone never qualify.
 
@@ -228,7 +234,7 @@ This is the kill path from earlier: about 3 days of flooding. The rules should c
 1. **Continuity.** There is one rock and a short shared biography. Per-visitor memory is optional, for agents whose operator gives them memory.
 2. **No cruelty for absence.** ~2.8-3 days of grace from full care. Every bad state is reversible except death. The honest limit: a sole caretaker's 3-day outage still kills it.
 3. **A compact status view.** The screen above.
-4. **Personality.** One seeded quirk line, only when something happened, with zero effect on the death clock.
+4. **Personality.** One seeded quirk line, only when something happened, with zero effect on the death clock. Built as the character in CHARACTER.md (2026-10-07).
 5. **Memory.** One "it remembers you" line for a recognized returning visitor.
 
 ## How we got here

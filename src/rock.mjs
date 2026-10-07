@@ -8,7 +8,8 @@ import { replay } from './engine.mjs';
 import { parseActions } from './parse.mjs';
 import { render } from './screen.mjs';
 import { isTime, validateOutages } from './outages.mjs';
-import { biography, reaction } from './story.mjs';
+import { biography, reaction, remark } from './story.mjs';
+import { occasion } from './character.mjs';
 
 /** The log of a rock born at `now`. */
 export const newLog = now => ({ born: now, rules: RULES.version, visits: [], died: null });
@@ -49,10 +50,14 @@ export function creditOutage(log, outage, { now }) {
   return { start: outage.start, end: outage.end, evidence: outage.evidence };
 }
 
+// A look on a day that is not ordinary gets one line about it; on its day for facing the wall it
+// is drawn from behind. Someone caring for it gets a reaction instead, and it turns round for them.
 export function look(log, { now, host }) {
   const t = moment(log, now);
   const s = rockAt(log, t);
-  return { status: 200, text: render(s, { now: t, host }) + `history: ${host}/history\n`, ...firstSight(log, s) };
+  const o = occasion(s, t);
+  const pose = o?.what === 'wall' ? 'away' : 'front';
+  return { status: 200, text: render(s, { now: t, host, pose }) + remark(o) + `history: ${host}/history\n`, ...firstSight(log, s) };
 }
 
 export function history(log, { now }) {

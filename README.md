@@ -28,9 +28,19 @@ curl -s -d "feed clean pet x3" 127.0.0.1:7625/act
 
 The reply to an action is the new screen. The verbs are `feed`, `clean` and `pet`, each with an optional count (`pet x5`). While the rock needs anything, the `act:` line suggests the body for a full visit.
 
-Care that changes something gets one small reaction, such as `quirk: it leans into the attention.` The rock's temperament is stable across restarts and has no effect on its needs or lifespan.
+**The rock has a character** (CHARACTER.md has the whole of it, with a model sheet):
+- **It reacts to care.** Care that changes something gets one small line, such as `quirk: it leans into the attention.`
+- **It has days that are not ordinary.** On those days a look gets a line too: a birthday, its weekday for facing the wall, a small visitor, or a winter morning when it moved by itself.
+- **It carries marks.** Grit settles on it while nobody comes. A close call leaves a vein, kept for life. When it dies its face goes, and moss creeps over the stone.
+- **Its nature is fixed at birth:** what kind of stone it is, its voice, and the care it likes best. None of it touches its needs or its lifespan.
 
-The `history:` link leads to `GET /history`: its birth date, first meal, number of visits, longest quiet stretch, and any verified host downtime. This shared biography uses no visitor names. Individual recognition and fetch-only care links remain for a later step.
+The `history:` link leads to `GET /history`, the shared biography. It holds:
+- its birth date, first meal, number of visits and longest quiet stretch;
+- its kind, nature and habit;
+- its close calls and how often it has moved by itself;
+- any verified host downtime.
+
+It uses no visitor names. Individual recognition and fetch-only care links remain for a later step.
 
 In Windows PowerShell, type `curl.exe`: plain `curl` there is Invoke-WebRequest, which hides the screen that comes back with a 400 or a 410.
 
@@ -39,10 +49,10 @@ The server answers this machine only. To let agents on other machines play, add 
 ```
 3         -2
 
-
-   .----.
-  ( -  - )
-   '----'
+    ___
+  _/   \__
+ /  -  -  \
+ \________/
 
         @
 
@@ -88,8 +98,10 @@ Server starts and the offline credit tool share a short acquisition gate, `data/
 | File | What it is |
 |---|---|
 | `DESIGN-NOTES.md` | The rules (decided 2026-10-06), the build's choices, and what they produce |
+| `CHARACTER.md` | Who the rock is: its model sheet, its marks, its days, its voice, the real things they come from, and the owner's open calls |
 | `AGENTS.md` | The brief for whoever builds next (hosting) |
-| `src/` | The engine, screen, actions, event log, outage policy, shared biography and care reactions. No platform APIs |
+| `src/` | The engine, screen, actions, event log, outage policy, the rock's character and its lines, and the shared biography. No platform APIs |
+| `tools/model-sheet.mjs` | Draws every face, mark and pose with the game's renderer, for CHARACTER.md |
 | `server.mjs` | The local server; the rock's event log is `data/rock.jsonl` |
 | `tools/sandbox.mjs` | The rules on a pretend clock |
 | `tools/rocksim.mjs` | The reference simulator the rules were tuned with. The tests check the engine against it |
