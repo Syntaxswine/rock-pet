@@ -106,8 +106,7 @@ export function remark(o) {
   if (!o) return '';
   let line;
   if (o.what === 'birthday') {
-    const years = o.days / 365;
-    line = BIRTHDAY[o.days] ?? `it is ${WORDS[years] ?? years} year${years > 1 ? 's' : ''} old today.`;
+    line = o.years ? `it is ${WORDS[o.years] ?? o.years} year${o.years > 1 ? 's' : ''} old today.` : BIRTHDAY[o.days];
   } else if (o.what === 'sailed') line = SAILED;
   else if (o.what === 'wall') line = WALL;
   else line = VISITORS[o.which % VISITORS.length];

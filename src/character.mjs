@@ -82,7 +82,17 @@ export function weatherAt(s, now) {
   return { grit: quiet >= 48 * HOUR ? 3 : quiet >= 24 * HOUR ? 2 : quiet >= 12 * HOUR ? 1 : 0, moss: 0 };
 }
 
-const BIRTHDAYS = [7, 30, 100]; // days; then every 365
+const BIRTHDAYS = [7, 30, 100]; // days; then each year on the calendar date
+
+// Whole years old, if t falls in the day after a birthday: the same UTC date and time of day as
+// its birth (a 29 February rock has its birthday on 1 March in other years).
+function yearsOld(born, t) {
+  const b = new Date(born);
+  const at = k => Date.UTC(b.getUTCFullYear() + k, b.getUTCMonth(), b.getUTCDate(), b.getUTCHours(), b.getUTCMinutes(), b.getUTCSeconds(), b.getUTCMilliseconds());
+  const k = new Date(t).getUTCFullYear() - b.getUTCFullYear();
+  for (const years of [k, k - 1]) if (years >= 1 && t >= at(years) && t < at(years) + DAY) return years;
+  return 0;
+}
 
 /**
  * Anything special about this moment, for someone who only looks: its birthday, a morning it
@@ -91,8 +101,9 @@ const BIRTHDAYS = [7, 30, 100]; // days; then every 365
  */
 export function occasion(s, now) {
   if (s.dead || inDanger(s)) return null;
-  const days = Math.floor((now - s.born) / DAY);
-  if (BIRTHDAYS.includes(days) || (days > 0 && days % 365 === 0)) return { what: 'birthday', days };
+  const days = Math.floor((now - s.born) / DAY), years = yearsOld(s.born, now);
+  if (BIRTHDAYS.includes(days)) return { what: 'birthday', days };
+  if (years) return { what: 'birthday', years };
   if (placeAt(s.born, now).from !== null) return { what: 'sailed' };
   if (new Date(now).getUTCDay() === nature(s.born).wallDay) return { what: 'wall' };
   const day = dayOf(now);

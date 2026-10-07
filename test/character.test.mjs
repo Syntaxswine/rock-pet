@@ -207,18 +207,24 @@ test('it may move on a winter morning, by one column, and leaves a trail that da
   assert.ok(!grid(look(newLog(last), opts(tomb.dead.t + MIN)).text)[5].includes('.'), 'no trail on a grave');
 });
 
-test('birthdays: a week, thirty days, a hundred, and every year', () => {
-  const seen = d => occasion({ ...born(T), t: T + d, lastCare: T + d - HOUR }, T + d)?.what;
-  for (const days of [7, 30, 100, 365, 730, 3650]) {
-    assert.deepEqual(occasion({ ...born(T), t: T + days * DAY }, T + days * DAY), { what: 'birthday', days });
-    assert.equal(seen(days * DAY + DAY - 1), 'birthday', `${days}: all that day`);
-    assert.notEqual(seen(days * DAY - 1), 'birthday', `${days}: not the day before`);
-    assert.notEqual(seen(days * DAY + DAY), 'birthday', `${days}: nor after`);
-  }
+test('birthdays: a week, thirty days, a hundred, then each year on the date', () => {
+  const at = (b, t) => occasion({ ...born(b), t, lastCare: t - HOUR }, t);
+  const day = (b, t, o) => {
+    assert.deepEqual(at(b, t), o);
+    assert.deepEqual(at(b, t + DAY - 1), o, 'all that day');
+    assert.notEqual(at(b, t - 1)?.what, 'birthday', 'not the day before');
+    assert.notEqual(at(b, t + DAY)?.what, 'birthday', 'nor after');
+  };
+  for (const days of [7, 30, 100]) day(T, T + days * DAY, { what: 'birthday', days });
+  // Years fall on the date, leap years or not: its second birthday is 731 days on.
+  for (const years of [1, 2, 10]) day(T, Date.UTC(2026 + years, 9, 6), { what: 'birthday', years });
+  const leapling = Date.UTC(2028, 1, 29, 12); // in other years, 1 March
+  day(leapling, Date.UTC(2029, 2, 1, 12), { what: 'birthday', years: 1 });
+  day(leapling, Date.UTC(2032, 1, 29, 12), { what: 'birthday', years: 4 });
   assert.equal(remark({ what: 'birthday', days: 7 }), 'quirk: it is one week old today.\n');
-  assert.equal(remark({ what: 'birthday', days: 365 }), 'quirk: it is one year old today.\n');
-  assert.equal(remark({ what: 'birthday', days: 730 }), 'quirk: it is two years old today.\n');
-  assert.equal(remark({ what: 'birthday', days: 365 * 12 }), 'quirk: it is 12 years old today.\n');
+  assert.equal(remark({ what: 'birthday', years: 1 }), 'quirk: it is one year old today.\n');
+  assert.equal(remark({ what: 'birthday', years: 2 }), 'quirk: it is two years old today.\n');
+  assert.equal(remark({ what: 'birthday', years: 12 }), 'quirk: it is 12 years old today.\n');
 });
 
 test('after care, one line: a close call, then a round number of visits, being missed, the care it likes', () => {
@@ -292,7 +298,7 @@ test('a well-kept rock has something to say on about a quarter of looks', () => 
 });
 
 test('every line is in its voice: about it, never to anyone, short and plain', () => {
-  const years = Array.from({ length: 30 }, (_, i) => remark({ what: 'birthday', days: 365 * (i + 1) }).slice(7, -1));
+  const years = Array.from({ length: 30 }, (_, i) => remark({ what: 'birthday', years: i + 1 }).slice(7, -1));
   for (const line of [...LINES, ...years]) {
     assert.match(line, /^it [a-z0-9 ,.'-]+\.$/, `starts "it", lowercase plain ASCII, ends with a full stop: ${line}`);
     assert.ok(line.length <= 44, `${line.length} characters: ${line}`);
