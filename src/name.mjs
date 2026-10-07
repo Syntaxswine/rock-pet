@@ -10,6 +10,16 @@ export const NAME = /^[A-Za-z]{2,12}$/;
 export const KEPT = /^[A-Z][a-z]{1,11}$/;
 /** What the rock does when named, in its voice (test/character.test.mjs holds it to the voice). */
 export const NAMED = 'it has a name now.';
+/**
+ * Words that cannot be names, because a name is for life and these would be accidents: a verb
+ * sent to the wrong route, a client's empty value, a probe, or one of the screen's own words,
+ * which a summarizing fetch tool could take for the rock's state ("Dead  age 1h ...").
+ */
+export const RESERVED = new Set([
+  'feed', 'clean', 'pet', 'name', 'died', 'dead', 'hungry', 'filthy', 'lonely', 'hunger', 'happy', 'sorrow',
+  'starving', 'mess', 'quirk', 'error', 'act', 'history', 'unnamed', 'here', 'lies', 'age', 'now', 'post', 'body',
+  'null', 'undefined', 'none', 'nil', 'nan', 'true', 'false', 'test',
+]);
 
 /**
  * The name in a request body: plain ("Pebble"), a form (name=Pebble) or JSON ({"name":"Pebble"}
@@ -25,6 +35,7 @@ export function parseName(body) {
   else if (/^name=/i.test(text)) text = [...new URLSearchParams(text)].find(([k]) => k.toLowerCase() === 'name')?.[1] ?? '';
   text = text.trim();
   if (!NAME.test(text)) return { error: 'a name is one word of 2 to 12 letters, a to z' };
+  if (RESERVED.has(text.toLowerCase())) return { error: 'that word means something else here, so it cannot be a name' };
   return { name: text[0].toUpperCase() + text.slice(1).toLowerCase() };
 }
 

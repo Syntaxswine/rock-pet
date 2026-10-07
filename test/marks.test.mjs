@@ -17,6 +17,7 @@ const FULL = [['feed', 4], ['clean', 1], ['pet', 10]];
 const opts = now => ({ now, host: 'rock.test' });
 const grid = text => text.split('\n').slice(0, W);
 const moss = rows => rows.join('').split('').filter(c => c === ',' || c === '"').length;
+const TUFTS = [0, 2, 4, 7, 9, 11, Infinity]; // per level, as CHARACTER.md has it
 
 function mulberry(seed) {
   let a = seed >>> 0;
@@ -45,13 +46,17 @@ function lives(n, seed) {
   return out;
 }
 
+test('moss levels are the ones CHARACTER.md gives', () => {
+  assert.deepEqual(MOSS_CELLS, TUFTS);
+});
+
 test('moss grows on a rock nobody comes to, and any visit brushes it off', () => {
   const at = h => mossAt({ ...born(T), t: T + h * HOUR, lastCare: T }, T + h * HOUR);
   assert.deepEqual([0, 11.99, 12, 23.99, 24, 47.99, 48, 70].map(at), [0, 0, 1, 1, 2, 2, 3, 3]);
   assert.equal(mossAt(born(T), T + 12 * HOUR), 1, 'never cared for: counted from birth');
   const log = { ...newLog(T), visits: [{ t: T + HOUR, acts: [['pet', 1]] }] };
   for (const [h, level] of [[11, 0], [12, 1], [24, 2], [48, 3]]) {
-    assert.equal(moss(grid(look(log, opts(T + HOUR + h * HOUR)).text).slice(1, 6)), MOSS_CELLS[level], `${h}h`);
+    assert.equal(moss(grid(look(log, opts(T + HOUR + h * HOUR)).text).slice(1, 6)), TUFTS[level], `${h}h`);
   }
   assert.equal(moss(grid(act(log, 'pet', opts(T + 40 * HOUR)).text).slice(1, 6)), 0, 'a visit brushes it off');
 });
@@ -64,7 +69,16 @@ test('verified host downtime grows no moss: it pauses moss as it pauses everythi
   assert.equal(mossAt(replay(log, at), at, log.outages), 0);
   assert.equal(moss(grid(look(log, opts(at)).text).slice(1, 6)), 0, 'none on the screen');
   assert.equal(mossAt(replay(log, at), at), 3, 'which the wall clock alone would have drawn as two days alone');
-  assert.equal(moss(grid(look(log, opts(at + 11 * HOUR)).text).slice(1, 6)), MOSS_CELLS[1], '12 lived hours alone: the first tufts');
+  assert.equal(moss(grid(look(log, opts(at + 11 * HOUR)).text).slice(1, 6)), TUFTS[1], '12 lived hours alone: the first tufts');
+  // A grave keeps only the time it lived through alone: petted to the edge of the outage, never
+  // fed, it starved 43 lived hours later (74 on the clock): the moss of under two days, not three.
+  const visits = [];
+  for (let t = T + 5 * HOUR; t <= T + 29 * HOUR; t += 6 * HOUR) visits.push({ t, acts: [['clean', 1], ['pet', 10]] });
+  const kept = { ...newLog(T), visits, outages: [{ start: T + 30 * HOUR, end: T + 60 * HOUR, evidence: 'host-2' }] };
+  const grave = replay(kept, Infinity);
+  assert.equal(grave.dead.cause, 'hungry');
+  assert.equal(mossAt(grave, grave.dead.t, kept.outages), 2, 'under two lived days alone');
+  assert.equal(mossAt(grave, grave.dead.t), 3, 'the wall clock alone would say more than two');
 });
 
 test('a grave keeps the moss of its last days alone, and greens over: a week, a month, a season', () => {
@@ -79,8 +93,9 @@ test('a grave keeps the moss of its last days alone, and greens over: a week, a 
   assert.deepEqual([0, 7 * DAY, 30 * DAY, 90 * DAY].map(d => at(fed, d)), [0, 4, 5, 6]);
   const drawn = d => grid(look(newLog(T), opts(lonely.dead.t + d)).text).slice(1, 6);
   const room = mossCells(DRAWINGS[DRAWING].front).length;
-  assert.deepEqual([0, 7 * DAY, 30 * DAY, 90 * DAY].map(d => moss(drawn(d))), [3, 4, 5, 6].map(l => Math.min(MOSS_CELLS[l], room)));
-  assert.equal(drawn(0)[3].slice(4, 8), 'x  x', 'crosses for eyes');
+  assert.deepEqual([0, 7 * DAY, 30 * DAY, 90 * DAY].map(d => moss(drawn(d))), [3, 4, 5, 6].map(l => Math.min(TUFTS[l], room)));
+  const d = DRAWINGS[DRAWING], dx = placeAt(T, lonely.dead.t).col;
+  for (const [r, row] of d.front.entries()) for (const [c, cell] of [...row].entries()) if (cell === 'E') assert.equal(drawn(0)[r][c + dx], 'x', 'crosses for eyes');
 });
 
 test('polish and crystals count what the care did, never what was asked for', () => {
@@ -112,6 +127,10 @@ test('the marks of a long life: polish at 500 and 3000 points of petting, crysta
   const d = DRAWINGS[DRAWING];
   const front = sprite({ ...born(T), petted: 3000, fed: 1500, closeCalls: 3 }, T);
   for (const [r, c, mark] of [...d.veins, ...d.polish, ...d.crystals]) assert.equal(front[r][c], mark, `${mark} at ${r},${c}`);
+  for (const [name, drawing] of Object.entries(DRAWINGS)) {
+    const full = sprite({ ...born(T), petted: 3000, fed: 1500, closeCalls: 3 }, T, 'front', drawing);
+    for (const [r, c, mark] of [...drawing.veins, ...drawing.polish, ...drawing.crystals]) assert.equal(full[r][c], mark, `${name}: ${mark} at ${r},${c}`);
+  }
   const back = sprite({ ...born(T), petted: 3000, fed: 1500, closeCalls: 3 }, T, 'away');
   assert.equal(back.join('').replace(/[ _/\\|().'`-]/g, ''), '', `nothing but outline on its back: ${back}`);
   // A well-kept rock earns them in weeks, and the second polish and crystals take most of a year.
@@ -122,7 +141,10 @@ test('the marks of a long life: polish at 500 and 3000 points of petting, crysta
   console.log(`  twice a day: polished on day ${days[0]}, a crystal on day ${days[1]}, worn smooth on day ${days[2]}, two crystals on day ${days[3]}`);
   assert.ok(days[0] > 20 && days[0] < 60 && days[1] > 20 && days[1] < 45, days.join());
   assert.ok(days[2] > 120 && days[3] > 120 && days[2] < 240 && days[3] < 240, days.join());
-  assert.match(history({ ...newLog(T), visits }, opts(T + 400 * DAY)).text, /^petting received: [0-9]+ points of happiness \(polished at 500 and 3000\)$/m);
+  const bio = history({ ...newLog(T), visits }, opts(T + 400 * DAY)).text, kept = replay({ ...newLog(T), visits }, T + 400 * DAY);
+  assert.match(bio, new RegExp(`^petting received: ${Math.floor(kept.petted)} points of happiness \\(polished at 500 and 3000\\)$`, 'm'));
+  assert.match(bio, new RegExp(`^meals: ${Math.floor(kept.fed / RULES.feed)} \\(crystals at 100 and 500\\)$`, 'm'));
+  assert.ok(kept.fed / RULES.feed > 1000, 'a year of meals, counted as meals');
 });
 
 test('every drawing is well formed', () => {

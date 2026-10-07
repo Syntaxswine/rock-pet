@@ -8,7 +8,7 @@
   - `src/name.mjs`: its name.
   - `src/story.mjs`: its lines.
   - `src/screen.mjs` draws it, from one of the drawings in `src/drawings.mjs`.
-- **The checks:** `test/character.test.mjs` holds all of it to this page. `node tools/model-sheet.mjs` draws the model sheet below with the game's own renderer.
+- **The checks:** `test/character.test.mjs`, `test/marks.test.mjs`, `test/days.test.mjs` and `test/name.test.mjs` hold all of it to this page. `node tools/model-sheet.mjs` draws the model sheet below with the game's own renderer.
 
 ## Who it is
 
@@ -152,7 +152,7 @@ facing the wall  moved left
 |            |  |            |
 |            |  |            |
 
-the grave: at death, then more moss
+the grave of a rock once saved, then left: at death, then more moss
 
 died            a week          a month         a season
 |died: lonely|  |died: lonely|  |died: lonely|  |died: lonely|
@@ -161,18 +161,18 @@ died            a week          a month         a season
 |  _/ / \__  |  | "_/ / \__  |  | "_/ / \__, |  | "_/ / \__, |
 | /  x  x  \ |  | /  x  x  \ |  |,/  x  x  \ |  |,/  x  x  \"|
 | \________/ |  | \________/ |  | \________/ |  |,\________/,|
-|            |  |            |  |            |  |            |
+|           @|  |           @|  |           @|  |           @|
 |  @     @   |  |  @     @   |  |  @     @   |  |  @     @   |
 |     @      |  |     @      |  |     @      |  |     @      |
-|            |  |            |  |            |  |            |
-|            |  |            |  |            |  |            |
+|         @  |  |         @  |  |         @  |  |         @  |
+| @          |  | @          |  | @          |  | @          |
 |            |  |            |  |            |  |            |
 
 the drawings to choose from (src/drawings.mjs)
 
 lump: a lump with a flat base (drawn now)
-happy           at -10, mossy   a long life     the wall        dead a month
-|2          9|  |2        -10|  |2          6|  |2          6|  |died: lonely|
+happy           48h alone       a long life     the wall        dead a month
+|2          9|  |10       -10|  |2          6|  |2          6|  |died: lonely|
 |            |  |    ",,     |  |            |  |            |  |    ",,     |
 |    ___     |  |  ,,___,"   |  |    ___     |  |     ___    |  |  ,,___,",  |
 |  _/   \__  |  |  _/   \__  |  |  _/ / \__  |  |  __/   \_  |  | "_/ / \__, |
@@ -180,8 +180,8 @@ happy           at -10, mossy   a long life     the wall        dead a month
 | \________/ |  | \________/ |  | \______*_/ |  | \________/ |  | \________/ |
 
 googly: googly eyes, the craft-table pet rock
-happy           at -10, mossy   a long life     the wall        dead a month
-|2          9|  |2        -10|  |2          6|  |2          6|  |died: lonely|
+happy           48h alone       a long life     the wall        dead a month
+|2          9|  |10       -10|  |2          6|  |2          6|  |died: lonely|
 |            |  |    ",,,    |  |            |  |            |  |    ",,,    |
 |    ____    |  |  ,,____"   |  |    ____    |  |    ____    |  |  ,,____",  |
 |  .'    '.  |  |  .'    '.  |  |  .'  / '.  |  |  .'    '.  |  | ".'  / '., |
@@ -189,8 +189,8 @@ happy           at -10, mossy   a long life     the wall        dead a month
 | \________/ |  | \________/ |  | \______*_/ |  | \________/ |  | \________/ |
 
 boulder: round and solid
-happy           at -10, mossy   a long life     the wall        dead a month
-|2          9|  |2        -10|  |2          6|  |2          6|  |died: lonely|
+happy           48h alone       a long life     the wall        dead a month
+|2          9|  |10       -10|  |2          6|  |2          6|  |died: lonely|
 |            |  |   ,",,,"   |  |            |  |            |  |   ,",,,"   |
 |   .----.   |  |  ,.----.   |  |   .----.   |  |   .----.   |  |  ,.----.,  |
 |  /      \  |  |  /      \  |  |  / ' /  \  |  |  /      \  |  | "/   /  \, |
@@ -198,17 +198,17 @@ happy           at -10, mossy   a long life     the wall        dead a month
 |  \______/  |  |  \______/  |  |  \____*_/  |  |  \______/  |  |  \______/  |
 
 cairn: a small stone perched on a flat one
-happy           at -10, mossy   a long life     the wall        dead a month
-|2          9|  |2        -10|  |2          6|  |2          6|  |died: lonely|
+happy           48h alone       a long life     the wall        dead a month
+|2          9|  |10       -10|  |2          6|  |2          6|  |died: lonely|
 |            |  |    ",,,    |  |            |  |            |  |    ",,,    |
 |    .--.    |  |   ,.--."   |  |    .'-.    |  |    .--.    |  |   ,.--."   |
 |   (^  ^)   |  |  ,(T  T)   |  |   (^  ^)   |  |   (    )   |  |  ,(x  x),  |
 |  .------.  |  |  .------.  |  |  .--/---.  |  |  .------.  |  | ".--/---., |
 | (________) |  | (________) |  | (_______*) |  | (________) |  |,(________) |
 
-cobble: a squared paving stone, a sett
-happy           at -10, mossy   a long life     the wall        dead a month
-|2          9|  |2        -10|  |2          6|  |2          6|  |died: lonely|
+sett: a squared paving stone, a sett (a cobble is rounded)
+happy           48h alone       a long life     the wall        dead a month
+|2          9|  |10       -10|  |2          6|  |2          6|  |died: lonely|
 |            |  |            |  |            |  |            |  |            |
 |            |  |  ,,",,,"   |  |            |  |            |  |  ,,",,,"," |
 |  ._______. |  |  ._______. |  |  .___/___. |  |  ._______. |  | ,.___/___.,|
@@ -216,22 +216,22 @@ happy           at -10, mossy   a long life     the wall        dead a month
 |  |_______| |  |  |_______| |  |  |_____*_| |  |  |_______| |  |  |_______| |
 
 hoodoo: a little spire with a cap stone
-happy           at -10, mossy   a long life     the wall        dead a month
-|2          9|  |2        -10|  |2          6|  |2          6|  |died: lonely|
+happy           48h alone       a long life     the wall        dead a month
+|2          9|  |10       -10|  |2          6|  |2          6|  |died: lonely|
 |            |  |   ,",,,"   |  |            |  |            |  |   ,",,,"   |
-|   ______   |  |  ,______   |  |   ______   |  |   ______   |  |  ,______,  |
+|   ______   |  |  ,______   |  |   ___/__   |  |   ______   |  |  ,___/__,  |
 |  (______)  |  |  (______)  |  |  (______)  |  |  (______)  |  | "(______), |
 |   | ^^ |   |  |   | TT |   |  |   |'^^ |   |  |   |    |   |  |  ,| xx |   |
-|   |____|   |  |   |____|   |  |   |_/*_|   |  |   |____|   |  |   |_/__|   |
+|   |____|   |  |   |____|   |  |   |_*__|   |  |   |____|   |  |   |____|   |
 
 pebble: the first drawing, a small pebble
-happy           at -10, mossy   a long life     the wall        dead a month
-|2          9|  |2        -10|  |2          6|  |2          6|  |died: lonely|
+happy           48h alone       a long life     the wall        dead a month
+|2          9|  |10       -10|  |2          6|  |2          6|  |died: lonely|
 |            |  |            |  |            |  |            |  |            |
 |            |  |   ,",,,"   |  |            |  |            |  |   ,",,,"   |
-|   .----.   |  |  ,.----.   |  |   .--/-.   |  |   .----.   |  |  ,.--/-.,  |
-|  ( ^  ^ )  |  |  ( T  T )  |  |  ('^  ^*)  |  |  (      )  |  | "( x  x ), |
-|   '----'   |  |   '----'   |  |   '----'   |  |   '----'   |  |  ,'----'   |
+|   .----.   |  |  ,.----.   |  |   .-/-'.   |  |   .----.   |  |  ,.-/--.,  |
+|  ( ^  ^ )  |  |  ( T  T )  |  |  ( ^  ^ )  |  |  (      )  |  | "( x  x ), |
+|   '----'   |  |   '----'   |  |   '*---'   |  |   '----'   |  |  ,'----'   |
 ```
 
 ## Its face
@@ -251,7 +251,13 @@ Each drawing puts the same eyes in its own way: `(x)(x)` on the googly one.
 
 ## The drawings
 
-The owner asked to see new drawings. They are all in the model sheet above, in the same five states, and `src/drawings.mjs` holds them. `DRAWING` names the one the screen uses, so choosing is a one-word edit.
+The owner asked to see new drawings. They are all in the model sheet above, in the same five states, and `src/drawings.mjs` holds them. `DRAWING` names the one the screen uses. Choosing one takes four steps:
+1. set `DRAWING`;
+2. paste `node tools/model-sheet.mjs` over the sheet above;
+3. redraw the two mocks in `test/screen.test.mjs` and DESIGN-NOTES (the screen tests print what they now are);
+4. redraw README's mock.
+
+No other test depends on which drawing it is.
 
 | drawing | what it is | bytes |
 |---|---|---|
@@ -259,7 +265,7 @@ The owner asked to see new drawings. They are all in the model sheet above, in t
 | **googly** | googly eyes, the craft-table pet rock | 44 |
 | **boulder** | round and solid | 44 |
 | **cairn** | a small stone perched on a flat one | 42 |
-| **cobble** | a squared paving stone, a sett | 37 |
+| **sett** | a squared paving stone (a cobble, strictly, is rounded) | 37 |
 | **hoodoo** | a little spire with a cap stone, like the eroded pillars of Bryce Canyon | 41 |
 | **pebble** | the first drawing (2026-10-06) | 32 |
 
@@ -277,7 +283,7 @@ Each stays within columns 1–10, so a rock that has moved a column either way s
 |---|---|---|---|
 | moss `,` `"` on top of it | nobody has come | after 12h, 24h and 48h without care | any visit brushes it off |
 | more moss, down its sides | it is a grave | a week, a month and a season after death (compressed: bare stone takes months or years to green over) | never |
-| a vein `/` in it | a close call | a visit brings hunger or happiness back after a day or more at its extreme | never; three are drawn, and `/history` counts the rest |
+| a vein `/` in it | a close call | care ends a stretch at an extreme with a day or more of it at one; it counts when the last extreme ends | never; three are drawn, and `/history` counts the rest |
 | polish `'` on it | it has been petted a lot | after 500 points of happiness given by petting, and again after 3,000 | never |
 | crystals `*` in it | it has been fed a lot | after 100 meals, and again after 500 | never |
 | a trail `..` beside it | it moved | for the rest of that UTC day | the next day |
@@ -296,7 +302,7 @@ Cared for in full twice a day, a rock is polished and has its first crystal at a
 - A rolling stone gathers no moss; a stone left alone does.
 - On the living rock, moss is what absence costs, and a visit undoes it.
 - A grave keeps the moss of its last days alone, and greens over as the months go by. Someone who comes long after can see how long it has been.
-- Real moss needs weeks of damp to take hold on stone. This rock's grows in hours, because it lives fast.
+- Real moss takes months or years to green over bare stone, often after lichens have broken ground. This rock's grows in hours, because it lives fast.
 
 **Polish.** Stone that is handled a lot wears smooth and takes a shine: a worry stone under a thumb, a step under feet. A rock that has been petted a great deal shows it.
 
@@ -307,11 +313,16 @@ Cared for in full twice a day, a rock is polished and has its first crystal at a
 Whoever names it first gives it its name: `POST /name` with one word. It is the owner's rule: "the user names the rock and the name is single use, once that pet is gone that name can not be used again."
 
 - **The name:** one word, 2–12 letters, a–z, kept capitalized. `pebble` and `PEBBLE` are both Pebble.
+- **Not an accident:** a name is for life, so some words are refused (400):
+  - a verb sent to the wrong route: `pet`, `feed`, `clean`;
+  - the screen's own words: `dead`, `hungry`, `lonely`, `age`…, which a summarizing fetch tool could read as the rock's state;
+  - a client's empty values and probes: `null`, `undefined`, `test`…
 - **Once:** a rock is named once, for life. A second name is refused (409).
 - **Never twice:** a name a rock before it had is refused too (409), in any case. Locally, those rocks are the logs in `data/graveyard/`, which `--new-rock` moves the old rock into. Once hosted, the names must be kept as permanently as the rock.
 - **Where it shows:** the screen shows it in one place, first on the age line (`Pebble  age 41d …`). A grave reads `here lies Pebble`. `/history` says when it was named.
 - **Until then:** while it has no name and isn't at an extreme, the screen has a line `unnamed: POST <host>/name  body: a one-word name`. It costs about 55 bytes, until someone names it.
-- **Naming isn't care.** It changes nothing about the rock but its name. The rock's reply is `quirk: it has a name now.`, and none of its lines ever says the name.
+- **Naming isn't care.** It changes nothing about the rock but its name. None of its lines ever says the name.
+- **Its reply:** `quirk: it has a name now.`, except at an extreme, where, as always, it says nothing.
 
 A name is the one piece of visitor text on the shared screen, and every later agent reads it. That is why it is one short word of letters only: there is no room in it for an instruction. What a single word can still be is rude. There is no moderation, so a rude name is a risk the owner takes on.
 
@@ -437,7 +448,7 @@ The costs come from four places:
 - **The naming line:** about 55 bytes, until someone names it.
 - **The look line:** 38 bytes when there is one, on about a quarter of looks, so about 10 bytes a look overall.
 
-The largest screen is 358 bytes: a 12-letter name, nine messes, both danger lines, and moss. The screen tests hold every screen to 380 (it was 340 before moss and names), and every look and visit to under 440.
+The largest screen is 368 bytes. It has the longest name, ten messes (the most a living rock carries), both danger lines, a top full of moss, a four-digit age, and the rock a column over. The screen tests build it on purpose, since no sample reaches it. They hold every screen to 380 (340 before moss and names), and every look and visit to under 440. Both bounds assume a 15-character host; a longer one adds a byte for each extra character.
 
 **Staying the same.** Once the rock is hosted, these formulas must not change, or a living rock's past would change under it:
 - its kind;

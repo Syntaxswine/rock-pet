@@ -77,6 +77,7 @@ test('until it has a name, a screen says how to give it one, except at an extrem
   const s = state({ born: now - 2 * DAY, t: now, hunger: 3, happy: 4, lastCare: now - HOUR, visits: 3 });
   const lines = show(s, now).split('\n');
   assert.equal(lines.at(-3), 'unnamed: POST rockpet.example/name  body: a one-word name');
+  assert.ok(show({ ...s, messes: 3, happy: 0 }, now).includes('\nunnamed: '), 'with messes about too');
   assert.ok(lines.at(-2).startsWith('act: '), 'the act line stays last');
   assert.ok(!show(s, now, 'Pebble').includes('unnamed'));
   for (const extreme of [{ happy: -10, sorrowSince: now - HOUR }, { hunger: 10, starvingSince: now - HOUR }]) {
@@ -203,9 +204,20 @@ test('a rock never shows more messes than the grid has spots for', () => {
 });
 
 test('the screen stays small (token efficiency): at most 380 bytes, whatever the state', () => {
-  // The largest is a rock with many messes, both danger lines, moss and the longest name (358
-  // bytes, measured: test/name.test.mjs); a cared-for one with a name is about 220.
+  // A cared-for rock with a name is about 220 bytes. Sampled lives show the spread:
   const sizes = sampleRocks(400, 13).map(({ s, now }) => Buffer.byteLength(show(s, now, 'Abcdefghijkl'))).sort((a, b) => a - b);
   console.log(`  screen bytes, with a 12-letter name: median ${sizes[sizes.length >> 1]}, largest ${sizes.at(-1)}`);
   assert.ok(sizes.at(-1) <= 380, `${sizes.at(-1)} bytes`);
+  // ...but no sample reaches the worst, so build it: the longest name, ten messes (the most a
+  // living rock carries), both danger lines with two-digit hours, a top full of moss, a
+  // four-digit age, a column over from where it began, every mark, in every drawing.
+  const age = 1066 * DAY + 5 * HOUR;
+  let b = Date.UTC(2023, 11, 1);
+  while (placeAt(b, b + age).col !== 1) b += HOUR;
+  const now = b + age;
+  const worst = { ...born(b), t: now, hunger: 10, starvingSince: now - 30 * HOUR, happy: -10, sorrowSince: now - 45 * HOUR, messes: 10, lastCare: now - 50 * HOUR, closeCalls: 3, petted: 3000, fed: 1500, visits: 4000 };
+  const bytes = Object.fromEntries(Object.entries(DRAWINGS).map(([name, drawing]) => [name, Buffer.byteLength(render(worst, { now, host: 'rockpet.example', name: 'Abcdefghijkl', drawing }))]));
+  console.log(`  the worst screen, by drawing: ${JSON.stringify(bytes)}`);
+  for (const [name, n] of Object.entries(bytes)) assert.ok(n <= 380, `${name}: ${n} bytes`);
+  assert.equal(Math.max(...Object.values(bytes)), 368, 'the worst, as CHARACTER.md and AGENTS.md say');
 });

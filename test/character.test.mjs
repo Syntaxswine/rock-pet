@@ -9,6 +9,7 @@ import { mossAt } from '../src/marks.mjs';
 import { NAMED } from '../src/name.mjs';
 import { reaction, remark, LINES } from '../src/story.mjs';
 import { render, W } from '../src/screen.mjs';
+import { DRAWINGS, DRAWING } from '../src/drawings.mjs';
 import { replay, born, applyVisit, HOUR } from '../src/engine.mjs';
 import { look, act, history, newLog } from '../src/rock.mjs';
 import { RULES } from '../src/rules.mjs';
@@ -20,6 +21,13 @@ const FULL = [['feed', 4], ['clean', 1], ['pet', 10]];
 const opts = now => ({ now, host: 'rock.test' });
 const quirks = text => text.split('\n').filter(l => l.startsWith('quirk: '));
 const grid = text => text.split('\n').slice(0, W);
+// The drawing the screen uses, so these tests hold whichever one the owner picks.
+const D = DRAWINGS[DRAWING];
+const EYE_ROW = D.front.findIndex(r => r.includes('E')); // a box row; the screen row is one more
+const faceOf = eye => D.front[EYE_ROW].replaceAll('E', eye);
+const BASE_LEFT = D.front[4].search(/\S/), BASE_RIGHT = D.front[4].trimEnd().length - 1;
+const baseAt = row => row.search(/[^ .,"]/); // where a base row's outline starts, past moss and trail
+
 
 function mulberry(seed) {
   let a = seed >>> 0;
@@ -124,12 +132,14 @@ test('a close call is being brought back after a day or more at an extreme; it l
   const r = act(newLog(T), 'feed x4 clean pet x10', opts(floor + DAY));
   assert.deepEqual(quirks(r.text), ['quirk: it was nearly lost. a vein seals the crack.']);
   const g = grid(r.text);
-  assert.equal(g[3], '  _/ / \\__', 'the vein');
+  const [vr, vc, vm] = D.veins[0], veined = D.front[vr].padEnd(W).split('');
+  veined[vc] = vm;
+  assert.equal(g[1 + vr], veined.join('').trimEnd(), 'the vein');
   assert.match(history(log, opts(floor + DAY + HOUR)).text, /^close calls: 1 \(each kept as a vein\)$/m);
-  // Three veins are drawn (top, base, shoulder); more are counted, not drawn.
+  // Three veins are drawn, in the drawing's three vein slots; more are counted, not drawn.
   const later = floor + DAY + HOUR, s = replay(log, later);
   const drawn = n => grid(render({ ...s, closeCalls: n }, { now: later, host: 'x' }));
-  const veins = n => { const g = drawn(n); return [g[3][5], g[5][7], g[3][8]].filter(c => c === '/').length; };
+  const veins = n => { const g = drawn(n); return D.veins.filter(([r, c, mark]) => g[1 + r][c] === mark).length; };
   assert.deepEqual([0, 1, 2, 3, 4, 9].map(veins), [0, 1, 2, 3, 3, 3]);
   assert.deepEqual(drawn(9), drawn(3), 'nothing more is drawn after three');
 });
@@ -139,20 +149,20 @@ test('it faces the wall on its weekday, for someone who only looks; care turns i
   const log = { ...newLog(T), visits: [{ t: T + HOUR, acts: FULL }] };
   const seen = look(log, opts(T + 3 * HOUR));
   assert.deepEqual(quirks(seen.text), ['quirk: it is facing the wall today.']);
-  assert.deepEqual(grid(seen.text).slice(2, 6), ['     ___', '  __/   \\_', ' /        \\', ' \\________/'], 'from behind: mirrored, no face');
+  assert.deepEqual(grid(seen.text).slice(2, 6), D.back.slice(1), 'from behind: its back, no face');
   const r = act(log, 'pet', opts(T + 5 * HOUR));
-  assert.equal(grid(r.text)[4], ' /  ^  ^  \\', 'it turns round for care');
+  assert.equal(grid(r.text)[1 + EYE_ROW], faceOf('^'), 'it turns round for care');
   assert.equal(quirks(r.text).length, 1);
   assert.ok(!r.text.includes('wall'), r.text);
   const wednesday = T + 30 * HOUR, cared = { ...log, visits: [...log.visits, { t: T + 28 * HOUR, acts: FULL }] };
   assert.equal(occasion(replay(cared, wednesday), wednesday), null);
-  assert.equal(grid(look(cared, opts(wednesday)).text)[4], ' /  ^  ^  \\', 'the next day it faces out');
+  assert.equal(grid(look(cared, opts(wednesday)).text)[1 + EYE_ROW], faceOf('^'), 'the next day it faces out');
   // At an extreme it does nothing odd, on any day.
   const floor = replay(newLog(T), Infinity).sorrowSince;
   assert.equal(new Date(floor + MIN).getUTCDay(), nature(T).wallDay, 'still its day when it reaches the floor');
   const sad = look(newLog(T), opts(floor + MIN)).text;
   assert.deepEqual(quirks(sad), []);
-  assert.equal(grid(sad)[4], ' /  T  T  \\');
+  assert.equal(grid(sad)[1 + EYE_ROW], faceOf('T'));
 });
 
 test('it may move on a winter morning, by one column, and leaves a trail that day', () => {
@@ -182,8 +192,8 @@ test('it may move on a winter morning, by one column, and leaves a trail that da
   const care = until => { const v = []; for (let at = b + HOUR; at < until; at += 8 * HOUR) v.push({ t: at, acts: FULL }); return v; };
   const log = { ...newLog(b), visits: care(t) };
   const g = grid(look(log, opts(t)).text);
-  assert.equal(g[5].indexOf('\\'), 1 + p.col, `the base, at column ${1 + p.col}: "${g[5]}"`);
-  const trail = p.col > p.from ? g[5].slice(0, 1 + p.col) : g[5].slice(11 + p.col);
+  assert.equal(baseAt(g[5]), BASE_LEFT + p.col, `the base, at column ${BASE_LEFT + p.col}: "${g[5]}"`);
+  const trail = p.col > p.from ? g[5].slice(Math.max(0, BASE_LEFT + p.col - 2), BASE_LEFT + p.col) : g[5].slice(BASE_RIGHT + p.col + 1, BASE_RIGHT + p.col + 3);
   assert.match(trail, /^\.+$/, `the trail: "${g[5]}"`);
   assert.deepEqual(quirks(look(log, opts(t)).text), ['quirk: it moved this morning. no one saw it go.']);
   const next = grid(look({ ...log, visits: care(t + 21 * HOUR) }, opts(t + 21 * HOUR)).text);
@@ -194,7 +204,7 @@ test('it may move on a winter morning, by one column, and leaves a trail that da
   while (placeAt(gone, graveOf(gone).dead.t + 120 * DAY).col === placeAt(gone, graveOf(gone).dead.t).col) gone += 3 * HOUR;
   const grave = graveOf(gone), still = placeAt(gone, grave.dead.t).col;
   for (const later of [HOUR, 30 * DAY, 120 * DAY]) {
-    assert.equal(grid(look(newLog(gone), opts(grave.dead.t + later)).text)[5].indexOf('\\'), 1 + still, `${later / DAY} days on`);
+    assert.equal(baseAt(grid(look(newLog(gone), opts(grave.dead.t + later)).text)[5]), BASE_LEFT + still, `${later / DAY} days on`);
   }
   // A rock that died on the afternoon it moved: its grave shows no trail.
   let last = Date.UTC(2026, 11, 1);

@@ -17,14 +17,23 @@ const DAY = 24 * HOUR;
 const T = Date.UTC(2026, 10, 16, 14, 5); // a Monday afternoon in November
 const rock = o => ({ ...born(T - 41 * DAY), t: T, lastCare: T - 2 * HOUR, visits: 90, hunger: 2, happy: 6, ...o });
 const floor = { happy: -10, sorrowSince: T - 5 * HOUR };
-const grave = (since, o) => ({ ...rock({ hunger: 10, happy: -10, starvingSince: T - since - 20 * HOUR, sorrowSince: T - since - 48 * HOUR, lastCare: T - since - 70 * HOUR, messes: 3, closeCalls: 1, ...o }), t: T - since, dead: { t: T - since, cause: 'lonely' } });
+const FULL = [['feed', 4], ['clean', 1], ['pet', 10]];
 // A rock as it really is after `hours` alone: cared for in full every 8h for 20 days, the last
 // time `hours` before T, then left. (Too short a life for polish or crystals.)
 function alone(hours) {
   const visits = [];
-  for (let t = T - hours * HOUR; t > T - 20 * DAY; t -= 8 * HOUR) visits.unshift({ t, acts: [['feed', 4], ['clean', 1], ['pet', 10]] });
+  for (let t = T - hours * HOUR; t > T - 20 * DAY; t -= 8 * HOUR) visits.unshift({ t, acts: FULL });
   return replay({ born: T - 20 * DAY, rules: RULES.version, visits }, T);
 }
+// A real lonely grave: cared for every 8h, left once for 50h and brought back (its close call),
+// cared for again, then left for good. Its messes and moss are what that life leaves.
+const LONELY = (() => {
+  const b = T - 41 * DAY, visits = [];
+  for (let t = b + HOUR; t < b + 10 * DAY; t += 8 * HOUR) visits.push({ t, acts: FULL });
+  for (let t = visits.at(-1).t + 50 * HOUR; t < b + 20 * DAY; t += 8 * HOUR) visits.push({ t, acts: FULL });
+  return replay({ born: b, rules: RULES.version, visits }, Infinity);
+})();
+const graveAt = since => [LONELY, { now: LONELY.dead.t + since }];
 
 // The first winter day after T on which this rock moves, for the sailing frame.
 function sailingDay(b) {
@@ -68,18 +77,18 @@ export function sheet() {
       ['facing the wall', grid(rock({ closeCalls: 1 }), { pose: 'away' })],
       [`moved ${sail.p.col > sail.p.from ? 'right' : 'left'}`, grid(rock({ born: T - 41 * DAY, t: sailNow, lastCare: sailNow - 2 * HOUR }), { now: sailNow })],
     ]),
-    'the grave: at death, then more moss',
+    'the grave of a rock once saved, then left: at death, then more moss',
     row([
-      ['died', grid(grave(0))], ['a week', grid(grave(7 * DAY))], ['a month', grid(grave(30 * DAY))],
-      ['a season', grid(grave(90 * DAY))],
+      ['died', grid(...graveAt(0))], ['a week', grid(...graveAt(7 * DAY))], ['a month', grid(...graveAt(30 * DAY))],
+      ['a season', grid(...graveAt(90 * DAY))],
     ]),
     'the drawings to choose from (src/drawings.mjs)',
     ...Object.entries(DRAWINGS).map(([name, drawing]) => `${name}: ${drawing.about}${name === DRAWING ? ' (drawn now)' : ''}\n` + short([
       ['happy', grid(rock({ happy: 9 }), { drawing })],
-      ['at -10, mossy', grid(rock({ ...floor, lastCare: T - 48 * HOUR }), { drawing })],
+      ['48h alone', grid(alone(48), { drawing })],
       ['a long life', grid(rock({ closeCalls: 1, petted: 500, fed: 300 }), { drawing })],
       ['the wall', grid(rock(), { pose: 'away', drawing })],
-      ['dead a month', grid(grave(30 * DAY), { drawing })],
+      ['dead a month', grid(LONELY, { now: LONELY.dead.t + 30 * DAY, drawing })],
     ])),
   ].join('\n\n') + '\n';
 }

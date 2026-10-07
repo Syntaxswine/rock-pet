@@ -35,11 +35,11 @@ export const readLog = file => parseLog(fs.readFileSync(file, 'utf8'));
  */
 export function takenNames(file) {
   const grave = path.join(path.dirname(file), 'graveyard');
-  let files;
-  try { files = fs.readdirSync(grave); } catch (e) { if (e.code === 'ENOENT') return []; throw e; }
+  let entries;
+  try { entries = fs.readdirSync(grave, { withFileTypes: true }); } catch (e) { if (e.code === 'ENOENT') return []; throw e; }
   const names = [];
-  for (const f of files) {
-    for (const line of fs.readFileSync(path.join(grave, f), 'utf8').split('\n')) {
+  for (const f of entries.filter(e => e.isFile() && e.name.endsWith('.jsonl'))) { // bury() writes only these
+    for (const line of fs.readFileSync(path.join(grave, f.name), 'utf8').split('\n')) {
       if (!line.includes('"named"')) continue;
       try { const row = JSON.parse(line); if (typeof row.named === 'string') names.push(row.named); } catch { /* torn */ }
     }

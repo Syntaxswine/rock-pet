@@ -6,9 +6,11 @@ process.env.TZ = 'Pacific/Kiritimati'; // UTC+14
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { nature, occasion, placeAt, inDanger, hash } from '../src/character.mjs';
-import { reaction } from '../src/story.mjs';
+import { reaction, remark } from '../src/story.mjs';
 import { render, W } from '../src/screen.mjs';
 import { DRAWINGS, DRAWING } from '../src/drawings.mjs';
+const D = DRAWINGS[DRAWING];
+const EYES = [...D.front.entries()].flatMap(([r, row]) => [...row].flatMap((c, k) => (c === 'E' ? [[r, k]] : [])));
 import { replay, born, applyVisit, HOUR } from '../src/engine.mjs';
 import { look, act, history, newLog } from '../src/rock.mjs';
 
@@ -19,8 +21,6 @@ const opts = now => ({ now, host: 'rock.test' });
 const quirks = text => text.split('\n').filter(l => l.startsWith('quirk: '));
 const grid = text => text.split('\n').slice(0, W);
 const dayOf = t => Math.floor(t / DAY);
-const eyesRow = g => g[4];
-const front = { happy: ' /  ^  ^  \\', hungry: ' /  o  o  \\' };
 
 test('the time zone is not UTC, so a local-time slip would show', () => {
   assert.notEqual(new Date(0).getTimezoneOffset(), 0);
@@ -51,7 +51,8 @@ test('at the hunger extreme, as at the sorrow floor, it has no days and no react
     const cared = { ...log, visits: log.visits.filter(v => v.t <= at) };
     const seen = look(cared, opts(at)).text;
     assert.deepEqual(quirks(seen), [], `${what}: no line`);
-    assert.match(eyesRow(grid(seen)), /^ \/  [\^o]  [\^o]  \\$/, `${what}: its face, from the front`);
+    const dx = placeAt(b, at).col, g = grid(seen);
+    for (const [r, c] of EYES) assert.match(g[1 + r][c + dx], /[\^o]/, `${what}: its face, from the front:\n${g.join('\n')}`);
     const fed = { ...born(b), hunger: 10, starvingSince: at - 16 * HOUR, happy: 5, t: at };
     const petted = structuredClone(fed);
     applyVisit(petted, [['pet', 1]]);
@@ -164,6 +165,21 @@ test('these formulas are frozen: the same births move on the same days (CHARACTE
   }
   assert.deepEqual(moves, PINNED_MOVES);
 });
+test('the visitors are frozen too: the same birth has the same visitors on the same days', () => {
+  const b = Date.UTC(2026, 10, 1, 9, 30), seen = [];
+  for (let d = 1; d <= 60; d++) {
+    const t = b + d * DAY + 2 * HOUR;
+    const o = occasion({ ...born(b), t, lastCare: t - HOUR }, t);
+    if (o?.what === 'visitor') seen.push(`${new Date(t).toISOString().slice(0, 10)} ${remark(o).slice(7, -1)}`);
+  }
+  assert.deepEqual(seen, PINNED_VISITORS);
+});
+const PINNED_VISITORS = [ // b = 2026-11-01T09:30Z
+  "2026-11-28 it is anchoring a spider's thread.", "2026-12-14 it carries a snail's silver trail.",
+  "2026-12-21 it carries a snail's silver trail.", "2026-12-23 it is anchoring a spider's thread.",
+  "2026-12-24 it is anchoring a spider's thread.", '2026-12-27 it has a beetle living under it.',
+];
+
 const PINNED_MOVES = [ // b = 2026-11-01T09:30Z
   '2026-12-01 0>-1', '2026-12-05 -1>0', '2026-12-08 0>1', '2026-12-19 1>0',
   '2026-12-20 0>-1', '2027-01-17 -1>0', '2027-02-09 0>1', '2027-02-17 1>0',

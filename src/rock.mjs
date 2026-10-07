@@ -9,7 +9,7 @@ import { parseActions } from './parse.mjs';
 import { render } from './screen.mjs';
 import { isTime, validateOutages } from './outages.mjs';
 import { biography, reaction, remark } from './story.mjs';
-import { occasion } from './character.mjs';
+import { occasion, inDanger } from './character.mjs';
 import { parseName, isTaken, NAMED } from './name.mjs';
 
 /** The log of a rock born at `now`. */
@@ -85,7 +85,8 @@ export function act(log, body, { now, host }) {
 /**
  * Give it a name (name.mjs): once, while it lives, and only a name no rock before it had.
  * `taken` is those names, from wherever the dead are kept. Naming it is not care: nothing about
- * the rock changes but its name.
+ * the rock changes but its name. Like every line of character, its reply is kept back while the
+ * rock is at an extreme.
  */
 export function name(log, body, { now, host, taken = [] }) {
   const t = moment(log, now);
@@ -97,5 +98,6 @@ export function name(log, body, { now, host, taken = [] }) {
   if (parsed.error) return { status: 400, text: `error: ${parsed.error}. nothing was done.\n${screen()}` };
   if (isTaken(parsed.name, taken)) return { status: 409, text: `error: a rock before it had that name, and a name is never given twice. nothing was done.\n${screen()}` };
   const named = { name: parsed.name, t };
-  return { status: 200, text: render(s, { now: t, host, ...seen(log), name: named.name }) + `quirk: ${NAMED}\n` + `history: ${host}/history\n`, named };
+  const said = inDanger(s) ? '' : `quirk: ${NAMED}\n`;
+  return { status: 200, text: render(s, { now: t, host, ...seen(log), name: named.name }) + said + `history: ${host}/history\n`, named };
 }

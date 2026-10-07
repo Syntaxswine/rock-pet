@@ -28,10 +28,10 @@ curl -s -d "feed clean pet x3" 127.0.0.1:7625/act
 
 The reply to an action is the new screen. The verbs are `feed`, `clean` and `pet`, each with an optional count (`pet x5`). While the rock needs anything, the `act:` line suggests the body for a full visit.
 
-Whoever names it first gives it its name, for life, and no rock after it may have that name:
+Whoever names it first gives it its name, for life, and no rock after it may have that name. Send one word of 2-12 letters, chosen on purpose; this example is refused as it stands:
 
 ```bash
-curl -s -d "Pebble" 127.0.0.1:7625/name
+curl -s -d "<one word>" 127.0.0.1:7625/name
 ```
 
 **The rock has a character** (CHARACTER.md has the whole of it, with a model sheet):

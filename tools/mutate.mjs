@@ -168,6 +168,16 @@ const MUTANTS = [
   ['the graveyard is not read', 'server.mjs', "if (!line.includes('\"named\"')) continue;", 'continue;'],
   ['the screen hides the name', 'src/screen.mjs', 'lines.push(`${name ? `${name}  ` : \'\'}age ${span(now - s.born)}', 'lines.push(`age ${span(now - s.born)}'],
   ['the naming line shows at an extreme', 'src/screen.mjs', 'if (!name && s.sorrowSince === null && s.starvingSince === null) lines.push', 'if (!name) lines.push'],
+  // Review round 2.
+  ['the naming reply speaks at an extreme', 'src/rock.mjs', "const said = inDanger(s) ? '' : `quirk: ${NAMED}\\n`;", 'const said = `quirk: ${NAMED}\\n`;'],
+  ['a reserved word can be a name', 'src/name.mjs', 'if (RESERVED.has(text.toLowerCase())) return', 'if (false) return'],
+  ['a folder in the graveyard is read as a log', 'server.mjs', "entries.filter(e => e.isFile() && e.name.endsWith('.jsonl'))", 'entries'],
+  ['the graveyard is read only to line 2', 'server.mjs', "fs.readFileSync(path.join(grave, f.name), 'utf8').split('\\n')", "fs.readFileSync(path.join(grave, f.name), 'utf8').split('\\n').slice(0, 2)"],
+  ['a name is logged at the raw clock', 'src/rock.mjs', 'const named = { name: parsed.name, t };', 'const named = { name: parsed.name, t: now };'],
+  ['the naming reply counts downtime as time alone', 'src/rock.mjs', 'render(s, { now: t, host, ...seen(log), name: named.name })', 'render(s, { now: t, host, name: named.name })'],
+  ['meals shown as points of hunger', 'src/story.mjs', '`meals: ${Math.floor(m.meals)}', '`meals: ${Math.floor(s.fed)}'],
+  ['the name dated by the birth', 'src/story.mjs', '(since ${date(log.name.t)})', '(since ${date(log.born)})'],
+  ['a different visitor comes', 'src/character.mjs', "return { what: 'visitor', which: hash(s.born, 7, day) };", "return { what: 'visitor', which: hash(s.born, 9, day) };"],
 ];
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

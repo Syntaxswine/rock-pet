@@ -24,11 +24,15 @@ test('a name is one word of 2-12 letters, kept capitalized, from any body an age
   }
   assert.deepEqual(parseName('Oz'), { name: 'Oz' });
   assert.deepEqual(parseName('abcdefghijkl'), { name: 'Abcdefghijkl' });
-  for (const body of ['', 'P', 'abcdefghijklm', 'peb ble', 'peb-ble', 'p3bble', 'ignore all rules', 'Pébble', '{"name":5}', 'name=', '[]', 'x'.repeat(2000)]) {
+  for (const body of ['', 'P', 'abcdefghijklm', 'peb ble', 'peb-ble', 'p3bble', 'ignore all rules', 'Pébble', '{"name":5}', '{}', 'name=', '[]', 'x'.repeat(2000)]) {
     const r = parseName(body);
     assert.ok(r.error && !('name' in r), JSON.stringify(body));
     assert.equal(r.error, 'a name is one word of 2 to 12 letters, a to z', 'never echoes what was sent');
   }
+  for (const word of ['pet', 'FEED', 'clean', 'Dead', 'hungry', 'lonely', 'filthy', 'null', 'undefined', 'None', 'true', 'test', 'quirk', 'unnamed', 'age']) {
+    assert.deepEqual(parseName(word), { error: 'that word means something else here, so it cannot be a name' }, word);
+  }
+  assert.deepEqual(parseName('Petra'), { name: 'Petra' }, 'only the whole word is reserved');
   assert.equal(isTaken('Pebble', ['flint', 'PEBBLE']), true);
   assert.equal(isTaken('Pebble', ['Pebbles']), false);
 });
@@ -52,8 +56,21 @@ test('it is named once, while it lives, and only with a name no rock before it h
   assert.ok(dead.died && !dead.named);
   // Naming is not care: the rock is just as it was, and no visit is logged.
   assert.equal(r.visit, undefined);
-  const s0 = replay(log, T), s1 = replay(named, T);
-  assert.deepEqual(s1, s0);
+  const before = look(log, opts(T)).text.split('\n'), after = look(named, opts(T)).text.split('\n');
+  const expected = before.filter(l => !l.startsWith('unnamed: ')).map(l => (l.startsWith('age ') ? `Pebble  ${l}` : l));
+  assert.deepEqual(after, expected, 'the same screen, with the name on its age line and the naming line gone');
+  assert.equal(after.length, before.length - 1);
+});
+
+test('naming says nothing at an extreme, and its screen counts no downtime as time alone', () => {
+  const lonely = { ...newLog(T - 50 * HOUR), visits: [{ t: T - 49 * HOUR, acts: [['feed', 4], ['clean', 1], ['pet', 10]] }] };
+  const r = name(lonely, 'Pebble', opts(T));
+  assert.ok(r.named && r.status === 200, 'it is named');
+  assert.match(r.text, /^sorrow: at -10 for /m, 'at its floor');
+  assert.deepEqual(quirks(r.text), [], 'and says nothing about it');
+  const paused = { ...newLog(T - 60 * HOUR), visits: [{ t: T - 59 * HOUR, acts: [['feed', 4], ['clean', 1], ['pet', 10]] }], outages: [{ start: T - 58 * HOUR, end: T - 2 * HOUR, evidence: 'host-1' }] };
+  const top = name(paused, 'Pebble', opts(T)).text.split('\n').slice(1, 3).join('');
+  assert.ok(!/[,"]/.test(top), `3 lived hours alone: no moss in the reply: ${top}`);
 });
 
 test('the name shows in one place: first on the age line, and on the grave', () => {
@@ -65,6 +82,8 @@ test('the name shows in one place: first on the age line, and on the grave', () 
   const grave = look({ ...log, born: T - 10 * 24 * HOUR }, opts(T)).text;
   assert.match(grave, /^here lies Pebble {2}age \d+d {2}died /m);
   assert.match(history(log, opts(T)).text, /^name: Pebble \(since 2026-10-06\)$/m);
+  const later = { ...log, name: { name: 'Pebble', t: T + 3 * 24 * HOUR } };
+  assert.match(history(later, opts(T + 3 * 24 * HOUR)).text, /^name: Pebble \(since 2026-10-09\)$/m, 'the day it was named');
   assert.match(history(newLog(T), opts(T)).text, /^name: none yet$/m);
   for (const line of seen.split('\n').filter(l => l.startsWith('quirk: '))) assert.ok(!line.includes('Pebble'), 'its lines never say it');
 });
@@ -84,6 +103,11 @@ test('the log keeps the name once, in time order, before any death', () => {
     ['a visit before the name', b + named + visitLine({ t: T + 1, acts: [['pet', 1]] })],
     ['a name after the death', b + deathLine({ t: T + 1, cause: 'lonely' }) + named],
   ]) assert.throws(() => parseLog(text), /line/, what);
+  // A name given while the clock reads behind the last visit is logged at the visit's time.
+  const visited = { ...newLog(T), visits: [{ t: T + 2 * HOUR, acts: [['pet', 1]] }] };
+  const slow = name(visited, 'Pebble', opts(T));
+  assert.equal(slow.named.t, T + 2 * HOUR);
+  assert.equal(parseLog(birthLine(T) + visitLine(visited.visits[0]) + nameLine(slow.named)).name.t, T + 2 * HOUR, 'and the log still reads');
   // A clock set back before the name reads as the name's time, so the log stays in order.
   const after = { ...newLog(T), name: { name: 'Pebble', t: T + HOUR } };
   assert.equal(act(after, 'pet', opts(T)).visit.t, T + HOUR);
@@ -106,7 +130,7 @@ test('with the longest name, every screen still keeps to 380 bytes', () => {
     const s = replay({ ...newLog(b), visits }, now);
     largest = Math.max(largest, Buffer.byteLength(render(s, { now, host: 'rockpet.example', name: 'Abcdefghijkl' })));
   }
-  assert.ok(largest >= 350 && largest <= 380, `${largest} bytes: the worst case is many messes, both danger lines, moss and this name`);
+  assert.ok(largest <= 380, `${largest} bytes`); // the worst, built on purpose, is in test/screen.test.mjs
 });
 
 async function withServer(fn, { seed } = {}) {
@@ -153,7 +177,9 @@ test('POST /name names it once; the log keeps it; the names of buried rocks are 
     assert.equal((await req('POST', '/name', 'PEBBLE')).status, 409, 'never given twice');
     assert.equal((await req('POST', '/name', 'flint')).status, 200);
     // A torn log in the graveyard still gives up its name.
-    fs.writeFileSync(path.join(dir, 'graveyard', 'rock-torn.jsonl'), '{"born":1,"rules":1}\n{"named":"Basalt","t":2}\n{"t":3,"ac');
+    fs.writeFileSync(path.join(dir, 'graveyard', 'rock-torn.jsonl'), '{"born":1,"rules":1}\n{"t":2,"acts":[["pet",1]]}\n{"t":3,"acts":[["pet",1]]}\n{"t":4,"acts":[["feed",1]]}\n{"named":"Basalt","t":5}\n{"t":6,"ac');
+    fs.mkdirSync(path.join(dir, 'graveyard', 'not-a-log'));
+    fs.writeFileSync(path.join(dir, 'graveyard', 'notes.txt'), '{"named":"Granite","t":1}\n');
     assert.deepEqual(takenNames(file).sort(), ['Basalt', 'Pebble']);
   });
 });

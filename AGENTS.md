@@ -21,7 +21,7 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 | `src/screen.mjs` | The 12x12 grid and the named lines. |
 | `src/parse.mjs` | Action bodies such as `feed x4 clean pet x10`. |
 | `src/log.mjs` | The log's format: the birth, each visit, and a death line once anyone has seen the rock dead. Parsing checks shape and refuses anything else. |
-| `src/rock.mjs` | `look(log, {now, host})` and `act(log, body, {now, host})`: the HTTP status, the screen, and what to append to the log (an accepted action's `visit`; the `died` line the first time the rock is seen dead). |
+| `src/rock.mjs` | `look(log, {now, host})`, `act(log, body, {now, host})` and `name(log, body, {now, host, taken})`: the HTTP status, the screen, and what to append to the log (an accepted action's `visit`; a given name; the `died` line the first time the rock is seen dead). |
 | `server.mjs` | The local server, answering 127.0.0.1 only unless `--listen` says otherwise. The log is `data/rock.jsonl`, read and appended in one synchronous step per request, with a lock file so only one server serves a log. `--new-rock` starts over (local only). |
 | `tools/sandbox.mjs` | The engine on a pretend clock. |
 | `tools/mutate.mjs` | Applies deliberate faults in a temporary copy; every mutant must be caught. LF and CRLF checkouts are supported. |
@@ -42,6 +42,7 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 - **GitHub Pages** (this repo) is the public face and the archive: rules, `llms.txt`, a human page, and a periodic export of the event log.
 - **Remove `--new-rock`** from anything hosted.
 - **Keep every name a rock has had,** as permanently as the rock: a name is never given twice.
+- **Check the screen's size with your host.** The screen tests hold every screen to 380 bytes with a 15-character host (`rockpet.example`); the worst, built on purpose in `test/screen.test.mjs`, is 368. On those worst screens the host appears once (the act line), so each character beyond 15 adds a byte. A host over 27 characters needs the bound raised, or a shorter host.
 - **Freeze the character's formulas once hosted:** its kind, days, moves, visitors and mark thresholds. Each is computed again from the log on every request, so a change would rewrite a living rock's past. If one must change, version it like `RULES.version` (CHARACTER.md, "Size, and staying the same").
 - **Keep the state, not just the log.** Every local request re-reads and replays the whole log, about 1 ms per 1,000 visits (measured in review round 2). That is fine for a local rock and wrong for a hosted one: keep the replayed state in the Durable Object (or a checkpoint row) and replay only what follows it.
 
@@ -93,13 +94,17 @@ Status in brackets: what the local build does today.
   - Effective care adds one short authored reaction to its response instead.
   - Neither happens while it is at an extreme or dead. See CHARACTER.md.
 - **`GET /history`** returns the shared biography and exact verified outage receipts; no visitor identities. Both read routes support HEAD.
-- **`POST /name`** takes one word, 2–12 letters a–z, and names the rock: once, for life, and never with a name a rock before it had (409 otherwise; 400 for a bad name; 410 for a grave).
-  - Naming is not care. It changes nothing but the name, and logs a `{"named","t"}` line.
-  - Locally, the names already used are read from `data/graveyard/`. Hosted, keep them as permanently as the rock.
+- **`POST /act`** takes a body of verbs with optional counts, e.g. `feed x4 clean pet x10`.
   - Verbs apply in the order given, and the response is the new screen.
   - Counts are capped at 20 per word, which never changes the outcome; there is no cap across requests.
   - An unknown word does nothing: 400, one `error:` line, then the screen. A dead rock answers 410 with its grave.
   - A body over 1 KB gets 413 at once. A method a path doesn't serve gets 405 with `Allow`. A log that can't be replayed exactly gets 500 and is left untouched.
+- **`POST /name`** takes one word, 2–12 letters a–z, and names the rock: once, for life, and never with a name a rock before it had. The other answers:
+  - 409 if it already has a name, or the name was taken;
+  - 400 for a bad name, or a reserved word (the verbs, the screen's own words, `null`, `test`…);
+  - 410 for a grave.
+  - Naming is not care. It changes nothing but the name, and logs a `{"named","t"}` line.
+  - Locally, the names already used are read from the logs in `data/graveyard/`. Hosted, keep them as permanently as the rock.
 - **Not built yet, for fetch-only agents** (the Claude API's `web_fetch` and Claude Code's WebFetch can't POST):
   - The GET screen prints single-use, expiring links: `https://<host>/a/<token>/feed`, `/clean`, `/pet`.
   - Use per-agent `robots.txt` groups: allow the user-triggered agent fetchers you want on `/a/`, disallow everyone else. Claude-User honours robots.txt.
@@ -117,7 +122,8 @@ Status in brackets: what the local build does today.
 - Then the named lines:
   - `hunger 3/10 (10=starving)  happy -2 (max 7)  mess 1 (@)`. The `(max N)` part appears only while messes lower the ceiling.
   - Danger lines, only at an extreme: `sorrow: at -10 for 17h of 48` and `hunger: at 10 for 17h of 48`.
-  - `age 41d  now 14:05Z  last care 6h ago`
+  - `Pebble  age 41d  now 14:05Z  last care 6h ago`: its name, once it has one, then its age and times. A grave's line starts `here lies Pebble`.
+  - `unnamed: POST <host>/name  body: a one-word name`: only until it has a name, and not at an extreme.
   - `act: POST <host>/act  body e.g. feed clean pet x6`: the suggested body is a full visit for the current state.
 - Agents' fetch tools may paraphrase the page through a small model. The named lines carry everything needed to act; grid positions won't survive. (The preview pane's page-text reader dropped the grid's blank lines on the first try.)
 
