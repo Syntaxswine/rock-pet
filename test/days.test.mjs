@@ -127,10 +127,10 @@ test('it moves in each of December, January and February, about one day in twent
       cases[key] = p.col > p.from ? g[5].slice(0, left + p.col) : g[5].slice(right + p.col + 1);
     }
   }
-  assert.equal(cases['0>1'].replace(/^ +/, ''), '..', `moved right from the middle: ${JSON.stringify(cases)}`);
-  assert.equal(cases['-1>0'].replace(/^ +/, ''), '.'.repeat(Math.min(2, left)), 'back to the middle from the left');
-  assert.equal(cases['0>-1'].trimEnd(), '..', 'moved left from the middle');
-  assert.equal(cases['1>0'].trimEnd(), '.'.repeat(Math.min(2, W - 1 - right)), 'back to the middle from the right');
+  assert.equal(cases['0>1'].replace(/^ +/, ''), '~~', `moved right from the middle: ${JSON.stringify(cases)}`);
+  assert.equal(cases['-1>0'].replace(/^ +/, ''), '~'.repeat(Math.min(2, left)), 'back to the middle from the left');
+  assert.equal(cases['0>-1'].trimEnd(), '~~', 'moved left from the middle');
+  assert.equal(cases['1>0'].trimEnd(), '~'.repeat(Math.min(2, W - 1 - right)), 'back to the middle from the right');
   // Once, and how many times, on /history.
   for (let i = 0; ; i++) {
     const b = Date.UTC(2026, 10, 1) + i * 3_600_000;

@@ -7,6 +7,7 @@ import { replay, applyVisit, born, HOUR } from '../src/engine.mjs';
 import { parseActions } from '../src/parse.mjs';
 import { RULES } from '../src/rules.mjs';
 import { careTotals, DAILY_CARE } from '../src/personality.mjs';
+import { groundOf } from '../src/ground.mjs';
 
 const MIN = 60_000, DAY = 24 * HOUR;
 const T0 = Date.UTC(2026, 0, 1);
@@ -67,14 +68,13 @@ test('the alive screen is the DESIGN-NOTES mock', () => {
 test('the dead screen is the DESIGN-NOTES mock: crosses for eyes, and the moss of its last days alone', () => {
   // A real life, not a made-up state: cared for every 8h for six weeks, then left. It died alone
   // three days later, with the messes of those days, and a crystal from its meals. Its care ran
-  // heavy on meals and petting and light on cleaning, so it sits in a little sand, with a path
-  // worn to it (ground.mjs); one footprint lies under a mess.
+  // heavy on petting, so a path is worn up to it (ground.mjs).
   const b = Date.UTC(2026, 9, 5, 7), visits = [];
   for (let t = b + HOUR; t < b + 41 * DAY; t += 8 * HOUR) visits.push({ t, acts: [['feed', 4], ['clean', 1], ['pet', 10]] });
   const log = { born: b, rules: RULES.version, visits };
   const s = replay(log, Infinity);
   assert.equal(render(s, { now: s.dead.t + 9 * HOUR, host: 'rockpet.example', name: 'Pebble', care: careTotals(log) }), [
-    'died: lonely', '    ",,', '  ,,___,"', '  _/   \\__', ' /  x  x  \\', '.\\______*_/.', '   :', '  @     @', '   : @', '         @', ' @', '',
+    'died: lonely', '    ",,', '  ,,___,"', '  _/   \\__', ' /  x  x  \\', ' \\______*_/', '   :', '  @ :   @', '     @', '         @', ' @', '',
     'here lies Pebble  age 43d  died 2026-11-17 23:36Z',
     'last care 3d ago  it does not stir',
   ].join('\n') + '\n');
@@ -219,18 +219,24 @@ test('the screen stays small (token efficiency): at most 380 bytes, whatever the
   // ...but no sample reaches the worst, so build it: the longest name, ten messes (the most a
   // living rock carries), both danger lines with two-digit hours, a top full of moss, a
   // four-digit age, a column over from where it began, every mark, in every drawing, on every
-  // ground its care could give it (0, 1, 2, 3 or 9 times each need: every mix of levels).
+  // ground its care could give it.
   const age = 1066 * DAY + 5 * HOUR;
   let b = Date.UTC(2023, 11, 1);
   while (placeAt(b, b + age).col !== 1) b += HOUR;
   const now = b + age;
   const worst = { ...born(b), t: now, hunger: 10, starvingSince: now - 30 * HOUR, happy: -10, sorrowSince: now - 45 * HOUR, messes: 10, lastCare: now - 50 * HOUR, closeCalls: 3, petted: 3000, fed: 1500, visits: 4000 };
-  const grounds = [null];
-  for (const f of [0, 1, 2, 3, 9]) for (const c of [0, 1, 2, 3, 9]) for (const p of [0, 1, 2, 3, 9]) {
-    grounds.push({ feed: Math.round(100 * f * DAILY_CARE.feed), clean: Math.round(100 * c * DAILY_CARE.clean), pet: Math.round(100 * p * DAILY_CARE.pet) });
+  // Every ground: care at exact shares, on a fine grid over the triangle, one for each mix of
+  // levels it reaches. There are 28: the least-given care never shows, and two traces can't
+  // reach levels 3 and 3, or 3 and 2 (they would need more than the whole).
+  const grounds = new Map();
+  for (let i = 0; i <= 60; i++) for (let j = 0; i + j <= 60; j++) {
+    const care = { feed: i / 60 * DAILY_CARE.feed, clean: j / 60 * DAILY_CARE.clean, pet: (60 - i - j) / 60 * DAILY_CARE.pet };
+    const g = groundOf(care, age);
+    if (!grounds.has(`${g.feed}${g.clean}${g.pet}`)) grounds.set(`${g.feed}${g.clean}${g.pet}`, care);
   }
+  assert.equal(grounds.size, 28, [...grounds.keys()].join(' '));
   const largest = (s, outages = []) => Object.fromEntries(Object.entries(DRAWINGS).map(([name, drawing]) => [name,
-    Math.max(...grounds.map(care => Buffer.byteLength(render(s, { now, host: 'rockpet.example', name: 'Abcdefghijkl', drawing, outages, care }))))]));
+    Math.max(...[...grounds.values()].map(care => Buffer.byteLength(render(s, { now, host: 'rockpet.example', name: 'Abcdefghijkl', drawing, outages, care }))))]));
   const bytes = largest(worst);
   console.log(`  the worst screen, by drawing: ${JSON.stringify(bytes)}`);
   for (const [name, n] of Object.entries(bytes)) assert.ok(n <= 380, `${name}: ${n} bytes`);

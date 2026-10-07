@@ -150,9 +150,9 @@ even-tempered   comfort-loving  orderly         affectionate
 | /  ^  ^  \ |  | /  ^  ^  \ |  | /  ^  ^  \ |  | /  ^  ^  \ |
 | \________/ |  |............|  | \________/ |  | \________/ |
 |            |  |            |  |============|  |   :        |
-|            |  |            |  |            |  |  :         |
+|            |  |            |  |            |  |    :       |
 |            |  |            |  |            |  |   :        |
-|            |  |            |  |            |  |  :         |
+|            |  |            |  |            |  |    :       |
 |            |  |            |  |            |  |   :        |
 |            |  |            |  |            |  |            |
 
@@ -163,44 +163,44 @@ settled         sociable        gentle
 |  _/   \__  |  |  _/   \__  |  |  _/   \__  |
 | /  ^  ^  \ |  | /  ^  ^  \ |  | /  ^  ^  \ |
 |.\________/.|  |.\________/.|  | \________/ |
-|------------|  |   :        |  |---o--------|
-|            |  |  :         |  |  :         |
-|            |  |   :        |  |   :        |
+| ---------- |  |   :        |  | --o------- |
+|            |  |    :       |  |    :       |
 |            |  |            |  |            |
 |            |  |            |  |            |
 |            |  |            |  |            |
+|            |  |            |  |            |
+
+its ground, the shades between: petted at 2, 3, 4 and 8 times its need
 
-its ground, the shades between: petted at 1.5, 3 and 6 times its need
+2 times         3 times         4 times         8 times
+|2          6|  |2          6|  |2          6|  |2          6|
+|            |  |            |  |            |  |            |
+|    ___     |  |    ___     |  |    ___     |  |    ___     |
+|  _/   \__  |  |  _/   \__  |  |  _/   \__  |  |  _/   \__  |
+| /  ^  ^  \ |  | /  ^  ^  \ |  | /  ^  ^  \ |  | /  ^  ^  \ |
+| \________/ |  | \________/ |  | \________/ |  | \________/ |
+|            |  |   :        |  |   :        |  |   :        |
+|            |  |    :       |  |    :       |  |    :       |
+|            |  |            |  |   :        |  |   :        |
+|            |  |            |  |            |  |    :       |
+|            |  |            |  |            |  |   :        |
+|            |  |            |  |            |  |            |
 
-1.5             3               6
-|2          6|  |2          6|  |2          6|
-|            |  |            |  |            |
-|    ___     |  |    ___     |  |    ___     |
-|  _/   \__  |  |  _/   \__  |  |  _/   \__  |
-| /  ^  ^  \ |  | /  ^  ^  \ |  | /  ^  ^  \ |
-| \________/ |  | \________/ |  | \________/ |
-|   :        |  |   :        |  |   :        |
-|  :         |  |  :         |  |  :         |
-|            |  |   :        |  |   :        |
-|            |  |            |  |  :         |
-|            |  |            |  |   :        |
-|            |  |            |  |            |
+its ground forms over two weeks: petted at 8 times its need, at 2, 7, 10 and 14 days old
 
-its ground forms over two weeks: a gentle rock at 2, 7 and 14 days old
-
-2 days          7 days          14 days
-|2          6|  |2          6|  |2          6|
-|            |  |            |  |            |
-|    ___     |  |    ___     |  |    ___     |
-|  _/   \__  |  |  _/   \__  |  |  _/   \__  |
-| /  ^  ^  \ |  | /  ^  ^  \ |  | /  ^  ^  \ |
-| \________/ |  | \________/ |  | \________/ |
-|            |  | --o------- |  |---o--------|
-|            |  |  :         |  |  :         |
-|            |  |            |  |   :        |
-|            |  |            |  |            |
-|            |  |            |  |            |
-|            |  |            |  |            |
+2 days          7 days          10 days         14 days
+|2          6|  |2          6|  |2          6|  |2          6|
+|            |  |            |  |            |  |            |
+|    ___     |  |    ___     |  |    ___     |  |    ___     |
+|  _/   \__  |  |  _/   \__  |  |  _/   \__  |  |  _/   \__  |
+| /  ^  ^  \ |  | /  ^  ^  \ |  | /  ^  ^  \ |  | /  ^  ^  \ |
+| \________/ |  | \________/ |  | \________/ |  | \________/ |
+|            |  |   :        |  |   :        |  |   :        |
+|            |  |    :       |  |    :       |  |    :       |
+|            |  |            |  |   :        |  |   :        |
+|            |  |            |  |            |  |    :       |
+|            |  |            |  |            |  |   :        |
+|            |  |            |  |            |  |            |
 
 its days: the wall, a morning it moved
 
@@ -210,7 +210,7 @@ facing the wall  moved left
 |     ___    |  |   ___      |
 |  __/   \_  |  | _/   \__   |
 | /        \ |  |/  ^  ^  \  |
-| \________/ |  |\________/..|
+| \________/ |  |\________/~~|
 |            |  |            |
 |            |  |            |
 |            |  |            |
@@ -353,7 +353,7 @@ Each stays within columns 1–10, so a rock that has moved a column either way s
 | a vein `/` in it | a close call | care ends a stretch at an extreme with a day or more of it at one; it counts when the last extreme ends | never; three are drawn, and `/history` counts the rest |
 | polish `'` on it | it has been petted a lot | after 500 points of happiness given by petting, and again after 3,000 | never |
 | crystals `*` in it | it has been fed a lot | after 100 meals, and again after 500 | never |
-| a trail `..` beside it | it moved | for the rest of that UTC day | the next day |
+| a trail `~~` beside it, the furrow it slid along | it moved | for the rest of that UTC day | the next day |
 
 A meal is one feed's worth of hunger taken away. Both polish and crystals count only what the care did, not what was asked for: a pet at full happiness, or a feed when it isn't hungry, adds nothing. So spamming the verbs can't polish it, and neither can a crowd.
 
@@ -383,12 +383,14 @@ Each care wears its own trace into the ground. A trace is as large as that care'
 
 | care | its trace | level 1 | level 2 | level 3 |
 |---|---|---|---|---|
-| feed | it settles into soft sand | sand at its foot | sand all along its base (the lump's base fills its row, so on it this looks like level 1) | its base sunk in the sand; marks and moss there still show |
+| feed | it settles into sand, `.` | sand at its foot | sand along its base and over its corners | sand over its whole base; marks and moss there still show |
 | clean | a raked floor in front of it | `-` under it | `-` across the ground | `=`, raked deeper |
-| pet | footprints worn up to it | two | three | five |
+| pet | footprints `:` worn up to it | two | three | five |
 
-- **The levels** come at 0.12, 0.35 and 0.6 above the least-given share.
+- **The levels** come at 0.3, 0.45 and 0.6 above the least-given share.
+- **A dutifully kept rock stays bare.** Followed every 8 hours, or at random every 4 to 14, the act line's own suggestion keeps every trace under the first level, so such a rock reads as even-tempered. The pets that make up for messes and hunger lift petting's share a little (PERSONALITY.md leaves them out of its daily need). Once a day the suggestion is mostly petting, and wears two footprints; twice a day it sometimes does, depending on where the visits fall against the mess clock. A test holds the bare cases and the once-a-day one.
 - **Where footprints cross the raked floor,** they step on a stone, `o`, the way a garden's stepping stones keep feet off its raking. A gentle rock's visitors tread carefully.
+- **The footprints keep to the same cells on every drawing,** moving with the rock. They miss the first fourteen mess spots, so a light path keeps both its prints when a mess or two is about.
 
 So the seven personalities draw themselves, and every rock between them follows the same rule:
 - **even-tempered:** bare ground, because no care stands above the rest;
@@ -397,12 +399,12 @@ So the seven personalities draw themselves, and every rock between them follows 
 
 The least-given care never shows, so at most two traces do. This is the personality blend itself: the favourite care's trace is its corner weight plus half its pair weight, the next care's is half the pair weight, and the center weight is bare ground. A test holds the two to each other.
 
-**It forms over two weeks.** The traces grow in with the rock's age, to full size at 14 days, so the first visitor's habit can't stamp it on day one. A grave keeps the ground it had when it died.
+**It forms over two weeks.** The traces grow in with the time the rock has lived, to full size at 14 days, so the first visitor's habit can't stamp it on day one. Verified host downtime doesn't count, as for moss. A grave keeps the ground it had when it died.
 
-**It is only drawn.** It changes nothing about the rock. A winter move's trail and the messes lie on top of it. Elsewhere on the model sheet the ground is left bare, so each section shows one thing.
+**It is only drawn.** It changes nothing about the rock. A winter move's trail and the messes lie on top of it; the trail is `~~`, so it never reads as sand. Elsewhere on the model sheet the ground is left bare, so each section shows one thing.
 
 **Where it comes from:**
-- **Sand:** stones left lying on the ground slowly sink into it. Darwin's last book showed earthworms burying them, by carrying fine soil up from below and leaving it on the surface.
+- **Sand:** a stone that stays put settles in. Stones left lying on the ground slowly sink into it: Darwin's last book showed earthworms burying them, carrying fine soil up from below and leaving it on the surface. A rock given its meals above everything else is the one that has made itself at home.
 - **Raking:** in a Japanese dry garden (karesansui), such as Ryōan-ji's in Kyoto, the gravel around the stones is raked as part of the garden's care.
 - **Footprints:** many feet wear a path across grass where people actually walk. It is called a desire path.
 
@@ -462,7 +464,7 @@ A look on an ordinary day says nothing. A look on another kind of day adds one l
 
 This rock may do the same:
 - on a winter morning, December to February, about one day in twenty, at 10:00 UTC. That is late morning by the rock's own clock; at the Playa itself, late morning is about 19:00 UTC.
-- by one column, leaving a trail for the rest of that day;
+- by one column, leaving a trail `~~` for the rest of that day (real trails are long furrows in the playa's mud, often curving);
 - never after it dies.
 
 Real stones also need a shallow winter pond, and can sit still for years, so this one is luckier than they are.
@@ -539,9 +541,9 @@ The costs come from five places:
 - **The name:** its length plus 2 (8 bytes for Pebble).
 - **The naming line:** about 55 bytes, until someone names it.
 - **The look line:** 38 bytes when there is one, on about a quarter of looks, so about 10 bytes a look overall.
-- **The ground:** nothing while its care is balanced. On the lump, 1 byte for sand, 12 for a raked floor, 18 for five footprints, and 12 to 19 for two traces together. Narrower drawings stand further in, so their footprints cost up to 28.
+- **The ground:** nothing while its care is balanced, which includes a rock kept as the act line suggests. On the lump where it began: 1 byte for sand; 11 or 12 for a raked floor; 9, 13 or 22 for two, three or five footprints; up to 29 for two traces together. On any drawing, wherever it has moved, 34 at most.
 
-The largest screen is 369 bytes. It has the longest name, ten messes (the most a living rock carries), both danger lines, a top full of moss, a four-digit age, the rock a column over, and its base sunk in sand. A long credited outage adds up to 2 more, because "last care 100d ago" counts wall-clock time while moss and the danger clocks count lived time. The screen tests build both cases on purpose, since no sample reaches them. They hold every screen to 380 (340 before moss and names), and every look and visit to under 440. Both bounds assume a 15-character host. A longer one adds a byte for each extra character, so 24 characters is the most that fits.
+The largest screen is 369 bytes. It has the longest name, ten messes (the most a living rock carries), both danger lines, a top full of moss, a four-digit age, the rock a column over, and its base sunk in sand. A credited outage of 100 days or more adds 2 more, because "last care 100d ago" counts wall-clock time while moss and the danger clocks count lived time (each further digit adds another, from 1,000 days). The screen tests build both cases on purpose, since no sample reaches them. They hold every screen to 380 (340 before moss and names), and every look and visit to under 440. Both bounds assume a 15-character host. A longer one adds a byte for each extra character, so 24 characters is the most that fits (23 after an outage of 1,000 days or more).
 
 **Staying the same.** Once the rock is hosted, these formulas must not change, or a living rock's past would change under it:
 - its kind;
