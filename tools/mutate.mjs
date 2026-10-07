@@ -178,6 +178,14 @@ const MUTANTS = [
   ['meals shown as points of hunger', 'src/story.mjs', '`meals: ${Math.floor(m.meals)}', '`meals: ${Math.floor(s.fed)}'],
   ['the name dated by the birth', 'src/story.mjs', '(since ${date(log.name.t)})', '(since ${date(log.born)})'],
   ['a different visitor comes', 'src/character.mjs', "return { what: 'visitor', which: hash(s.born, 7, day) };", "return { what: 'visitor', which: hash(s.born, 9, day) };"],
+  // Review round 3: paths that were right but unpinned.
+  ['the naming reply speaks while only starving', 'src/rock.mjs', "const said = inDanger(s) ? '' :", "const said = s.sorrowSince !== null ? '' :"],
+  ['the naming reply speaks while only sad', 'src/rock.mjs', "const said = inDanger(s) ? '' :", "const said = s.starvingSince !== null ? '' :"],
+  ['a short extreme ending forgets the long one', 'src/engine.mjs', 'if (long(s.starvingSince) || long(s.sorrowSince)) s.brink = true;', 's.brink = long(s.starvingSince) || long(s.sorrowSince);'],
+  ['a grave grows moss as if still alone', 'src/marks.mjs', 'Math.max(alone(last, s.dead.t), ', 'Math.max(alone(last, now), '],
+  ['a named grave is refused as named', 'src/rock.mjs', '  if (s.dead) return { ...firstSight(log, s), status: 410, text: screen() };\n', "  if (log.name) return { status: 409, text: 'named' };\n  if (s.dead) return { ...firstSight(log, s), status: 410, text: screen() };\n"],
+  ['the history counts moves after death', 'src/story.mjs', 'placeAt(log.born, end).moves', 'placeAt(log.born, now).moves'],
+  ['a screen word can be a name', 'src/name.mjs', "'just', 'last', 'care', 'never',", "'just', 'last', 'care',"],
 ];
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

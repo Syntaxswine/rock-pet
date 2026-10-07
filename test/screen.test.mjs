@@ -63,11 +63,14 @@ test('the alive screen is the DESIGN-NOTES mock', () => {
 });
 
 test('the dead screen is the DESIGN-NOTES mock: crosses for eyes, and the moss of its last days alone', () => {
-  const died = Date.UTC(2026, 10, 16, 3, 14), now = died + 9 * HOUR;
-  const s = state({ born: died - 41 * DAY - 20 * HOUR, t: died, hunger: 10, happy: -10, messes: 3, starvingSince: died - 30 * HOUR, sorrowSince: died - 48 * HOUR, lastCare: now - 3 * DAY - 20 * HOUR, dead: { t: died, cause: 'lonely' } });
-  assert.equal(show(s, now, 'Pebble'), [
-    'died: lonely', '    ",,', '  ,,___,"', '  _/   \\__', ' /  x  x  \\', ' \\________/', '', '  @     @', '     @', '', '', '',
-    'here lies Pebble  age 41d  died 2026-11-16 03:14Z',
+  // A real life, not a made-up state: cared for every 8h for six weeks, then left. It died alone
+  // three days later, with the messes of those days, and a crystal from its meals.
+  const b = Date.UTC(2026, 9, 5, 7), visits = [];
+  for (let t = b + HOUR; t < b + 41 * DAY; t += 8 * HOUR) visits.push({ t, acts: [['feed', 4], ['clean', 1], ['pet', 10]] });
+  const s = replay({ born: b, rules: RULES.version, visits }, Infinity);
+  assert.equal(show(s, s.dead.t + 9 * HOUR, 'Pebble'), [
+    'died: lonely', '    ",,', '  ,,___,"', '  _/   \\__', ' /  x  x  \\', ' \\______*_/', '', '  @     @', '     @', '         @', ' @', '',
+    'here lies Pebble  age 43d  died 2026-11-17 23:36Z',
     'last care 3d ago  it does not stir',
   ].join('\n') + '\n');
 });
@@ -220,4 +223,10 @@ test('the screen stays small (token efficiency): at most 380 bytes, whatever the
   console.log(`  the worst screen, by drawing: ${JSON.stringify(bytes)}`);
   for (const [name, n] of Object.entries(bytes)) assert.ok(n <= 380, `${name}: ${n} bytes`);
   assert.equal(Math.max(...Object.values(bytes)), 368, 'the worst, as CHARACTER.md and AGENTS.md say');
+  // A long credited outage makes it a little longer: last care is wall-clock time ("100d ago"),
+  // while moss and the danger clocks count only the time it lived through.
+  const outages = [{ start: now - 100 * DAY + HOUR, end: now - 49 * HOUR, evidence: 'host-1' }];
+  const paused = { ...worst, lastCare: now - 100 * DAY };
+  const longest = Math.max(...Object.values(DRAWINGS).map(drawing => Buffer.byteLength(render(paused, { now, host: 'rockpet.example', name: 'Abcdefghijkl', drawing, outages }))));
+  assert.equal(longest, 370, 'and after a long outage, as they also say');
 });

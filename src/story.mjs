@@ -66,7 +66,7 @@ const WORDS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight
 const BIRTHDAY = { 7: 'it is one week old today.', 30: 'it is thirty days old today.', 100: 'it is a hundred days old today.' };
 const VISITORS = [
   'it is sheltering a woodlouse.', "it carries a snail's silver trail.", "it is anchoring a spider's thread.",
-  'it has a beetle living under it.', 'it watches an ant carry a crumb past.', 'it has a feather resting against it.',
+  'it has a beetle living under it.', 'it watches an ant carry a crumb past.', 'it has a centipede tucked under it.',
   'it has a moth asleep on it.', 'it has a ladybird resting on it.',
 ];
 

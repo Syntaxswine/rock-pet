@@ -7,7 +7,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { parseName, isTaken, NAMED } from '../src/name.mjs';
+import { parseName, isTaken, NAMED, RESERVED } from '../src/name.mjs';
 import { name, look, act, history, newLog, creditOutage } from '../src/rock.mjs';
 import { parseLog, birthLine, visitLine, nameLine, deathLine } from '../src/log.mjs';
 import { createRockServer, ensureRock, takenNames, bury } from '../server.mjs';
@@ -35,6 +35,28 @@ test('a name is one word of 2-12 letters, kept capitalized, from any body an age
   assert.deepEqual(parseName('Petra'), { name: 'Petra' }, 'only the whole word is reserved');
   assert.equal(isTaken('Pebble', ['flint', 'PEBBLE']), true);
   assert.equal(isTaken('Pebble', ['Pebbles']), false);
+});
+
+test('no word the screen itself prints can be a name', () => {
+  // Every kind of screen: a newborn, cared for just now, hungry, sad, at each extreme, mossy, many
+  // messes, a grave of each cause, named and not; then look, act and their labelled lines. The
+  // prose of the rock's lines and of errors is not the screen's vocabulary, so only their labels count.
+  const words = new Set();
+  const add = text => { for (const line of text.split('\n')) for (const w of (/^(quirk|error): /.test(line) ? line.slice(0, 6) : line).toLowerCase().match(/[a-z]{2,12}/g) ?? []) words.add(w); };
+  const b = T - 41 * 24 * HOUR;
+  const s = o => ({ ...replay(newLog(b), b), t: T, ...o });
+  const states = [
+    s({ lastCare: T }), s({ lastCare: null }), s({ hunger: 8, happy: -7, messes: 3, lastCare: T - 30 * HOUR }),
+    s({ hunger: 10, starvingSince: T - 9 * HOUR, happy: -10, sorrowSince: T - 20 * HOUR, messes: 10, lastCare: T - 50 * HOUR }),
+    ...['lonely', 'filthy', 'hungry'].map(cause => s({ hunger: 10, happy: -10, starvingSince: T - 60 * HOUR, sorrowSince: T - 60 * HOUR, lastCare: T - 70 * HOUR, messes: 6, dead: { t: T - HOUR, cause } })),
+  ];
+  for (const st of states) for (const nm of [null, 'Q']) add(render(st, { now: T, host: 'h', name: nm }));
+  const log = { ...newLog(T - HOUR), visits: [] };
+  const h = { now: T, host: 'h' }; // the host is not the screen's own word
+  add(look(log, h).text); add(act(log, 'pet', h).text); add(act(log, 'hug', h).text);
+  assert.ok(words.size > 40, `${words.size} words`);
+  assert.deepEqual([...words].filter(w => !RESERVED.has(w)).sort(), [], 'every word the screen prints is reserved');
+  for (const w of words) if (w.length <= 12) assert.ok(parseName(w).error, w);
 });
 
 test('it is named once, while it lives, and only with a name no rock before it had', () => {
@@ -71,6 +93,28 @@ test('naming says nothing at an extreme, and its screen counts no downtime as ti
   const paused = { ...newLog(T - 60 * HOUR), visits: [{ t: T - 59 * HOUR, acts: [['feed', 4], ['clean', 1], ['pet', 10]] }], outages: [{ start: T - 58 * HOUR, end: T - 2 * HOUR, evidence: 'host-1' }] };
   const top = name(paused, 'Pebble', opts(T)).text.split('\n').slice(1, 3).join('');
   assert.ok(!/[,"]/.test(top), `3 lived hours alone: no moss in the reply: ${top}`);
+});
+
+test('naming says nothing at either extreme on its own (review round 3)', () => {
+  const visits = [];
+  for (let t = T + 6 * HOUR; t < T + 40 * HOUR; t += 6 * HOUR) visits.push({ t, acts: [['clean', 1], ['pet', 10]] });
+  const starving = { ...newLog(T), visits };
+  const s = replay(starving, T + 40 * HOUR);
+  assert.ok(s.starvingSince !== null && s.sorrowSince === null, 'starving, not sad');
+  assert.deepEqual(quirks(name(starving, 'Pebble', opts(T + 40 * HOUR)).text), []);
+  const fed = [];
+  for (let t = T + 6 * HOUR; t < T + 40 * HOUR; t += 6 * HOUR) fed.push({ t, acts: [['feed', 4]] });
+  const sad = { ...newLog(T), visits: fed };
+  const u = replay(sad, T + 40 * HOUR);
+  assert.ok(u.sorrowSince !== null && u.starvingSince === null, 'sad, not starving');
+  assert.deepEqual(quirks(name(sad, 'Pebble', opts(T + 40 * HOUR)).text), []);
+});
+
+test('a named grave answers 410, and its first sight records the death', () => {
+  const log = { ...newLog(T - 10 * 24 * HOUR), name: { name: 'Pebble', t: T - 10 * 24 * HOUR + HOUR } };
+  const r = name(log, 'Flint', opts(T));
+  assert.equal(r.status, 410);
+  assert.ok(r.died && !r.named);
 });
 
 test('the name shows in one place: first on the age line, and on the grave', () => {

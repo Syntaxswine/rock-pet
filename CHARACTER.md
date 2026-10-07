@@ -255,7 +255,8 @@ The owner asked to see new drawings. They are all in the model sheet above, in t
 1. set `DRAWING`;
 2. paste `node tools/model-sheet.mjs` over the sheet above;
 3. redraw the two mocks in `test/screen.test.mjs` and DESIGN-NOTES (the screen tests print what they now are);
-4. redraw README's mock.
+4. redraw README's mock;
+5. in this page, move "(drawn now)" in the table below, update the drawing's bytes under "What it costs", and close the open call.
 
 No other test depends on which drawing it is.
 
@@ -281,8 +282,8 @@ Each stays within columns 1–10, so a rock that has moved a column either way s
 
 | Mark | Means | Appears | Goes |
 |---|---|---|---|
-| moss `,` `"` on top of it | nobody has come | after 12h, 24h and 48h without care | any visit brushes it off |
-| more moss, down its sides | it is a grave | a week, a month and a season after death (compressed: bare stone takes months or years to green over) | never |
+| moss `,` `"` on top of it | nobody has come | after 12h, 24h and 48h without care: 2, 4 and 7 tufts | any visit brushes it off |
+| more moss, down its sides | it is a grave | a week, a month and a season after death: 9, 11, then every tuft it has room for (compressed: bare stone takes months or years to green over) | never |
 | a vein `/` in it | a close call | care ends a stretch at an extreme with a day or more of it at one; it counts when the last extreme ends | never; three are drawn, and `/history` counts the rest |
 | polish `'` on it | it has been petted a lot | after 500 points of happiness given by petting, and again after 3,000 | never |
 | crystals `*` in it | it has been fed a lot | after 100 meals, and again after 500 | never |
@@ -314,9 +315,10 @@ Whoever names it first gives it its name: `POST /name` with one word. It is the 
 
 - **The name:** one word, 2–12 letters, a–z, kept capitalized. `pebble` and `PEBBLE` are both Pebble.
 - **Not an accident:** a name is for life, so some words are refused (400):
-  - a verb sent to the wrong route: `pet`, `feed`, `clean`;
-  - the screen's own words: `dead`, `hungry`, `lonely`, `age`…, which a summarizing fetch tool could read as the rock's state;
-  - a client's empty values and probes: `null`, `undefined`, `test`…
+  - every word the screen itself prints: the verbs, `dead`, `hungry`, `never`, `just`, `age`… A test collects them from every kind of screen, so a new word can't slip through. A summarizing fetch tool could read `Never  age 2h …` as the rock's state;
+  - words for a rock's state that the screen doesn't print: `dying`, `fine`, `asleep`…;
+  - a client's empty values and probes: `null`, `undefined`, `test`, `string`, `hello`…;
+  - the words for who is speaking, which an agent might read as a label: `system`, `assistant`, `user`…
 - **Once:** a rock is named once, for life. A second name is refused (409).
 - **Never twice:** a name a rock before it had is refused too (409), in any case. Locally, those rocks are the logs in `data/graveyard/`, which `--new-rock` moves the old rock into. Once hosted, the names must be kept as permanently as the rock.
 - **Where it shows:** the screen shows it in one place, first on the age line (`Pebble  age 41d …`). A grave reads `here lies Pebble`. `/history` says when it was named.
@@ -371,9 +373,10 @@ This rock may do the same:
 Real stones also need a shallow winter pond, and can sit still for years, so this one is luckier than they are.
 
 **Small visitors.** A stone is a small habitat:
-- woodlice and beetles shelter under it;
+- woodlice, beetles and centipedes shelter under it;
 - snails cross it;
 - spiders tie threads to it;
+- ants go by;
 - moths and ladybirds rest on it.
 
 ## After care
@@ -448,7 +451,7 @@ The costs come from four places:
 - **The naming line:** about 55 bytes, until someone names it.
 - **The look line:** 38 bytes when there is one, on about a quarter of looks, so about 10 bytes a look overall.
 
-The largest screen is 368 bytes. It has the longest name, ten messes (the most a living rock carries), both danger lines, a top full of moss, a four-digit age, and the rock a column over. The screen tests build it on purpose, since no sample reaches it. They hold every screen to 380 (340 before moss and names), and every look and visit to under 440. Both bounds assume a 15-character host; a longer one adds a byte for each extra character.
+The largest screen is 368 bytes. It has the longest name, ten messes (the most a living rock carries), both danger lines, a top full of moss, a four-digit age, and the rock a column over. A long credited outage adds up to 2 more, because "last care 100d ago" counts wall-clock time while moss and the danger clocks count lived time. The screen tests build both cases on purpose, since no sample reaches them. They hold every screen to 380 (340 before moss and names), and every look and visit to under 440. Both bounds assume a 15-character host. A longer one adds a byte for each extra character, so 25 characters is the most that fits.
 
 **Staying the same.** Once the rock is hosted, these formulas must not change, or a living rock's past would change under it:
 - its kind;

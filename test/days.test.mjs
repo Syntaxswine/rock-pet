@@ -13,6 +13,7 @@ const D = DRAWINGS[DRAWING];
 const EYES = [...D.front.entries()].flatMap(([r, row]) => [...row].flatMap((c, k) => (c === 'E' ? [[r, k]] : [])));
 import { replay, born, applyVisit, HOUR } from '../src/engine.mjs';
 import { look, act, history, newLog } from '../src/rock.mjs';
+import { spawnSync } from 'node:child_process';
 
 const DAY = 24 * HOUR;
 const T = Date.UTC(2026, 9, 6); // a Tuesday
@@ -184,6 +185,34 @@ const PINNED_MOVES = [ // b = 2026-11-01T09:30Z
   '2026-12-01 0>-1', '2026-12-05 -1>0', '2026-12-08 0>1', '2026-12-19 1>0',
   '2026-12-20 0>-1', '2027-01-17 -1>0', '2027-02-09 0>1', '2027-02-17 1>0',
 ];
+
+test('its days are the same in every time zone', () => {
+  // The same probes, run by four processes in four zones: a local-time slip anywhere differs.
+  const probe = `
+    const { occasion, placeAt } = await import(${JSON.stringify(new URL('../src/character.mjs', import.meta.url).href)});
+    const { born, HOUR } = await import(${JSON.stringify(new URL('../src/engine.mjs', import.meta.url).href)});
+    const out = [];
+    for (let i = 0; i < 16; i++) {
+      const b = Date.UTC(2026, 10, 1) + i * 37 * HOUR + i * 7919;
+      const at = t => out.push(JSON.stringify(occasion({ ...born(b), t, lastCare: t - HOUR }, t)), placeAt(b, t).col);
+      for (let h = 0; h < 24 * 120; h += 5) at(b + h * HOUR);
+      for (const k of [1, 2]) for (const h of [-13, -1, 0, 1, 11, 23, 25]) at(Date.UTC(2026 + k, 10, 1) + i * 37 * HOUR + i * 7919 + h * HOUR);
+    }
+    process.stdout.write(JSON.stringify(out));`;
+  const run = TZ => spawnSync(process.execPath, ['--input-type=module', '-e', probe], { env: { ...process.env, TZ }, encoding: 'utf8' });
+  const zones = ['UTC', 'Etc/GMT+12', 'Pacific/Kiritimati', 'America/New_York'];
+  const results = zones.map(z => { const r = run(z); assert.equal(r.status, 0, r.stderr); return r.stdout; });
+  assert.ok(JSON.parse(results[0]).length > 5000);
+  for (let i = 1; i < zones.length; i++) assert.equal(results[i], results[0], `${zones[i]} differs from UTC`);
+});
+
+test('/history counts only the moves made before death (review round 3)', () => {
+  let b = Date.UTC(2026, 10, 1);
+  const graveOf = g => replay(newLog(g), Infinity);
+  while (placeAt(b, graveOf(b).dead.t + 120 * DAY).moves === placeAt(b, graveOf(b).dead.t).moves) b += 3 * HOUR;
+  const moves = placeAt(b, graveOf(b).dead.t).moves;
+  assert.match(history(newLog(b), { now: graveOf(b).dead.t + 120 * DAY }).text, new RegExp(`^moved on its own: ${moves === 1 ? 'once' : `${moves} times`}$`, 'm'));
+});
 
 test('choosing a line never writes to the rock it describes', () => {
   const freeze = o => { for (const v of Object.values(o)) if (v && typeof v === 'object') freeze(v); return Object.freeze(o); };

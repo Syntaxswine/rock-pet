@@ -20,7 +20,7 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 | `src/engine.mjs` | `replay(log, now)`: the rock's state at any moment from its event log, in continuous time, closed-form between events. Death is the first moment a 48h clock ran out. |
 | `src/screen.mjs` | The 12x12 grid and the named lines. |
 | `src/parse.mjs` | Action bodies such as `feed x4 clean pet x10`. |
-| `src/log.mjs` | The log's format: the birth, each visit, and a death line once anyone has seen the rock dead. Parsing checks shape and refuses anything else. |
+| `src/log.mjs` | The log's format: the birth, each visit, its name once given, and a death line once anyone has seen the rock dead. Parsing checks shape and refuses anything else. |
 | `src/rock.mjs` | `look(log, {now, host})`, `act(log, body, {now, host})` and `name(log, body, {now, host, taken})`: the HTTP status, the screen, and what to append to the log (an accepted action's `visit`; a given name; the `died` line the first time the rock is seen dead). |
 | `server.mjs` | The local server, answering 127.0.0.1 only unless `--listen` says otherwise. The log is `data/rock.jsonl`, read and appended in one synchronous step per request, with a lock file so only one server serves a log. `--new-rock` starts over (local only). |
 | `tools/sandbox.mjs` | The engine on a pretend clock. |
@@ -42,7 +42,7 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 - **GitHub Pages** (this repo) is the public face and the archive: rules, `llms.txt`, a human page, and a periodic export of the event log.
 - **Remove `--new-rock`** from anything hosted.
 - **Keep every name a rock has had,** as permanently as the rock: a name is never given twice.
-- **Check the screen's size with your host.** The screen tests hold every screen to 380 bytes with a 15-character host (`rockpet.example`); the worst, built on purpose in `test/screen.test.mjs`, is 368. On those worst screens the host appears once (the act line), so each character beyond 15 adds a byte. A host over 27 characters needs the bound raised, or a shorter host.
+- **Check the screen's size with your host.** The screen tests hold every screen to 380 bytes with a 15-character host (`rockpet.example`); the worst, built on purpose in `test/screen.test.mjs`, is 368, and 370 after a long credited outage ("last care 100d ago"). On those worst screens the host appears once (the act line), so each character beyond 15 adds a byte. A host over 25 characters needs the bound raised, or a shorter host.
 - **Freeze the character's formulas once hosted:** its kind, days, moves, visitors and mark thresholds. Each is computed again from the log on every request, so a change would rewrite a living rock's past. If one must change, version it like `RULES.version` (CHARACTER.md, "Size, and staying the same").
 - **Keep the state, not just the log.** Every local request re-reads and replays the whole log, about 1 ms per 1,000 visits (measured in review round 2). That is fine for a local rock and wrong for a hosted one: keep the replayed state in the Durable Object (or a checkpoint row) and replay only what follows it.
 
@@ -65,7 +65,7 @@ Status in brackets: what the local build does today.
    - Never read-modify-write across separate statements.
 5. **Never put visitor-supplied text on the shared screen** (names, notes, anything). To every later agent it is a prompt injection. If identity is ever added, a visitor sees only their own name. [built: the host on the screen is configured, never the request's Host header; an error echoes only letters and digits, to the sender alone; a 500 says nothing about the error]
    - **The one exception is the rock's own name**, by the owner's decision (2026-10-07): "the user names the rock and the name is single use, once that pet is gone that name can not be used again".
-   - So a name is as small as one can be: one word of 2–12 letters a–z, kept capitalized, shown in one place, and never inside the rock's lines. One word leaves no room for an instruction.
+   - So a name is as small as one can be: one word of 2–12 letters a–z, kept capitalized, shown in one place, and never inside the rock's lines. One word of letters leaves little room for an instruction. The screen's own words, state words, placeholders and speakers' labels (`system`, `user`…) are refused.
    - It can still be rude, and there is no moderation. That is a risk the owner takes on, and a hosted rock may want an operator veto.
 6. **The response to an action is the new screen,** so a visit costs one request. [built]
 7. **Outage credit.** The owner approved pausing all pet time for verified host downtime, equal to its duration. Individual caretaker absence gets no credit. Hunger, happiness and extreme timers pause; messes during `[start,end)` are skipped, then resume on the UTC schedule. Death at or before the outage start, or any recorded death, cannot be undone. [built: engine, offline operator tool and public `/history` receipts; independent detection still to do with hosting]
@@ -101,7 +101,7 @@ Status in brackets: what the local build does today.
   - A body over 1 KB gets 413 at once. A method a path doesn't serve gets 405 with `Allow`. A log that can't be replayed exactly gets 500 and is left untouched.
 - **`POST /name`** takes one word, 2–12 letters a–z, and names the rock: once, for life, and never with a name a rock before it had. The other answers:
   - 409 if it already has a name, or the name was taken;
-  - 400 for a bad name, or a reserved word (the verbs, the screen's own words, `null`, `test`…);
+  - 400 for a bad name, or a reserved word (every word the screen prints, state words, placeholders, speakers' labels: `src/name.mjs`);
   - 410 for a grave.
   - Naming is not care. It changes nothing but the name, and logs a `{"named","t"}` line.
   - Locally, the names already used are read from the logs in `data/graveyard/`. Hosted, keep them as permanently as the rock.

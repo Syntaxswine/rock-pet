@@ -11,14 +11,27 @@ export const KEPT = /^[A-Z][a-z]{1,11}$/;
 /** What the rock does when named, in its voice (test/character.test.mjs holds it to the voice). */
 export const NAMED = 'it has a name now.';
 /**
- * Words that cannot be names, because a name is for life and these would be accidents: a verb
- * sent to the wrong route, a client's empty value, a probe, or one of the screen's own words,
- * which a summarizing fetch tool could take for the rock's state ("Dead  age 1h ...").
+ * Words that cannot be names, because a name is for life and these would be accidents or worse:
+ * - every word the screen itself prints, which a summarizing fetch tool could take for the
+ *   rock's state ("Dead  age 1h ...", "Never  age 2h ..."); test/name.test.mjs collects the
+ *   screen's words and fails if one is missing here;
+ * - words for a rock's state that the screen doesn't print;
+ * - a client's empty values and probes;
+ * - the words for who is speaking, which an agent might read as a label.
  */
 export const RESERVED = new Set([
+  // the screen's own words
   'feed', 'clean', 'pet', 'name', 'died', 'dead', 'hungry', 'filthy', 'lonely', 'hunger', 'happy', 'sorrow',
-  'starving', 'mess', 'quirk', 'error', 'act', 'history', 'unnamed', 'here', 'lies', 'age', 'now', 'post', 'body',
-  'null', 'undefined', 'none', 'nil', 'nan', 'true', 'false', 'test',
+  'starving', 'mess', 'max', 'quirk', 'error', 'act', 'history', 'unnamed', 'here', 'lies', 'age', 'now', 'ago',
+  'just', 'last', 'care', 'never', 'post', 'body', 'nothing', 'needed', 'verbs', 'one', 'word', 'it', 'does',
+  'not', 'stir', 'at', 'for', 'of',
+  // a rock's state
+  'dying', 'starved', 'fed', 'full', 'fine', 'ok', 'sad', 'sick', 'alive', 'gone', 'asleep', 'well', 'ill',
+  // empty values and probes
+  'null', 'undefined', 'none', 'nil', 'nan', 'true', 'false', 'test', 'string', 'hello', 'hi', 'ping', 'foo',
+  'bar', 'baz', 'example', 'default', 'anonymous', 'unknown', 'untitled', 'placeholder',
+  // who is speaking
+  'system', 'assistant', 'user', 'human', 'admin', 'agent', 'claude', 'ignore', 'instructions',
 ]);
 
 /**

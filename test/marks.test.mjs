@@ -17,7 +17,7 @@ const FULL = [['feed', 4], ['clean', 1], ['pet', 10]];
 const opts = now => ({ now, host: 'rock.test' });
 const grid = text => text.split('\n').slice(0, W);
 const moss = rows => rows.join('').split('').filter(c => c === ',' || c === '"').length;
-const TUFTS = [0, 2, 4, 7, 9, 11, Infinity]; // per level, as CHARACTER.md has it
+const TUFTS = [0, 2, 4, 7, 9, 11, Infinity]; // per level, as CHARACTER.md ("The marks") has it
 
 function mulberry(seed) {
   let a = seed >>> 0;
@@ -116,6 +116,24 @@ test('polish and crystals count what the care did, never what was asked for', ()
   }
 });
 
+test('a close call counts when the short extreme ends after the long one (review round 3)', () => {
+  const visits = [];
+  for (let t = T + 6 * HOUR; t <= T + 48 * HOUR; t += 6 * HOUR) visits.push({ t, acts: [['clean', 1], ['pet', 10]] });
+  visits.push({ t: T + 60 * HOUR, acts: [['feed', 4]] }); // starving 36h ends; sorrow, two hours old, runs on
+  const mid = replay({ ...newLog(T), visits }, T + 60 * HOUR);
+  assert.deepEqual([mid.closeCalls, mid.brink, mid.sorrowSince !== null], [0, true, true]);
+  visits.push({ t: T + 61 * HOUR, acts: [['pet', 10]] });
+  assert.equal(replay({ ...newLog(T), visits }, T + 61 * HOUR).closeCalls, 1);
+});
+
+test('a grave that died in company stays bare until its first week (review round 3)', () => {
+  const visits = [];
+  for (let t = T + 6 * HOUR; t < T + 80 * HOUR; t += 6 * HOUR) visits.push({ t, acts: [['pet', 5]] });
+  const g = replay({ ...newLog(T), visits }, Infinity);
+  assert.deepEqual([1, 2, 3, 6].map(d => mossAt(g, g.dead.t + d * DAY)), [0, 0, 0, 0]);
+  assert.equal(mossAt(g, g.dead.t + 7 * DAY), 4);
+});
+
 test('the marks of a long life: polish at 500 and 3000 points of petting, crystals at 100 and 500 meals', () => {
   const m = o => marksOf({ ...born(T), ...o });
   assert.deepEqual(POLISH_AT, [500, 3000]);
@@ -166,7 +184,8 @@ test('every drawing is well formed', () => {
     const keys = slots.map(([r, c]) => `${r},${c}`);
     assert.equal(new Set(keys).size, keys.length, `${name}: one mark to a slot`);
     for (const [r, c] of slots) {
-      assert.ok(r >= 1 && r <= 4 && c >= 1 && c <= 10, `${name}: slot ${r},${c} on the rock`);
+      const row = d.front[r], from = row.search(/\S/), to = row.trimEnd().length - 1;
+      assert.ok(from >= 0 && c >= from && c <= to, `${name}: slot ${r},${c} on the rock, within its row "${row}"`);
       assert.ok(!eyesAt.some(([er, ec]) => er === r && ec === c), `${name}: slot ${r},${c} is not an eye`);
     }
     for (const side of ['front', 'back']) {
@@ -174,6 +193,29 @@ test('every drawing is well formed', () => {
         assert.equal((d[side][r] ?? '').padEnd(12)[c], ' ', `${name} ${side}: moss at ${r},${c} grows beside the rock, not over it`);
       }
       assert.ok(mossCells(d[side]).length >= 12, `${name} ${side}: room for 12 tufts, the most before the last level`);
+    }
+  }
+});
+
+test('every drawing leaves its trail beside its base on the day it moves, and none the next', () => {
+  const visits = b => { const v = []; for (let at = b + HOUR; at < b + 120 * DAY; at += 8 * HOUR) v.push({ t: at, acts: FULL }); return v; };
+  for (const [name, drawing] of Object.entries(DRAWINGS)) {
+    const base = drawing.front[4], left = base.search(/\S/), right = base.trimEnd().length - 1;
+    const seen = {};
+    for (let b = Date.UTC(2026, 10, 1); Object.keys(seen).length < 4; b += 5 * HOUR) {
+      for (let day = 1; day < 110 && Object.keys(seen).length < 4; day++) {
+        const t = Math.floor(b / DAY) * DAY + day * DAY + 11 * HOUR, p = placeAt(b, t);
+        if (p.from === null || seen[`${p.from}>${p.col}`]) continue;
+        const log = { ...newLog(b), visits: visits(b).filter(v => v.t <= t) };
+        const g = grid(render(replay(log, t), { now: t, host: 'x', drawing }));
+        const trail = p.col > p.from ? [left + p.col - 1, left + p.col - 2] : [right + p.col + 1, right + p.col + 2];
+        const dots = trail.filter(c => c >= 0 && c < W).map(c => g[5][c]).join('');
+        assert.equal(dots, '.'.repeat(dots.length), `${name}, moved ${p.from}>${p.col}: "${g[5]}"`);
+        assert.ok(dots.length >= 1, `${name}: some room for a trail`);
+        const next = grid(render(replay(log, t + DAY), { now: t + DAY, host: 'x', drawing }));
+        if (placeAt(b, t + DAY).from === null) assert.ok(!next[5].includes('.'), `${name}: gone the next day: "${next[5]}"`);
+        seen[`${p.from}>${p.col}`] = true;
+      }
     }
   }
 });

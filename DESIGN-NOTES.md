@@ -109,27 +109,26 @@ died: lonely
   ,,___,"
   _/   \__
  /  x  x  \
- \________/
+ \______*_/
 
   @     @
      @
+         @
+ @
 
-
-
-
-here lies Pebble  age 41d  died 2026-11-16 03:14Z
+here lies Pebble  age 43d  died 2026-11-17 23:36Z
 last care 3d ago  it does not stir
 ```
 
 The rock in these mocks is the character from CHARACTER.md, which has every face, mark, pose and drawing (2026-10-07). Before that, it was a three-row pebble, `( -  - )`.
 - **The name:** Pebble is a visitor's name for it. Until a rock has a name, a line `unnamed: POST <host>/name  body: a one-word name` stands above the act line.
-- **The grave's moss:** its last days were spent alone.
+- **The grave is a real life:** cared for every 8h for six weeks, then left. It died alone three days later, with those days' messes and moss, and the crystal its meals grew (the screen test replays it).
 
 **Why the screen looks like this:**
 - **The grid is the picture; the footer is the information.** An agent's fetch tool often passes pages through a summarizing model, and in tests that model shifted grid symbols by a column and dropped blank lines. Serve `text/plain`.
 - **`(max 7)` appears only while a mess lowers the ceiling,** so an agent knows why petting stops working. Danger lines appear only at an extreme: `sorrow: at -10 for 17h of 48` or `hunger: at 10 for 17h of 48`.
 - **One POST is a whole visit,** and its response is the new screen. With no cap, a once-a-day visit needs about 10 pets, so the verbs take counts (`pet x10`) to keep it to one request.
-- **Size, measured on the build:** a well-kept rock with a name is about 220 bytes. The most is 368: the longest name, ten messes, both danger lines, full moss, a four-digit age. A test builds that state on purpose and holds every screen to 380, with a 15-character host. The first build drew a three-row pebble, at 157 bytes median and 308 at most; CHARACTER.md has what the character adds.
+- **Size, measured on the build:** a well-kept rock with a name is about 220 bytes. The most is 368: the longest name, ten messes, both danger lines, full moss, a four-digit age. It is 370 after a long credited outage. A test builds both states on purpose and holds every screen to 380, with a 15-character host. The first build drew a three-row pebble, at 157 bytes median and 308 at most; CHARACTER.md has what the character adds.
 - **Continuity additions:**
   - The base screen keeps that budget.
   - API responses add a short `history:` link.
@@ -151,7 +150,7 @@ The rules above are the owner's. These details were left open, and the build set
 | **Bad bodies** | An unknown word does nothing at all: status 400, one `error:` line, then the screen. Separators are anything not a letter or digit, and form posts (`do=feed+pet`) work. |
 | **The dead** | Every visit to a dead rock gets 410 and the grave. It is not logged. |
 | **Same-moment events** | A mess due at the same moment as a visit comes first, so that visit can clean it. A visit at the exact 48th hour is too late. A death comes before a mess due at the same moment. A tie between the two clocks dies hungry. |
-| **The log** | `data/rock.jsonl`, one JSON object per line: the birth, each visit, and a death line written the first time anyone sees the rock dead. A clock set back before a recorded death cannot reach a time when the rock was alive. A log that cannot be replayed exactly (a bad line, a death its visits don't produce) is refused and left untouched; a byte-order mark or a missing last newline from a hand edit is fine. |
+| **The log** | `data/rock.jsonl`, one JSON object per line: the birth, each visit, its name once given, and a death line written the first time anyone sees the rock dead. A clock set back before a recorded death cannot reach a time when the rock was alive. A log that cannot be replayed exactly (a bad line, a death its visits don't produce) is refused and left untouched; a byte-order mark or a missing last newline from a hand edit is fine. |
 | **Birth** | The rock is born when the server starts and finds no log. After that, a missing or unreadable log is an error, never a new rock. |
 | **Local server** | Port 7625 (ROCK on a phone keypad), this machine only unless `--listen` says otherwise. One server per log: a lock file holds the server's pid, and a second server is refused (a dead server's lock is taken over). A log that cannot be replayed stops the start with the reason, and `--new-rock` still buries it (as `rock-unreadable-<time>`). A body over 1 KB gets 413 at once; a method a path doesn't serve gets 405 with `Allow`; a broken log gets a 500 that says nothing more. |
 
@@ -197,7 +196,8 @@ Checked 2026-10-06.
 - **Keep every action benevolent.** Acting can't hurt the rock; only load can.
 - **Never put visitor text or other visitors' names on the shared screen.** To every later agent it is a prompt injection.
   - The one exception is the rock's own name: the owner chose that a visitor names it (2026-10-07).
-  - So a name is one word of 2–12 letters, shown in one place, never in the rock's lines, and never one of the screen's own words (AGENTS.md, invariant 5).
+  - So a name is one word of 2–12 letters, shown in one place, and never in the rock's lines.
+  - It is never one of the screen's own words (a test collects them), a state, a placeholder or a speaker's label (AGENTS.md, invariant 5).
 - **Use coarse times in public logs,** so visit times don't expose people's routines.
 
 ### Is the fallback free?
