@@ -96,7 +96,7 @@ test('extra care affects personality, while invalid/dead requests and reads add 
   const log = newLog(T);
   const accepted = act(log, 'feed x20 clean x3 pet x5', opts(T));
   assert.equal(accepted.status, 200);
-  assert.equal(accepted.text.includes('quirk:'), false, 'satisfied stats stay quiet');
+  assert.match(accepted.text, /quirk: it has had its first visitor\./);
   const after = { ...log, visits: [accepted.visit] };
   assert.deepEqual(careTotals(after), { feed: 20, clean: 3, pet: 5 });
   assert.deepEqual([replay(after, T).hunger, replay(after, T).happy, replay(after, T).messes], [0, 10, 0]);
@@ -113,11 +113,12 @@ test('extra care affects personality, while invalid/dead requests and reads add 
 });
 
 test('care-derived personality replaces the birth seed and includes the current action', () => {
-  const a = act(newLog(T), 'feed x20', opts(T + HOUR));
-  const b = act(newLog(T + 1000), 'feed x20', opts(T + HOUR + 1000));
+  const log = b => ({ ...newLog(b), visits: [{ t: b, acts: [['clean', 1]] }] });
+  const a = act(log(T), 'feed x20', opts(T + HOUR));
+  const b = act(log(T + 1000), 'feed x20', opts(T + HOUR + 1000));
   assert.match(a.text, /quirk: it saves an imaginary crumb\./);
   assert.equal(a.text.match(/^quirk:.*$/m)[0], b.text.match(/^quirk:.*$/m)[0]);
-  const petted = act(newLog(T), 'pet x20', opts(T + HOUR));
+  const petted = act(log(T), 'pet x20', opts(T + HOUR));
   assert.match(petted.text, /quirk: it leans into the attention\./);
 });
 

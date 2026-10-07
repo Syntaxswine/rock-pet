@@ -12,6 +12,7 @@
 //   GET /        the screen (text/plain, no-store)
 //   GET /history the shared biography and verified downtime receipts
 //   POST /act    a body of verbs, e.g. "feed clean pet x3"; the reply is the new screen
+//   POST /name   its name, one word, once (never one a rock in data/graveyard/ had)
 //
 // The rock is born when the server starts and finds no log. After that, a missing or unreadable
 // log is an error, never a new rock.
@@ -20,13 +21,31 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { look, act, history } from './src/rock.mjs';
-import { parseLog, birthLine, visitLine, deathLine } from './src/log.mjs';
+import { look, act, history, name } from './src/rock.mjs';
+import { parseLog, birthLine, visitLine, deathLine, nameLine } from './src/log.mjs';
 
 const MAX_BODY = 1024; // bytes; a full visit is under 30
 const BROKEN = "error: the rock's log could not be read. nothing was changed.\n";
 
 export const readLog = file => parseLog(fs.readFileSync(file, 'utf8'));
+
+/**
+ * The names the rocks in graveyard/ beside `file` had: a name is never given twice. Read line by
+ * line, so a torn log still gives up its name.
+ */
+export function takenNames(file) {
+  const grave = path.join(path.dirname(file), 'graveyard');
+  let entries;
+  try { entries = fs.readdirSync(grave, { withFileTypes: true }); } catch (e) { if (e.code === 'ENOENT') return []; throw e; }
+  const names = [];
+  for (const f of entries.filter(e => e.isFile() && e.name.endsWith('.jsonl'))) { // bury() writes only these
+    for (const line of fs.readFileSync(path.join(grave, f.name), 'utf8').split('\n')) {
+      if (!line.includes('"named"')) continue;
+      try { const row = JSON.parse(line); if (typeof row.named === 'string') names.push(row.named); } catch { /* torn */ }
+    }
+  }
+  return names;
+}
 
 /** Give birth to a rock in `file` if there is none yet. */
 export function ensureRock(file, now) {
@@ -44,7 +63,7 @@ export function createRockServer({ file, host, now = Date.now, onError = console
   function withLog(decide) {
     const text = fs.readFileSync(file, 'utf8');
     const r = decide(parseLog(text), now());
-    const lines = (r.visit ? visitLine(r.visit) : '') + (r.died ? deathLine(r.died) : '');
+    const lines = (r.visit ? visitLine(r.visit) : '') + (r.named ? nameLine(r.named) : '') + (r.died ? deathLine(r.died) : '');
     if (lines) fs.appendFileSync(file, (text.endsWith('\n') ? '' : '\n') + lines);
     return r;
   }
@@ -59,6 +78,21 @@ export function createRockServer({ file, host, now = Date.now, onError = console
       let r;
       try { r = withLog(decide); } catch (e) { onError(e); r = { status: 500, text: BROKEN }; }
       send(r.status, r.text, headers);
+    };
+    // A POST body, then `then(text)`. Over MAX_BODY: 413 at once, and stop listening, rather than
+    // wait for a body that may never end.
+    const withBody = then => {
+      const chunks = [];
+      let size = 0;
+      req.on('data', c => {
+        size += c.length;
+        if (size <= MAX_BODY) return void chunks.push(c);
+        req.removeAllListeners('data');
+        req.removeAllListeners('end');
+        req.resume();
+        send(413, `error: a body is at most ${MAX_BODY} bytes. nothing was done.\n`, { connection: 'close' });
+      });
+      req.on('end', () => then(Buffer.concat(chunks).toString('utf8')));
     };
     req.on('error', () => {});
     const route = (req.url ?? '/').split('?')[0]; // never parsed as a URL, so a malformed one cannot throw
@@ -78,21 +112,10 @@ export function createRockServer({ file, host, now = Date.now, onError = console
         return { ...r, status: 405, text: `error: /act takes POST, with a body like "feed clean pet x3".\n${r.text}` };
       }, { allow: 'POST' });
     }
-    if (route === '/act') {
-      const chunks = [];
-      let size = 0;
-      req.on('data', c => {
-        size += c.length;
-        if (size <= MAX_BODY) return void chunks.push(c);
-        // Over the limit: answer now and stop listening, rather than wait for a body that may
-        // never end.
-        req.removeAllListeners('data');
-        req.removeAllListeners('end');
-        req.resume();
-        send(413, `error: a body is at most ${MAX_BODY} bytes. nothing was done.\n`, { connection: 'close' });
-      });
-      req.on('end', () => answer((log, t) => act(log, Buffer.concat(chunks).toString('utf8'), { now: t, host })));
-      return;
+    if (route === '/act') return withBody(body => answer((log, t) => act(log, body, { now: t, host })));
+    if (route === '/name') {
+      if (req.method !== 'POST') return send(405, 'error: POST /name with a one-word name. it is named once, for life.\n', { allow: 'POST' });
+      return withBody(body => answer((log, t) => name(log, body, { now: t, host, taken: takenNames(file) })));
     }
     send(404, 'not here. GET / to see the rock; POST /act to care for it.\n');
   }

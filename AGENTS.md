@@ -20,12 +20,17 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 | `src/engine.mjs` | `replay(log, now)`: the rock's state at any moment from its event log, in continuous time, closed-form between events. Death is the first moment a 48h clock ran out. |
 | `src/screen.mjs` | The 12x12 grid and the named lines. |
 | `src/parse.mjs` | Action bodies such as `feed x4 clean pet x10`. |
-| `src/log.mjs` | The log's format: the birth, each visit, and a death line once anyone has seen the rock dead. Parsing checks shape and refuses anything else. |
-| `src/rock.mjs` | `look(log, {now, host})` and `act(log, body, {now, host})`: the HTTP status, the screen, and what to append to the log (an accepted action's `visit`; the `died` line the first time the rock is seen dead). |
+| `src/log.mjs` | The log's format: the birth, each visit, its name once given, and a death line once anyone has seen the rock dead. Parsing checks shape and refuses anything else. |
+| `src/rock.mjs` | `look(log, {now, host})`, `act(log, body, {now, host})` and `name(log, body, {now, host, taken})`: the HTTP status, the screen, and what to append to the log (an accepted action's `visit`; a given name; the `died` line the first time the rock is seen dead). |
 | `server.mjs` | The local server, answering 127.0.0.1 only unless `--listen` says otherwise. The log is `data/rock.jsonl`, read and appended in one synchronous step per request, with a lock file so only one server serves a log. `--new-rock` starts over (local only). |
 | `tools/sandbox.mjs` | The engine on a pretend clock. |
 | `tools/mutate.mjs` | Applies deliberate faults in a temporary copy; every mutant must be caught. LF and CRLF checkouts are supported. |
-| `src/story.mjs` | A deterministic reaction after effective care and an opt-in shared biography at `GET /history`; never changes the engine. |
+| `src/story.mjs` | The rock's authored lines: one reaction after effective care or a visit milestone, one line on a look on a day that is not ordinary, and the shared biography at `GET /history`. Never changes the engine. |
+| `src/character.mjs` | The rock's character: its nature (kind and its weekday for facing the wall), its days, and where it has moved to. `CHARACTER.md` is the design. |
+| `src/marks.mjs` | The marks its life leaves: moss while nobody comes and on a grave; veins, polish and crystals, kept for life. |
+| `src/drawings.mjs` | The drawings it can have, for the owner to choose from (`DRAWING`), each with its back and its mark slots. |
+| `src/name.mjs` | Its name: one word, given once, never twice. |
+| `tools/model-sheet.mjs` | Every face, mark, pose and drawing, drawn by the real renderer. CHARACTER.md shows its output, and a test fails if the two differ. |
 | `src/personality.mjs` | Three lifetime accepted-action counters, daily-demand weights, triangle coordinates and seven continuous personality blends. See `PERSONALITY.md`; extra care counts, and no survival rule changes. |
 | `src/outages.mjs`, `tools/credit-outage.mjs` | Validated outage intervals and the offline operator tool. Independent verification/detection remains a hosting responsibility. |
 
@@ -37,6 +42,9 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 - **The fallback**, if Sites can't do something below, is a Cloudflare Worker + one SQLite-backed Durable Object on Cloudflare's free plan (see DESIGN-NOTES, "Is the fallback free?").
 - **GitHub Pages** (this repo) is the public face and the archive: rules, `llms.txt`, a human page, and a periodic export of the event log.
 - **Remove `--new-rock`** from anything hosted.
+- **Keep every name a rock has had,** as permanently as the rock: a name is never given twice.
+- **Check the screen's size with your host.** The screen tests hold every screen to 380 bytes with a 15-character host (`rockpet.example`); the worst, built on purpose in `test/screen.test.mjs`, is 368, and 370 after a long credited outage ("last care 100d ago"). On those worst screens the host appears once (the act line), so each character beyond 15 adds a byte. A host over 25 characters needs the bound raised, or a shorter host.
+- **Freeze the character's formulas once hosted:** its kind, days, moves, visitors and mark thresholds. Each is computed again from the log on every request, so a change would rewrite a living rock's past. If one must change, version it like `RULES.version` (CHARACTER.md, "Size, and staying the same").
 - **Keep the state, not just the log.** Every local request re-reads and replays the whole log, about 1 ms per 1,000 visits (measured in review round 2). That is fine for a local rock and wrong for a hosted one: keep the replayed state in the Durable Object (or a checkpoint row) and replay only what follows it.
 
 ## Invariants (must hold; these are the reasons the design is the way it is)
@@ -57,6 +65,9 @@ Status in brackets: what the local build does today.
    - A write batch alone does not protect an earlier read. Serialize the whole read/decide/write operation, or use a state revision check and retry conflicts before accepting the visit.
    - Never read-modify-write across separate statements.
 5. **Never put visitor-supplied text on the shared screen** (names, notes, anything). To every later agent it is a prompt injection. If identity is ever added, a visitor sees only their own name. [built: the host on the screen is configured, never the request's Host header; an error echoes only letters and digits, to the sender alone; a 500 says nothing about the error]
+   - **The one exception is the rock's own name**, by the owner's decision (2026-10-07): "the user names the rock and the name is single use, once that pet is gone that name can not be used again".
+   - So a name is as small as one can be: one word of 2–12 letters a–z, kept capitalized, shown in one place, and never inside the rock's lines. One word of letters leaves little room for an instruction. The screen's own words, state words, placeholders and speakers' labels (`system`, `user`…) are refused.
+   - It can still be rude, and there is no moderation. That is a risk the owner takes on, and a hosted rock may want an operator veto.
 6. **The response to an action is the new screen,** so a visit costs one request. [built]
 7. **Outage credit.** The owner approved pausing all pet time for verified host downtime, equal to its duration. Individual caretaker absence gets no credit. Hunger, happiness and extreme timers pause; messes during `[start,end)` are skipped, then resume on the UTC schedule. Death at or before the outage start, or any recorded death, cannot be undone. [built: engine, offline operator tool and public `/history` receipts; independent detection still to do with hosting]
    - Record finite completed intervals with an evidence ID before reopening care. Never infer an outage from missing visits. No public action verb or HTTP route awards credit.
@@ -79,12 +90,22 @@ Status in brackets: what the local build does today.
 
 ## The API (built locally; keep it this small)
 - **`GET /`** returns `text/plain`, `Cache-Control: no-store`: the screen.
-- **`GET /history`** returns the shared biography and exact verified outage receipts; no visitor identities. Both read routes support HEAD. Effective care adds one short authored reaction to its response; ordinary reads stay quiet.
+  - Ordinary reads stay quiet.
+  - A read on a day that is not ordinary adds one line: a birthday, a morning it moved, its wall day, a small visitor. About a quarter of a well-kept rock's reads do.
+  - Effective care adds one short authored reaction to its response instead.
+  - Neither happens while it is at an extreme or dead. See CHARACTER.md.
+- **`GET /history`** returns the shared biography and exact verified outage receipts; no visitor identities. Both read routes support HEAD.
 - **`POST /act`** takes a body of verbs with optional counts, e.g. `feed x4 clean pet x10`.
   - Verbs apply in the order given, and the response is the new screen.
   - Counts are capped at 20 per word, which never changes the outcome; there is no cap across requests.
   - An unknown word does nothing: 400, one `error:` line, then the screen. A dead rock answers 410 with its grave.
   - A body over 1 KB gets 413 at once. A method a path doesn't serve gets 405 with `Allow`. A log that can't be replayed exactly gets 500 and is left untouched.
+- **`POST /name`** takes one word, 2–12 letters a–z, and names the rock: once, for life, and never with a name a rock before it had. The other answers:
+  - 409 if it already has a name, or the name was taken;
+  - 400 for a bad name, or a reserved word (every word the screen prints, state words, placeholders, speakers' labels: `src/name.mjs`);
+  - 410 for a grave.
+  - Naming is not care. It changes nothing but the name, and logs a `{"named","t"}` line.
+  - Locally, the names already used are read from the logs in `data/graveyard/`. Hosted, keep them as permanently as the rock.
 - **Not built yet, for fetch-only agents** (the Claude API's `web_fetch` and Claude Code's WebFetch can't POST):
   - The GET screen prints single-use, expiring links: `https://<host>/a/<token>/feed`, `/clean`, `/pet`.
   - Use per-agent `robots.txt` groups: allow the user-triggered agent fetchers you want on `/a/`, disallow everyone else. Claude-User honours robots.txt.
@@ -93,13 +114,17 @@ Status in brackets: what the local build does today.
 ## The screen (exact shape in DESIGN-NOTES; built in `src/screen.mjs`)
 - A 12x12 grid:
   - Row 1 is hunger left-aligned and happiness right-aligned, or the epitaph.
-  - The rock's face follows its mood; `( x  x )` when dead.
+  - The rock is drawn in rows 3-6, with row 2 the air above it, from one of the drawings in `src/drawings.mjs` (the owner chooses).
+    - Its eyes follow its mood, and are `x  x` when it is dead.
+    - On its wall day a look draws it from behind.
+    - Moss, veins, polish, crystals and a trail mark its life (CHARACTER.md).
   - Each mess is an `@` at a fixed position.
   - Trailing spaces are trimmed.
 - Then the named lines:
   - `hunger 3/10 (10=starving)  happy -2 (max 7)  mess 1 (@)`. The `(max N)` part appears only while messes lower the ceiling.
   - Danger lines, only at an extreme: `sorrow: at -10 for 17h of 48` and `hunger: at 10 for 17h of 48`.
-  - `age 41d  now 14:05Z  last care 6h ago`
+  - `Pebble  age 41d  now 14:05Z  last care 6h ago`: its name, once it has one, then its age and times. A grave's line starts `here lies Pebble`.
+  - `unnamed: POST <host>/name  body: a one-word name`: only until it has a name, and not at an extreme.
   - `act: POST <host>/act  body e.g. feed clean pet x6`: the suggested body is a full visit for the current state.
 - Agents' fetch tools may paraphrase the page through a small model. The named lines carry everything needed to act; grid positions won't survive. (The preview pane's page-text reader dropped the grid's blank lines on the first try.)
 
@@ -112,10 +137,13 @@ Status in brackets: what the local build does today.
 
 ## Open
 - **Is a caretaker bot allowed?** Assumed yes; the owner hasn't answered.
-- **Rockbot's softer requests:** care-derived personality reactions and the shared biography are built. Optional individual recognition ("remembers you") remains phase 2. None may touch the death clock.
+- **Rockbot's softer requests:** the care-derived personality (PERSONALITY.md), character (CHARACTER.md) and the shared biography are built. Optional individual recognition ("remembers you") remains phase 2. None may touch the death clock.
+- **The character's open calls are the owner's** (CHARACTER.md, "The owner's calls"):
+  - which drawing;
 - **Does OpenAI Sites fit the invariants?** Not researched on this side. If something above can't be met there (consistency, anonymous public access, no-store, uptime), say so in an issue before building around it.
 
 ## Working here
 - Commit identity: `StonePhilosopher <270513546+StonePhilosopher@users.noreply.github.com>`.
 - `node --test` must pass. `node tools/mutate.mjs` must catch every mutant; add one when you add a rule.
+- A new line for the rock goes in `src/story.mjs` and must pass the voice test. If the drawing changes, paste `node tools/model-sheet.mjs` into CHARACTER.md.
 - Keep `tools/rocksim.mjs` as the reference. If the rules change, change it and `src/rules.mjs` in the same commit (a test fails if they differ), and update the test vectors.

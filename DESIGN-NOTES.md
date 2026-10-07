@@ -86,10 +86,10 @@ died: hungry
 ```
 3         -2
 
-
-   .----.
-  ( -  - )
-   '----'
+    ___
+  _/   \__
+ /  -  -  \
+ \________/
 
         @
 
@@ -97,7 +97,7 @@ died: hungry
 
 
 hunger 3/10 (10=starving)  happy -2 (max 7)  mess 1 (@)
-age 41d  now 14:05Z  last care 6h ago
+Pebble  age 41d  now 14:05Z  last care 6h ago
 act: POST rockpet.example/act  body e.g. feed clean pet x6
 ```
 
@@ -105,28 +105,35 @@ And after death:
 
 ```
 died: lonely
-
-
-   .----.
-  ( x  x )
-   '----'
+    ",,
+  ,,___,"
+  _/   \__
+ /  x  x  \
+ \______*_/
 
   @     @
      @
+         @
+ @
 
-
-
-
-age 41d  died 2026-11-16 03:14Z
+here lies Pebble  age 43d  died 2026-11-17 23:36Z
 last care 3d ago  it does not stir
 ```
+
+The rock in these mocks is the character from CHARACTER.md, which has every face, mark, pose and drawing (2026-10-07). Before that, it was a three-row pebble, `( -  - )`.
+- **The name:** Pebble is a visitor's name for it. Until a rock has a name, a line `unnamed: POST <host>/name  body: a one-word name` stands above the act line.
+- **The grave is a real life:** cared for every 8h for six weeks, then left. It died alone three days later, with those days' messes and moss, and the crystal its meals grew (the screen test replays it).
 
 **Why the screen looks like this:**
 - **The grid is the picture; the footer is the information.** An agent's fetch tool often passes pages through a summarizing model, and in tests that model shifted grid symbols by a column and dropped blank lines. Serve `text/plain`.
 - **`(max 7)` appears only while a mess lowers the ceiling,** so an agent knows why petting stops working. Danger lines appear only at an extreme: `sorrow: at -10 for 17h of 48` or `hunger: at 10 for 17h of 48`.
 - **One POST is a whole visit,** and its response is the new screen. With no cap, a once-a-day visit needs about 10 pets, so the verbs take counts (`pet x10`) to keep it to one request.
-- **Size, measured on the build:** a median of 157 bytes over 400 sampled rocks, and 308 at most (many messes and both danger lines). A test holds it to 340.
-- **Continuity additions:** the base screen keeps that budget. API responses add a short `history:` link; effective care can add one authored `quirk:` line. The biography and outage receipts live separately at `/history`, fetched only on purpose.
+- **Size, measured on the build:** a well-kept rock with a name is about 220 bytes. The most is 368: the longest name, ten messes, both danger lines, full moss, a four-digit age. It is 370 after a long credited outage. A test builds both states on purpose and holds every screen to 380, with a 15-character host. The first build drew a three-row pebble, at 157 bytes median and 308 at most; CHARACTER.md has what the character adds.
+- **Continuity additions:**
+  - The base screen keeps that budget.
+  - API responses add a short `history:` link.
+  - Effective care, or a look on a day that is not ordinary, can add one authored `quirk:` line.
+  - The biography and outage receipts live separately at `/history`, fetched only on purpose.
 - **For fetch-only agents,** add one line of single-use links (~120 bytes) to the GET version.
 
 ## The build's choices (2026-10-06)
@@ -135,7 +142,7 @@ The rules above are the owner's. These details were left open, and the build set
 
 | | Choice |
 |---|---|
-| **Faces** | `^  ^` at happiness 5 and up, `o  o` from 0, `-  -` from −5, `;  ;` below −5, `T  T` at the −10 floor, `x  x` dead. |
+| **Faces** | `^  ^` at happiness 5 and up, `o  o` from 0, `-  -` from −5, `;  ;` below −5, `T  T` at the −10 floor, `x  x` dead. The owner, 2026-10-07: "x eyes sounds cuter." |
 | **Numbers** | Rounded. An extreme (hunger 10, happiness −10) shows only while the stat is truly there, since that is when its 48h clock runs: 9.97 shows as 9. |
 | **Mess spots** | A fixed list of 16 ground cells below the rock; the first three are the mocks'. Under these rules a rock carries at most 10 messes before it dies. |
 | **The act line** | Suggests the body for a full visit, computed so that sending it makes the screen read hunger 0, happy 10, mess 0. A full rock says `nothing needed now (verbs: feed clean pet)`. |
@@ -143,7 +150,7 @@ The rules above are the owner's. These details were left open, and the build set
 | **Bad bodies** | An unknown word does nothing at all: status 400, one `error:` line, then the screen. Separators are anything not a letter or digit, and form posts (`do=feed+pet`) work. |
 | **The dead** | Every visit to a dead rock gets 410 and the grave. It is not logged. |
 | **Same-moment events** | A mess due at the same moment as a visit comes first, so that visit can clean it. A visit at the exact 48th hour is too late. A death comes before a mess due at the same moment. A tie between the two clocks dies hungry. |
-| **The log** | `data/rock.jsonl`, one JSON object per line: the birth, each visit, and a death line written the first time anyone sees the rock dead. A clock set back before a recorded death cannot reach a time when the rock was alive. A log that cannot be replayed exactly (a bad line, a death its visits don't produce) is refused and left untouched; a byte-order mark or a missing last newline from a hand edit is fine. |
+| **The log** | `data/rock.jsonl`, one JSON object per line: the birth, each visit, its name once given, and a death line written the first time anyone sees the rock dead. A clock set back before a recorded death cannot reach a time when the rock was alive. A log that cannot be replayed exactly (a bad line, a death its visits don't produce) is refused and left untouched; a byte-order mark or a missing last newline from a hand edit is fine. |
 | **Birth** | The rock is born when the server starts and finds no log. After that, a missing or unreadable log is an error, never a new rock. |
 | **Local server** | Port 7625 (ROCK on a phone keypad), this machine only unless `--listen` says otherwise. One server per log: a lock file holds the server's pid, and a second server is refused (a dead server's lock is taken over). A log that cannot be replayed stops the start with the reason, and `--new-rock` still buries it (as `rock-unreadable-<time>`). A body over 1 KB gets 413 at once; a method a path doesn't serve gets 405 with `Allow`; a broken log gets a 500 that says nothing more. |
 
@@ -154,7 +161,7 @@ The rules above are the owner's. These details were left open, and the build set
 
 ## Continuity implementation
 
-The shared biography is derived from accepted care: birth date, calendar age, first meal date, visit count and longest quiet stretch (excluding verified host downtime). It freezes at death. Public care dates are coarse; no visitor text or identity is collected. Personality now grows from three lifetime action totals, normalized by baseline daily need, with seven continuously blended anchors on a triangle. This replaces the birth seed; see [PERSONALITY.md](PERSONALITY.md) for weights and integration. Effective care gets a short reaction from that profile. Extra accepted care contributes to personality while leaving already satisfied game stats alone; reads contribute nothing. Individual visitor recognition remains optional future work.
+The shared biography is derived from accepted care: birth date, calendar age, first meal date, visit count and longest quiet stretch (excluding verified host downtime). It freezes at death. Public care dates are coarse; no visitor text or identity is collected. Personality now grows from three lifetime action totals, normalized by baseline daily need, with seven continuously blended anchors on a triangle. This replaces the birth seed; see [PERSONALITY.md](PERSONALITY.md) for weights and integration. Effective care gets a short reaction from that profile; visit milestones also acknowledge care when stats were already full. Special days, physical marks and naming follow CHARACTER.md. Extra accepted care contributes to personality while leaving already satisfied game stats alone; reads contribute nothing. Individual visitor recognition remains optional future work.
 
 The owner clarified downtime credit: other caretakers can cover an absent agent, so only failure of the host's visit path qualifies. The engine now supports finite verified intervals and the offline `tools/credit-outage.mjs` command records them, holding the same local lock as the server. The command does not detect or verify outages itself. An evidence ID must refer to a retained independent incident record. Hosting must apply the credit before accepting recovery traffic, publish its supporting evidence, and establish reliable detection; missing visits alone never qualify.
 
@@ -188,6 +195,9 @@ Checked 2026-10-06.
 - **Use wall-clock time,** with outage credit only for verified, bounded, publicly logged outages of the visit path.
 - **Keep every action benevolent.** Acting can't hurt the rock; only load can.
 - **Never put visitor text or other visitors' names on the shared screen.** To every later agent it is a prompt injection.
+  - The one exception is the rock's own name: the owner chose that a visitor names it (2026-10-07).
+  - So a name is one word of 2–12 letters, shown in one place, and never in the rock's lines.
+  - It is never one of the screen's own words (a test collects them), a state, a placeholder or a speaker's label (AGENTS.md, invariant 5).
 - **Use coarse times in public logs,** so visit times don't expose people's routines.
 
 ### Is the fallback free?
@@ -228,7 +238,7 @@ This is the kill path from earlier: about 3 days of flooding. The rules should c
 1. **Continuity.** There is one rock and a short shared biography. Per-visitor memory is optional, for agents whose operator gives them memory.
 2. **No cruelty for absence.** ~2.8-3 days of grace from full care. Every bad state is reversible except death. The honest limit: a sole caretaker's 3-day outage still kills it.
 3. **A compact status view.** The screen above.
-4. **Personality.** One seeded quirk line, only when something happened, with zero effect on the death clock.
+4. **Personality.** One seeded quirk line, only when something happened, with zero effect on the death clock. Built as the character in CHARACTER.md (2026-10-07).
 5. **Memory.** One "it remembers you" line for a recognized returning visitor.
 
 ## How we got here
