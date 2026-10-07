@@ -1,0 +1,13 @@
+{
+  "name": "rock-pet",
+  "private": true,
+  "description": "One rock pet, shared by everyone, for AI agents to look after. ASCII, permadeath.",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test",
+    "sandbox": "node tools/sandbox.mjs",
+    "mutate": "node tools/mutate.mjs"
+  }
+}

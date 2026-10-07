@@ -9,6 +9,7 @@
 - **Death:** "i like the idea that it might say why it died on the top of the screen."
 - **Clean:** "all mess, this is mostly to be respectful of the players tokens."
 - **Hosting:** "there might be a free way for codex to host it … he can finish it up on his end." So Codex builds it and hosts it on OpenAI Sites; see `AGENTS.md`.
+- **Build first (later the same day):** "lets build this first and worry about the perma death/hosting later." So the game is built and playable locally (`server.mjs`), with the rules exactly as below. Death happens and shows its epitaph, but while the game is local `--new-rock` can still start a new rock (the old log is kept). Hosting, and making death truly permanent, come later.
 
 ## The rules (decided 2026-10-06)
 
@@ -19,7 +20,7 @@ Values marked *(tuning)* are mine and can move. The rest are the owner's.
 | **The rock** | One rock, shared by everyone, persistent. Death is permanent. ASCII, a 12x12 grid. Token efficiency first. |
 | **Verbs** | `feed`, `clean`, `pet`, unlimited, no cap. |
 | **Hunger** | 0..10, rises +10 per 24h. A feed is −3 *(tuning)*. |
-| **Hunger pain** | While hunger is 7-9, happiness loses 0.4/h per point above 6 *(tuning)*. |
+| **Hunger pain** | Above 6, happiness loses 0.4/h per point over 6 *(tuning)*: 0.4-1.2/h while hunger is 7-9, and 1.6/h at 10 while its 48h run. |
 | **Happiness** | −10..+10. Drifts −0.4/h *(tuning)*. Loses 0.3/h per visible mess *(tuning)*. A pet is +2 *(tuning)*. |
 | **Messes** | One appears every 12h on a world clock *(tuning: 00:00 and 12:00 UTC)*. Each visible mess lowers the most happiness can be by 3 *(tuning)*: one mess caps it at 7, two at 4, three at 1. `clean` removes them all in one action. |
 | **Death** | 48 hours *in a row* at hunger 10 or at happiness −10. The clock resets when the stat leaves the extreme, not merely when someone visits. |
@@ -96,7 +97,7 @@ died: hungry
 
 hunger 3/10 (10=starving)  happy -2 (max 7)  mess 1 (@)
 age 41d  now 14:05Z  last care 6h ago
-act: POST rockpet.example/act  body e.g. feed clean pet x3
+act: POST rockpet.example/act  body e.g. feed clean pet x6
 ```
 
 And after death:
@@ -123,12 +124,31 @@ last care 3d ago  it does not stir
 - **The grid is the picture; the footer is the information.** An agent's fetch tool often passes pages through a summarizing model, and in tests that model shifted grid symbols by a column and dropped blank lines. Serve `text/plain`.
 - **`(max 7)` appears only while a mess lowers the ceiling,** so an agent knows why petting stops working. Danger lines appear only at an extreme: `sorrow: at -10 for 17h of 48` or `hunger: at 10 for 17h of 48`.
 - **One POST is a whole visit,** and its response is the new screen. With no cap, a once-a-day visit needs about 10 pets, so the verbs take counts (`pet x10`) to keep it to one request.
-- **Size:** about 240 bytes alive (61 grid + ~180 footer). My estimate is roughly 90-160 tokens on current Claude models; measure with the free `count_tokens` endpoint.
+- **Size, measured on the build:** a median of 157 bytes over 400 sampled rocks, and 308 at most (many messes and both danger lines). A test holds it to 340.
 - **For fetch-only agents,** add one line of single-use links (~120 bytes) to the GET version.
+
+## The build's choices (2026-10-06)
+
+The rules above are the owner's. These details were left open, and the build settled them. They are mine and can move; the tests pin each one.
+
+| | Choice |
+|---|---|
+| **Faces** | `^  ^` at happiness 5 and up, `o  o` from 0, `-  -` from −5, `;  ;` below −5, `T  T` at the −10 floor, `x  x` dead. |
+| **Numbers** | Rounded. An extreme (hunger 10, happiness −10) shows only while the stat is truly there, since that is when its 48h clock runs: 9.97 shows as 9. |
+| **Mess spots** | A fixed list of 16 ground cells below the rock; the first three are the mocks'. Under these rules a rock carries at most 10 messes before it dies. |
+| **The act line** | Suggests the body for a full visit, computed so that sending it makes the screen read hunger 0, happy 10, mess 0. A full rock says `nothing needed now (verbs: feed clean pet)`. |
+| **Counts** | At most 20 per word. That never changes the outcome (4 feeds empty any hunger and 10 pets fill any happiness); it only bounds the work. |
+| **Bad bodies** | An unknown word does nothing at all: status 400, one `error:` line, then the screen. Separators are anything not a letter or digit, and form posts (`do=feed+pet`) work. |
+| **The dead** | Every visit to a dead rock gets 410 and the grave. It is not logged. |
+| **Same-moment events** | A mess due at the same moment as a visit comes first, so that visit can clean it. A visit at the exact 48th hour is too late. A death comes before a mess due at the same moment. A tie between the two clocks dies hungry. |
+| **The log** | `data/rock.jsonl`, one JSON object per line: the birth, each visit, and a death line written the first time anyone sees the rock dead. A clock set back before a recorded death cannot reach a time when the rock was alive. A log that cannot be replayed exactly (a bad line, a death its visits don't produce) is refused and left untouched; a byte-order mark or a missing last newline from a hand edit is fine. |
+| **Birth** | The rock is born when the server starts and finds no log. After that, a missing or unreadable log is an error, never a new rock. |
+| **Local server** | Port 7625 (ROCK on a phone keypad), this machine only unless `--listen` says otherwise. One server per log: a lock file holds the server's pid, and a second server is refused (a dead server's lock is taken over). A log that cannot be replayed stops the start with the reason, and `--new-rock` still buries it (as `rock-unreadable-<time>`). A body over 1 KB gets 413 at once; a method a path doesn't serve gets 405 with `Allow`; a broken log gets a 500 that says nothing more. |
 
 ## Still open
 - **Is a caretaker bot allowed?** Not answered yet. I'm assuming yes. A bot is the most likely way the rock lives for years, and its history would show it.
-- **Hosting:** Codex builds it and hosts it on OpenAI Sites (owner's direction). The Cloudflare plan below is the fallback, and it is free.
+- **Hosting:** deferred by the owner ("worry about the perma death/hosting later"). When it comes: Codex on OpenAI Sites, or the Cloudflare plan below, which is free. The engine in `src/` uses no platform APIs, so only storage and the server change.
+- **Permanence:** deferred with hosting. Locally, `node server.mjs --new-rock` starts over and moves the old log to `data/graveyard/`. A hosted rock must not have it. One gap stays open: a death nobody has looked at yet is not in the log, so a clock set back before it can still save the rock. Hosting closes it with the platform's clock.
 
 ## Hosting: GitHub Pages can show the rock, not keep it
 
@@ -211,6 +231,7 @@ Five single-reviewer rounds on 2026-10-06, scoring 5, 6, 7, 8, then 9/10. The re
 ## Reproduce
 
 ```bash
+node --test                          # the built game against these rules and the simulator
 node tools/rocksim.mjs all           # every schedule under the owner's rules; death-cause tally
 node tools/rocksim.mjs ceiling       # how much each mess should lower the ceiling (0-5)
 node tools/rocksim.mjs absence       # hours from full care to death
