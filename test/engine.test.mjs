@@ -21,7 +21,7 @@ function mulberry(seed) {
 
 test('the rules are the decided ones (the DESIGN-NOTES rules table)', () => {
   assert.deepEqual({ ...RULES }, {
-    version: 1, hungerPerHour: 10 / 24, feed: 3, painFrom: 6, painPerPoint: 0.4, decay: 0.4,
+    version: 1, outageMode: 'pause', hungerPerHour: 10 / 24, feed: 3, painFrom: 6, painPerPoint: 0.4, decay: 0.4,
     messPain: 0.3, messEveryH: 12, messCeil: 3, pet: 2, graceH: 48, maxCount: 20,
   });
 });

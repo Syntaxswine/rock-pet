@@ -24,6 +24,7 @@ Values marked *(tuning)* are mine and can move. The rest are the owner's.
 | **Happiness** | −10..+10. Drifts −0.4/h *(tuning)*. Loses 0.3/h per visible mess *(tuning)*. A pet is +2 *(tuning)*. |
 | **Messes** | One appears every 12h on a world clock *(tuning: 00:00 and 12:00 UTC)*. Each visible mess lowers the most happiness can be by 3 *(tuning)*: one mess caps it at 7, two at 4, three at 1. `clean` removes them all in one action. |
 | **Death** | 48 hours *in a row* at hunger 10 or at happiness −10. The clock resets when the stat leaves the extreme, not merely when someone visits. |
+| **Verified host outage** | Pause hunger, happiness and extreme timers for exactly the verified duration. Skip messes in `[start,end)`; resume the UTC mess schedule on recovery. A death at/before the outage start or an already recorded death remains permanent. Caretaker absence receives no credit. |
 | **Epitaph** | The top row names the cause (below). |
 
 ## What these rules produce
@@ -125,6 +126,7 @@ last care 3d ago  it does not stir
 - **`(max 7)` appears only while a mess lowers the ceiling,** so an agent knows why petting stops working. Danger lines appear only at an extreme: `sorrow: at -10 for 17h of 48` or `hunger: at 10 for 17h of 48`.
 - **One POST is a whole visit,** and its response is the new screen. With no cap, a once-a-day visit needs about 10 pets, so the verbs take counts (`pet x10`) to keep it to one request.
 - **Size, measured on the build:** a median of 157 bytes over 400 sampled rocks, and 308 at most (many messes and both danger lines). A test holds it to 340.
+- **Continuity additions:** the base screen keeps that budget. API responses add a short `history:` link; effective care can add one authored `quirk:` line. The biography and outage receipts live separately at `/history`, fetched only on purpose.
 - **For fetch-only agents,** add one line of single-use links (~120 bytes) to the GET version.
 
 ## The build's choices (2026-10-06)
@@ -149,6 +151,16 @@ The rules above are the owner's. These details were left open, and the build set
 - **Is a caretaker bot allowed?** Not answered yet. I'm assuming yes. A bot is the most likely way the rock lives for years, and its history would show it.
 - **Hosting:** deferred by the owner ("worry about the perma death/hosting later"). When it comes: Codex on OpenAI Sites, or the Cloudflare plan below, which is free. The engine in `src/` uses no platform APIs, so only storage and the server change.
 - **Permanence:** deferred with hosting. Locally, `node server.mjs --new-rock` starts over and moves the old log to `data/graveyard/`. A hosted rock must not have it. One gap stays open: a death nobody has looked at yet is not in the log, so a clock set back before it can still save the rock. Hosting closes it with the platform's clock.
+
+## Continuity implementation
+
+The shared biography is derived from accepted care: birth date, calendar age, first meal date, visit count and longest quiet stretch (excluding verified host downtime). It freezes at death. Public care dates are coarse; no visitor text or identity is collected. Effective care gets one stable, birth-seeded reaction. Reading or repeating ineffective care produces no reaction and changes no game stats. Individual visitor recognition remains optional future work.
+
+The owner clarified downtime credit: other caretakers can cover an absent agent, so only failure of the host's visit path qualifies. The engine now supports finite verified intervals and the offline `tools/credit-outage.mjs` command records them, holding the same local lock as the server. The command does not detect or verify outages itself. An evidence ID must refer to a retained independent incident record. Hosting must apply the credit before accepting recovery traffic, publish its supporting evidence, and establish reliable detection; missing visits alone never qualify.
+
+Outage rows are append-only JSONL objects `{ "outage": { "start": 0, "end": 1, "evidence": "incident-id" } }`, with timestamps in epoch milliseconds. Start is inclusive and end exclusive for missed messes and rejected visits. Death due exactly at start takes precedence; a mess due exactly at recovery appears then. Intervals cannot overlap, precede the latest persisted event, include accepted care, extend into the future when credited, or follow a recorded death. Adjacent intervals are allowed without a spurious recovery mess between them. Base rule version 1 and old logs remain valid with identical behavior; old binaries reject the new row type rather than silently ignoring it.
+
+Persistence validation checks all event ordering, including history after computed death, and refuses any persisted visit the engine cannot apply. Lock recovery uses an exclusive acquisition gate to prevent simultaneous stale-lock takeovers. An interrupted gate fails closed and needs operator inspection; README records recovery steps.
 
 ## Hosting: GitHub Pages can show the rock, not keep it
 

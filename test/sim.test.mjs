@@ -28,6 +28,7 @@ function mulberry(seed) {
 
 test('the simulator and the engine run the same rules', () => {
   const S = sim.RULESETS.rock;
+  assert.equal(S.outageMode, RULES.outageMode);
   assert.equal(S.hungerPerHour, RULES.hungerPerHour);
   assert.equal(S.feed, RULES.feed);
   assert.equal(S.decay, RULES.decay);

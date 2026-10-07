@@ -4,6 +4,7 @@
 
 import { RULES } from './rules.mjs';
 import { VERBS } from './parse.mjs';
+import { isTime, validateOutages } from './outages.mjs';
 
 const CAUSES = ['hungry', 'filthy', 'lonely'];
 const isAct = a => Array.isArray(a) && a.length === 2 && VERBS.includes(a[0]) &&
@@ -18,26 +19,37 @@ export function parseLog(text) {
     try { return JSON.parse(line); } catch { throw new Error(`line ${i + 1} is not JSON`); }
   });
   const [head, ...rest] = rows;
-  if (!Number.isFinite(head?.born)) throw new Error('line 1 is not a birth');
+  if (!isTime(head?.born)) throw new Error('line 1 is not a birth');
   const log = { born: head.born, rules: head.rules, visits: [], died: null };
-  // Here only the shape. Time order is refused by the engine's replay, and a recorded death
-  // that the visits do not produce by rock.mjs.
+  // Validate the whole history even when replay would stop early at death.
+  let last = log.born;
   rest.forEach((row, i) => {
     const where = `line ${i + 2}`;
     if (log.died) throw new Error(`${where} comes after the death`);
+    if (row !== null && typeof row === 'object' && 'outage' in row) {
+      const o = row.outage;
+      if (!o || !isTime(o.start) || !isTime(o.end) || o.start < last) throw new Error(`${where} is not an ordered outage`);
+      (log.outages ??= []).push({ start: o.start, end: o.end, evidence: o.evidence });
+      last = o.end;
+      return;
+    }
     if (row !== null && typeof row === 'object' && 'died' in row) {
-      if (!Number.isFinite(row.died) || !CAUSES.includes(row.cause)) throw new Error(`${where} is not a death`);
+      if (!isTime(row.died) || !CAUSES.includes(row.cause)) throw new Error(`${where} is not a death`);
       log.died = { t: row.died, cause: row.cause };
       return;
     }
-    if (!(Number.isFinite(row?.t) && Array.isArray(row.acts) && row.acts.length > 0 && row.acts.every(isAct))) {
+    if (!(isTime(row?.t) && Array.isArray(row.acts) && row.acts.length > 0 && row.acts.every(isAct))) {
       throw new Error(`${where} is not a visit`);
     }
+    if (row.t < last) throw new Error(`${where}: visits out of time order`);
+    last = row.t;
     log.visits.push({ t: row.t, acts: row.acts });
   });
+  validateOutages(log);
   return log;
 }
 
 export const birthLine = born => JSON.stringify({ born, rules: RULES.version }) + '\n';
 export const visitLine = visit => JSON.stringify({ t: visit.t, acts: visit.acts }) + '\n';
 export const deathLine = died => JSON.stringify({ died: died.t, cause: died.cause }) + '\n';
+export const outageLine = outage => JSON.stringify({ outage }) + '\n';

@@ -4,6 +4,7 @@
 // Pure: no clock, no I/O, no platform APIs, so it runs unchanged in Node or in a Worker.
 
 import { RULES as R } from './rules.mjs';
+import { validateOutages } from './outages.mjs';
 
 export const HOUR = 3_600_000; // ms
 const MESS_MS = R.messEveryH * HOUR;
@@ -117,13 +118,31 @@ function addMess(s) {
 }
 
 // Everything from s.t up to and including time T: the flow, and each mess as it falls due.
-function advance(s, T) {
+function advanceActive(s, T, includeEndMess = true) {
   while (!s.dead && s.t < T) {
     const mess = nextMessAfter(s.t);
     if (mess > T) { flow(s, T); break; }
     flow(s, mess);
-    if (!s.dead) addMess(s);
+    if (!s.dead && (mess < T || includeEndMess)) addMess(s);
   }
+}
+
+// Keep timestamps and the mess schedule in UTC. Nothing decays during a verified
+// outage, and missed messes are not queued up for recovery. Death at its start wins.
+function advance(s, T, outages) {
+  for (let i = 0; i < outages.length && !s.dead && s.t < T; i++) {
+    const o = outages[i];
+    if (o.end <= s.t || o.start > T) continue;
+    if (s.t < o.start) advanceActive(s, o.start, false);
+    if (s.dead) return;
+    const end = Math.min(T, o.end);
+    const paused = end - s.t;
+    if (s.starvingSince !== null) s.starvingSince += paused;
+    if (s.sorrowSince !== null) s.sorrowSince += paused;
+    s.t = end;
+    if (end === o.end && end % MESS_MS === 0 && outages[i + 1]?.start !== end) addMess(s);
+  }
+  if (!s.dead) advanceActive(s, T);
 }
 
 /**
@@ -134,16 +153,18 @@ function advance(s, T) {
  * ever comes.
  */
 export function replay(log, now) {
+  validateOutages(log);
+  const outages = log.outages ?? [];
   const s = born(log.born);
   let last = log.born;
   for (const v of log.visits) {
     if (!(v.t >= last)) throw new Error(`visits out of time order at ${v.t}`);
     last = v.t;
     if (v.t > now) break;
-    advance(s, v.t);
+    advance(s, v.t, outages);
     if (s.dead) break;
     applyVisit(s, v.acts);
   }
-  if (!s.dead) advance(s, now);
+  if (!s.dead) advance(s, now, outages);
   return s;
 }

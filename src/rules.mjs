@@ -2,6 +2,7 @@
 // reference model; test/sim.test.mjs fails if the two drift apart. Change both in one commit.
 export const RULES = Object.freeze({
   version: 1,             // stored in every rock's log; a log is only replayed under its own rules
+  outageMode: 'pause',    // verified [start,end) host outages pause all decay and skip messes
   hungerPerHour: 10 / 24, // hunger 0..10 rises +10 per 24h
   feed: 3,                // one feed: hunger -3 (floor 0)
   painFrom: 6,            // hunger pain while hunger is above 6 (7-9, and at 10)

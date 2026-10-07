@@ -54,8 +54,8 @@ const MUTANTS = [
   ['the log takes a line after the death', 'src/log.mjs', 'if (log.died) throw new Error(`${where} comes after the death`);', ''],
   ['the engine replays visits out of order', 'src/engine.mjs', "if (!(v.t >= last)) throw new Error(`visits out of time order at ${v.t}`);", ''],
   ['a dead rock accepts visits', 'src/rock.mjs', 'if (s.dead) return { status: 410', 'if (false) return { status: 410'],
-  ['a clock that steps back is trusted', 'src/rock.mjs', 'log.visits.at(-1)?.t ?? -Infinity, ', ''],
-  ['a recorded death does not hold the clock', 'src/rock.mjs', ', log.died?.t ?? -Infinity)', ')'],
+  ['a clock that steps back is trusted', 'src/rock.mjs', 'Math.max(now, log.born, log.visits.at(-1)?.t ?? -Infinity, ', 'Math.max(now, log.born, '],
+  ['a recorded death does not hold the clock', 'src/rock.mjs', ', log.died?.t ?? -Infinity,', ','],
   ['a death is never recorded', 'src/rock.mjs', 'const firstSight = (log, s) => (s.dead && !log.died ? { died: s.dead } : {});', 'const firstSight = () => ({});'],
   ['a recorded death is not checked', 'src/rock.mjs', 'if (log.died && !(s.dead', 'if (false && !(s.dead'],
   ['a refused body is still logged', 'server.mjs', "(r.visit ? visitLine(r.visit) : '')", "visitLine(r.visit ?? { t: Date.now() + 1e7, acts: [['pet', 1]] })"],
@@ -64,7 +64,7 @@ const MUTANTS = [
   ['a missing log gives birth', 'server.mjs', "    const text = fs.readFileSync(file, 'utf8');\n    const r = decide", "    ensureRock(file, now());\n    const text = fs.readFileSync(file, 'utf8');\n    const r = decide"],
   ['the 500 says what went wrong', 'server.mjs', 'r = { status: 500, text: BROKEN };', 'r = { status: 500, text: `error: ${e.message}. nothing was changed.` };'],
   ['no cache-control', 'server.mjs', "'cache-control': 'no-store'", "'x-cache-control': 'no-store'"],
-  ['405 without Allow', 'server.mjs', "{ allow: 'GET, HEAD' }", '{}'],
+  ['405 without Allow', 'server.mjs', "'error: GET / to see the rock; POST /act to care for it.\\n', { allow: 'GET, HEAD' }", "'error: GET / to see the rock; POST /act to care for it.\\n', {}"],
   ['no body limit', 'server.mjs', 'if (size <= MAX_BODY) return void chunks.push(c);', 'return void chunks.push(c);'],
   ['the 413 waits for the end of the body', 'server.mjs', '        req.resume();', "        return void req.on('end', () => send(413, 'too big', { connection: 'close' }));"],
   ['the request path is parsed as a URL', 'server.mjs', "const route = (req.url ?? '/').split('?')[0];", "const route = new URL(req.url, 'http://localhost').pathname;"],
@@ -73,18 +73,18 @@ const MUTANTS = [
   // Round 2: behaviours from round 1 that no test could fail.
   ['a restart replaces the rock', 'server.mjs', "{ flag: 'wx' }); } catch (e) { if (e.code !== 'EEXIST') throw e; }\n}", "{ flag: 'w' }); } catch (e) { if (e.code !== 'EEXIST') throw e; }\n}"],
   ['a clock behind the birth is trusted', 'src/rock.mjs', 'Math.max(now, log.born, ', 'Math.max(now, '],
-  ['a refused act never records the death', 'src/rock.mjs', "{ status: 410, text: render(s, { now: t, host }), ...firstSight(log, s) }", "{ status: 410, text: render(s, { now: t, host }) }"],
+  ['a refused act never records the death', 'src/rock.mjs', "{ status: 410, text: render(s, { now: t, host }) + `history: ${host}/history\\n`, ...firstSight(log, s) }", "{ status: 410, text: render(s, { now: t, host }) + `history: ${host}/history\\n` }"],
   ['a recorded death at the wrong moment passes', 'src/rock.mjs', 's.dead.t === log.died.t && ', ''],
   ['the 413 still acts on the part it read', 'server.mjs', "        req.removeAllListeners('end');\n", ''],
   ['the log takes a count of 1.5', 'src/log.mjs', 'Number.isInteger(a[1])', 'Number.isFinite(a[1])'],
   ['the log takes a count of 0', 'src/log.mjs', 'a[1] >= 1 &&', 'a[1] >= 0 &&'],
   ['the log takes an act of three parts', 'src/log.mjs', 'a.length === 2 &&', ''],
-  ['the log takes a birth that is not a time', 'src/log.mjs', 'Number.isFinite(head?.born)', "head?.born !== undefined"],
-  ['the log takes a death at no time', 'src/log.mjs', '!Number.isFinite(row.died) || ', ''],
+  ['the log takes a birth that is not a time', 'src/log.mjs', 'isTime(head?.born)', "head?.born !== undefined"],
+  ['the log takes a death at no time', 'src/log.mjs', '!isTime(row.died) || ', ''],
   ['the log takes a death of any cause', 'src/log.mjs', ' || !CAUSES.includes(row.cause)', ''],
   // Round 2: the fixes.
   ['the screen prints localhost', 'server.mjs', '`127.0.0.1:${port}`', '`localhost:${port}`'],
-  ['no lock', 'server.mjs', "    try { return void fs.writeFileSync(lockOf(file), String(process.pid), { flag: 'wx' }); }", "    try { return void fs.writeFileSync(lockOf(file), String(process.pid), { flag: 'w' }); }"],
+  ['no lock', 'server.mjs', "try { return void fs.writeFileSync(lockOf(file), String(process.pid), { flag: 'wx' }); }", "try { return void fs.writeFileSync(lockOf(file), String(process.pid), { flag: 'w' }); }"],
   ['a stale lock is never taken over', 'server.mjs', 'if (pid > 0 && alive(pid)) throw', 'if (pid > 0) throw'],
   ['closing keeps the lock', 'server.mjs', "server.on('close', () => { release(); process.off('exit', release); });", "server.on('close', () => { process.off('exit', release); });"],
   ['a refused start keeps the lock', 'server.mjs', '  } catch (e) {\n    release();\n    throw e;', '  } catch (e) {\n    throw e;'],
@@ -93,11 +93,25 @@ const MUTANTS = [
   ['JSON bodies read as words', 'src/parse.mjs', "  try { json = /^[{\"]/.test(text) ? JSON.parse(text) : undefined; } catch { /* not JSON after all: words */ }\n", ''],
   ['the sandbox meets a bad log mid-game', 'tools/sandbox.mjs', '  look(log, { now: Date.now(), host: HOST }); // refuse a log this build cannot replay now, not mid-game\n', ''],
   ['a form key that is a verb is dropped', 'src/parse.mjs', "(VERBS.includes(String(k).toLowerCase()) ? `${k} ${v}` : String(v))", 'String(v)'],
+  ['no acquisition gate', 'server.mjs', "fs.writeFileSync(gate, String(process.pid), { flag: 'wx' });", "fs.writeFileSync(gate, String(process.pid), { flag: 'w' });"],
+  ['post-death visits pass persistence validation', 'src/rock.mjs', "  if (s.visits !== log.visits.length) throw new Error('the log contains visits at or after death');", ''],
+  ['outages do not pause the engine', 'src/engine.mjs', 'const outages = log.outages ?? [];', 'const outages = [];'],
+  ['starvation advances during downtime', 'src/engine.mjs', 'if (s.starvingSince !== null) s.starvingSince += paused;', ''],
+  ['sorrow advances during downtime', 'src/engine.mjs', 'if (s.sorrowSince !== null) s.sorrowSince += paused;', ''],
+  ['a mess appears as the outage starts', 'src/engine.mjs', 'advanceActive(s, o.start, false)', 'advanceActive(s, o.start, true)'],
+  ['recovery skips its due mess', 'src/engine.mjs', 'end === o.end && end % MESS_MS === 0', 'false && end % MESS_MS === 0'],
+  ['adjoining outages create a mess between them', 'src/engine.mjs', ' && outages[i + 1]?.start !== end', ''],
+  ['a recorded death can receive credit', 'src/rock.mjs', "  if (log.died) throw new Error('a recorded death is permanent');", ''],
+  ['future downtime can be credited', 'src/rock.mjs', ' || outage.end > now', ''],
+  ['credit without evidence', 'src/outages.mjs', "typeof o.evidence !== 'string' || !EVIDENCE.test(o.evidence)", 'false'],
+  ['care inside an outage is accepted', 'src/outages.mjs', 'log.visits.some(v => v.t >= o.start && v.t < o.end)', 'false'],
+  ['personality changes on every reply', 'src/story.mjs', 'Math.abs(Math.trunc(birth / 1000)) % 3', '((globalThis.__mutantQuirk = (globalThis.__mutantQuirk ?? 0) + 1) % 3)'],
+  ['biography includes downtime in quiet stretches', 'src/outages.mjs', 'ms -= Math.max(0, Math.min(end, o.end) - Math.max(start, o.start));', 'ms -= 0;'],
 ];
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'rockpet-mutate-'));
-for (const p of ['src', 'test', 'tools/rocksim.mjs', 'tools/sandbox.mjs', 'server.mjs', 'package.json']) fs.cpSync(path.join(root, p), path.join(work, p), { recursive: true });
+for (const p of ['src', 'test', 'tools/rocksim.mjs', 'tools/sandbox.mjs', 'tools/credit-outage.mjs', 'server.mjs', 'package.json']) fs.cpSync(path.join(root, p), path.join(work, p), { recursive: true });
 
 // The suite's verdict: the names of the top-level tests that failed (TAP, one process).
 function suite() {
@@ -117,7 +131,7 @@ if (control.failed.length) {
 console.log(`control: the unmutated suite passes. ${MUTANTS.length} mutants:\n`);
 for (const [name, rel, find, replace] of MUTANTS) {
   const file = path.join(work, rel);
-  const original = fs.readFileSync(file, 'utf8');
+  const original = fs.readFileSync(file, 'utf8').replaceAll('\r\n', '\n');
   const hits = original.split(find).length - 1;
   if (hits !== 1) { console.log(`  BROKEN    ${name}: its text occurs ${hits} times in ${rel}`); bad++; continue; }
   let failed;

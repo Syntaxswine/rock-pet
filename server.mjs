@@ -10,6 +10,7 @@
 //                                     a new rock (only while permadeath waits for hosting)
 //
 //   GET /        the screen (text/plain, no-store)
+//   GET /history the shared biography and verified downtime receipts
 //   POST /act    a body of verbs, e.g. "feed clean pet x3"; the reply is the new screen
 //
 // The rock is born when the server starts and finds no log. After that, a missing or unreadable
@@ -19,7 +20,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { look, act } from './src/rock.mjs';
+import { look, act, history } from './src/rock.mjs';
 import { parseLog, birthLine, visitLine, deathLine } from './src/log.mjs';
 
 const MAX_BODY = 1024; // bytes; a full visit is under 30
@@ -61,6 +62,11 @@ export function createRockServer({ file, host, now = Date.now, onError = console
     };
     req.on('error', () => {});
     const route = (req.url ?? '/').split('?')[0]; // never parsed as a URL, so a malformed one cannot throw
+
+    if (route === '/history') {
+      if (req.method === 'GET' || req.method === 'HEAD') return answer((log, t) => history(log, { now: t }));
+      return send(405, 'error: GET /history to read the shared biography.\n', { allow: 'GET, HEAD' });
+    }
 
     if (route === '/') {
       if (req.method === 'GET' || req.method === 'HEAD') return answer((log, t) => look(log, { now: t, host }));
@@ -121,15 +127,26 @@ export function bury(file, now = Date.now()) {
 // server's pid; a lock whose process is gone (a hard kill) is stale and taken over.
 const lockOf = file => `${file}.lock`;
 const alive = pid => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
-function takeLock(file) {
-  for (;;) {
-    try { return void fs.writeFileSync(lockOf(file), String(process.pid), { flag: 'wx' }); } catch (e) { if (e.code !== 'EEXIST') throw e; }
-    const pid = Number(fs.readFileSync(lockOf(file), 'utf8'));
-    if (pid > 0 && alive(pid)) throw new Error(`another server (pid ${pid}) is already serving ${file}`);
-    fs.rmSync(lockOf(file), { force: true });
+export function takeLock(file) {
+  // Serialize *all* acquisition/recovery. Without this gate two starters can read the
+  // same stale PID and the second can unlink the first's newly acquired lock.
+  // A crash while holding the gate fails closed; never guess that a gate is stale.
+  const gate = `${lockOf(file)}.starting`;
+  try { fs.writeFileSync(gate, String(process.pid), { flag: 'wx' }); }
+  catch (e) {
+    if (e.code === 'EEXIST') throw new Error(`another server is starting, or startup was interrupted: inspect ${gate}`);
+    throw e;
   }
+  try {
+    for (;;) {
+      try { return void fs.writeFileSync(lockOf(file), String(process.pid), { flag: 'wx' }); } catch (e) { if (e.code !== 'EEXIST') throw e; }
+      const pid = Number(fs.readFileSync(lockOf(file), 'utf8'));
+      if (pid > 0 && alive(pid)) throw new Error(`another server (pid ${pid}) is already serving ${file}`);
+      fs.rmSync(lockOf(file), { force: true });
+    }
+  } finally { fs.rmSync(gate); }
 }
-function releaseLock(file) {
+export function releaseLock(file) {
   try { if (fs.readFileSync(lockOf(file), 'utf8') === String(process.pid)) fs.rmSync(lockOf(file)); } catch {}
 }
 

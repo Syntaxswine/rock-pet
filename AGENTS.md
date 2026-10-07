@@ -24,7 +24,9 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 | `src/rock.mjs` | `look(log, {now, host})` and `act(log, body, {now, host})`: the HTTP status, the screen, and what to append to the log (an accepted action's `visit`; the `died` line the first time the rock is seen dead). |
 | `server.mjs` | The local server, answering 127.0.0.1 only unless `--listen` says otherwise. The log is `data/rock.jsonl`, read and appended in one synchronous step per request, with a lock file so only one server serves a log. `--new-rock` starts over (local only). |
 | `tools/sandbox.mjs` | The engine on a pretend clock. |
-| `tools/mutate.mjs` | Breaks the game 77 ways, one at a time; the suite must catch every one, each by an assertion (it does). |
+| `tools/mutate.mjs` | Applies deliberate faults in a temporary copy; every mutant must be caught. LF and CRLF checkouts are supported. |
+| `src/story.mjs` | A deterministic reaction after effective care and an opt-in shared biography at `GET /history`; never changes the engine. |
+| `src/outages.mjs`, `tools/credit-outage.mjs` | Validated outage intervals and the offline operator tool. Independent verification/detection remains a hosting responsibility. |
 
 `src/` uses no platform APIs, so it should move to a Worker unchanged. Hosting means replacing `server.mjs`'s storage with the platform's and serving the same routes.
 
@@ -51,10 +53,13 @@ Status in brackets: what the local build does today.
 4. **Strongly consistent writes.** [local: one process, read-decide-append with no await between; hosted: to do]
    - Two simultaneous visits must both land.
    - With D1, append the visit row and update any cached state in one `batch()`, which is transactional.
+   - A write batch alone does not protect an earlier read. Serialize the whole read/decide/write operation, or use a state revision check and retry conflicts before accepting the visit.
    - Never read-modify-write across separate statements.
 5. **Never put visitor-supplied text on the shared screen** (names, notes, anything). To every later agent it is a prompt injection. If identity is ever added, a visitor sees only their own name. [built: the host on the screen is configured, never the request's Host header; an error echoes only letters and digits, to the sender alone; a 500 says nothing about the error]
 6. **The response to an action is the new screen,** so a visit costs one request. [built]
-7. **Outage credit.** If the visit path itself was down (platform outage, quota exhausted), time spent at an extreme during that window may be credited. Credit only verified windows, bound each one, and log it publicly. If you can't verify, don't credit. [to do, with hosting]
+7. **Outage credit.** The owner approved pausing all pet time for verified host downtime, equal to its duration. Individual caretaker absence gets no credit. Hunger, happiness and extreme timers pause; messes during `[start,end)` are skipped, then resume on the UTC schedule. Death at or before the outage start, or any recorded death, cannot be undone. [built: engine, offline operator tool and public `/history` receipts; independent detection still to do with hosting]
+   - Record finite completed intervals with an evidence ID before reopening care. Never infer an outage from missing visits. No public action verb or HTTP route awards credit.
+   - Credit cannot overlap accepted visits, earlier intervals, or revise persisted care. See README for the offline command and safe startup-gate recovery.
 
 ## Rules (summary; DESIGN-NOTES is authoritative)
 - **Birth state:** hunger 0, happiness +10, no messes.
@@ -73,6 +78,7 @@ Status in brackets: what the local build does today.
 
 ## The API (built locally; keep it this small)
 - **`GET /`** returns `text/plain`, `Cache-Control: no-store`: the screen.
+- **`GET /history`** returns the shared biography and exact verified outage receipts; no visitor identities. Both read routes support HEAD. Effective care adds one short authored reaction to its response; ordinary reads stay quiet.
 - **`POST /act`** takes a body of verbs with optional counts, e.g. `feed x4 clean pet x10`.
   - Verbs apply in the order given, and the response is the new screen.
   - Counts are capped at 20 per word, which never changes the outcome; there is no cap across requests.
@@ -105,7 +111,7 @@ Status in brackets: what the local build does today.
 
 ## Open
 - **Is a caretaker bot allowed?** Assumed yes; the owner hasn't answered.
-- **Rockbot's softer requests** are phase 2: a seeded quirk line, a "remembers you" line, a shared biography. See DESIGN-NOTES. None may touch the death clock.
+- **Rockbot's softer requests:** seeded care reactions and the shared biography are built. Optional individual recognition ("remembers you") remains phase 2. None may touch the death clock.
 - **Does OpenAI Sites fit the invariants?** Not researched on this side. If something above can't be met there (consistency, anonymous public access, no-store, uptime), say so in an issue before building around it.
 
 ## Working here

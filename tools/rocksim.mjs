@@ -47,6 +47,7 @@ const RULESETS = {
   // The owner's decisions of 2026-10-06: no pet cap, messes cap happiness, clean removes all,
   // pain while hunger is 7-9 (pain above 6), 48h in a row at an extreme is death.
   rock: {
+    outageMode: 'pause',
     note: 'owner rules: decay 0.4/h, 12h world-clock mess 0.3/h each + ceiling, hunger pain above 6, pet +2, no cap',
     hungerPerHour: 10 / 24, feed: 3,
     hungerPain: h => 0.4 * Math.max(0, h - 6),
@@ -125,20 +126,29 @@ function stepExtreme(X, atExtreme, t, n, mode) {
   return X.since === null ? 0 : t - X.since;
 }
 
-function tick(R, rock) {
+function tick(R, rock, outages = []) {
+  if (outages.length && modeOf(R) !== 'continuous') throw new Error('outage simulation supports the decided continuous death clocks only');
+  const from = rock.t;
   rock.t += DT; rock.n++;
-  rock.h = Math.min(10, rock.h + R.hungerPerHour * DT);
+  const paused = outages.reduce((sum, o) => sum + Math.max(0, Math.min(rock.t, o.end) - Math.max(from, o.start)), 0);
+  const elapsed = Math.max(0, DT - paused);
+  if (rock.hungerX.since !== null) rock.hungerX.since += paused;
+  if (rock.sorrowX.since !== null) rock.sorrowX.since += paused;
+  rock.h = Math.min(10, rock.h + R.hungerPerHour * elapsed);
   if (rock.nextMess === null) scheduleMess(R, rock);
-  while (rock.t >= rock.nextMess) { rock.messes++; rock.nextMess += R.mess.every; }
-  const drain = (R.decay + R.hungerPain(rock.h) + R.messPain * rock.messes) * DT;
+  while (rock.t >= rock.nextMess) {
+    if (!outages.some(o => rock.nextMess >= o.start && rock.nextMess < o.end)) rock.messes++;
+    rock.nextMess += R.mess.every;
+  }
+  const drain = (R.decay + R.hungerPain(rock.h) + R.messPain * rock.messes) * elapsed;
   rock.loss += drain;
   rock.j = Math.max(-10, Math.min(ceilingOf(R, rock), rock.j - drain));
   const G = graceOf(R), mode = modeOf(R);
   const hx = stepExtreme(rock.hungerX, rock.h >= 10, rock.t, rock.n, mode);
   const sx = stepExtreme(rock.sorrowX, rock.j <= -10, rock.t, rock.n, mode);
-  if (rock.h >= 10 || rock.j <= -10) rock.tAtFloor += DT;
-  if (rock.j < 0) rock.tSad += DT;
-  rock.lived += DT;
+  if (rock.h >= 10 || rock.j <= -10) rock.tAtFloor += elapsed;
+  if (rock.j < 0) rock.tSad += elapsed;
+  rock.lived += elapsed;
   // The epitaph: hungry (hunger's 48h), filthy (sorrow's 48h with the mess ceiling at the floor),
   // lonely (sorrow's 48h for any other reason).
   if (G === 0 ? rock.h >= 10 : hx >= G) rock.dead = { t: rock.t, cause: 'hungry' };
