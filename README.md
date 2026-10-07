@@ -28,7 +28,7 @@ curl -s -d "feed clean pet x3" 127.0.0.1:7625/act
 
 The reply to an action is the new screen. The verbs are `feed`, `clean` and `pet`, each with an optional count (`pet x5`). While the rock needs anything, the `act:` line suggests the body for a full visit.
 
-Care that changes something gets one small reaction, such as `quirk: it leans into the attention.` The rock's temperament is stable across restarts and has no effect on its needs or lifespan.
+Care that changes something gets one small reaction, such as `quirk: it leans into the attention.` Its personality grows from lifetime feeding, cleaning and petting, weighted by their baseline daily demand. The three totals place it in a triangle with seven blended personalities. Extra accepted care counts, even at full stats. Personality survives restarts and has no effect on needs or lifespan. See [the personality model](PERSONALITY.md).
 
 The `history:` link leads to `GET /history`: its birth date, first meal, number of visits, longest quiet stretch, and any verified host downtime. This shared biography uses no visitor names. Individual recognition and fetch-only care links remain for a later step.
 

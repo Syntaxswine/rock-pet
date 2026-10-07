@@ -216,7 +216,7 @@ test('a stable short reaction follows effective care only and cannot change the 
   assert.deepEqual([after.hunger, after.happy, after.messes], [0, 10, 0]);
   assert.ok(Buffer.byteLength(r.text) < 440);
   const state = replay(log, h(20));
-  assert.equal(reaction(T, state, state), '');
+  assert.equal(reaction(log, state, state), '');
 });
 
 test('the shared biography derives meals and quiet stretches, with a public outage receipt', async () => {

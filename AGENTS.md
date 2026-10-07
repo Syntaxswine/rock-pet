@@ -26,6 +26,7 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 | `tools/sandbox.mjs` | The engine on a pretend clock. |
 | `tools/mutate.mjs` | Applies deliberate faults in a temporary copy; every mutant must be caught. LF and CRLF checkouts are supported. |
 | `src/story.mjs` | A deterministic reaction after effective care and an opt-in shared biography at `GET /history`; never changes the engine. |
+| `src/personality.mjs` | Three lifetime accepted-action counters, daily-demand weights, triangle coordinates and seven continuous personality blends. See `PERSONALITY.md`; extra care counts, and no survival rule changes. |
 | `src/outages.mjs`, `tools/credit-outage.mjs` | Validated outage intervals and the offline operator tool. Independent verification/detection remains a hosting responsibility. |
 
 `src/` uses no platform APIs, so it should move to a Worker unchanged. Hosting means replacing `server.mjs`'s storage with the platform's and serving the same routes.
@@ -111,7 +112,7 @@ Status in brackets: what the local build does today.
 
 ## Open
 - **Is a caretaker bot allowed?** Assumed yes; the owner hasn't answered.
-- **Rockbot's softer requests:** seeded care reactions and the shared biography are built. Optional individual recognition ("remembers you") remains phase 2. None may touch the death clock.
+- **Rockbot's softer requests:** care-derived personality reactions and the shared biography are built. Optional individual recognition ("remembers you") remains phase 2. None may touch the death clock.
 - **Does OpenAI Sites fit the invariants?** Not researched on this side. If something above can't be met there (consistency, anonymous public access, no-store, uptime), say so in an issue before building around it.
 
 ## Working here

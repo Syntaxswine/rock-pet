@@ -105,8 +105,14 @@ const MUTANTS = [
   ['future downtime can be credited', 'src/rock.mjs', ' || outage.end > now', ''],
   ['credit without evidence', 'src/outages.mjs', "typeof o.evidence !== 'string' || !EVIDENCE.test(o.evidence)", 'false'],
   ['care inside an outage is accepted', 'src/outages.mjs', 'log.visits.some(v => v.t >= o.start && v.t < o.end)', 'false'],
-  ['personality changes on every reply', 'src/story.mjs', 'Math.abs(Math.trunc(birth / 1000)) % 3', '((globalThis.__mutantQuirk = (globalThis.__mutantQuirk ?? 0) + 1) % 3)'],
+  ['personality changes on every reply', 'src/story.mjs', "profile.dominant?.id ?? 'balanced'", "((globalThis.__mutantQuirk = (globalThis.__mutantQuirk ?? 0) + 1) % 2 ? 'feed' : 'pet')"],
   ['biography includes downtime in quiet stretches', 'src/outages.mjs', 'ms -= Math.max(0, Math.min(end, o.end) - Math.max(start, o.start));', 'ms -= 0;'],
+  ['personality forgets all but the last visit', 'src/personality.mjs', 'for (const visit of log.visits)', 'for (const visit of log.visits.slice(-1))'],
+  ['personality counts requests rather than repetitions', 'src/personality.mjs', 'next[verb] += n;', 'next[verb] += 1;'],
+  ['personality ignores daily care demand', 'src/personality.mjs', 'totals[key] / daily[key]', 'totals[key]'],
+  ['balanced personality loses half its weight', 'src/personality.mjs', 'blend.balanced = 3 * shares[low];', 'blend.balanced = 1.5 * shares[low];'],
+  ['pair personalities lose half their weight', 'src/personality.mjs', '2 * (shares[middle] - shares[low])', '(shares[middle] - shares[low])'],
+  ['personality leaves out the current care', 'src/rock.mjs', 'reaction(afterLog, s, after)', 'reaction(log, s, after)'],
 ];
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

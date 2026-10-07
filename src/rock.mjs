@@ -68,6 +68,7 @@ export function act(log, body, { now, host }) {
   const parsed = parseActions(body);
   if (parsed.error) return { status: 400, text: `error: ${parsed.error}. nothing was done.\n${render(s, { now: t, host })}` };
   const visit = { t, acts: parsed.acts };
-  const after = replay({ ...log, visits: [...log.visits, visit] }, t);
-  return { status: 200, text: render(after, { now: t, host }) + reaction(log.born, s, after) + `history: ${host}/history\n`, visit };
+  const afterLog = { ...log, visits: [...log.visits, visit] };
+  const after = replay(afterLog, t);
+  return { status: 200, text: render(after, { now: t, host }) + reaction(afterLog, s, after) + `history: ${host}/history\n`, visit };
 }
