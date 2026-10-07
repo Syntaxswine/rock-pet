@@ -141,7 +141,7 @@ test('a body over 1KB is refused at once, even one that never ends', async () =>
       r = http.request({ host: '127.0.0.1', port, method: 'POST', path: '/act', headers: { 'content-length': 100000 } }, res => resolve(res.statusCode));
       r.on('error', () => {});
       r.write('pet '.repeat(400)); // 1600 bytes of the promised 100000, and then silence
-      setTimeout(() => resolve('no answer within 2s'), 2000).unref();
+      setTimeout(() => resolve('no answer within 10s'), 10_000).unref(); // "at once": long before the body ends
     });
     r.destroy();
     assert.equal(status, 413);

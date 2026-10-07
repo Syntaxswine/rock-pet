@@ -11,6 +11,7 @@ import { look, act, newLog, creditOutage, history } from '../src/rock.mjs';
 import { replay, HOUR } from '../src/engine.mjs';
 import { recordOutage } from '../tools/credit-outage.mjs';
 import { reaction } from '../src/story.mjs';
+import { occasion } from '../src/character.mjs';
 import * as sim from '../tools/rocksim.mjs';
 
 const T = Date.UTC(2026, 9, 6);
@@ -202,21 +203,26 @@ test('the outage CLI records exact UTC intervals and refuses invalid calendar da
   } finally { remove(dir); }
 });
 
-test('a stable short reaction follows effective care only and cannot change the engine', () => {
+test('a stable short reaction follows care milestones or effective care and cannot change the engine', () => {
   const log = newLog(T), before = JSON.stringify(log);
   const r = act(log, 'feed x4 clean pet x10', options(h(20)));
   assert.match(r.text, /quirk: it /);
   for (let i = 0; i < 6; i++) assert.equal(r.text, act(log, 'feed x4 clean pet x10', options(h(20))).text);
   assert.equal(JSON.stringify(log), before);
-  assert.equal(look(log, options(h(20))).text.includes('quirk:'), false);
-  assert.equal(act(log, 'feed clean pet x10', options(T)).text.includes('quirk:'), false);
+  // Ordinary reads stay quiet. Not every day is ordinary: this rock faces the wall on Tuesdays,
+  // and a look then says so (test/character.test.mjs), so this look is the next morning.
+  const cared = { ...log, visits: [r.visit] };
+  assert.equal(occasion(replay(cared, h(30)), h(30)), null);
+  assert.equal(look(cared, options(h(30))).text.includes('quirk:'), false);
+  assert.match(act(log, 'feed clean pet x10', options(T)).text, /quirk: it has had its first visitor\./);
+  assert.equal(act(cared, 'feed clean pet x10', options(h(20))).text.includes('quirk:'), false);
   assert.equal(act(log, 'hug', options(h(20))).text.includes('quirk:'), false);
   assert.equal(act(log, 'pet', options(h(100))).text.includes('quirk:'), false);
   const after = replay({ ...log, visits: [r.visit] }, h(20));
   assert.deepEqual([after.hunger, after.happy, after.messes], [0, 10, 0]);
   assert.ok(Buffer.byteLength(r.text) < 440);
   const state = replay(log, h(20));
-  assert.equal(reaction(T, state, state), '');
+  assert.equal(reaction(log, state, state), '');
 });
 
 test('the shared biography derives meals and quiet stretches, with a public outage receipt', async () => {

@@ -62,20 +62,36 @@ export function born(t) {
     sorrowSince: null,   // when happiness reached -10, while it stays there
     dead: null,          // { t, cause: 'hungry' | 'filthy' | 'lonely' }
     lastCare: null, visits: 0,
+    // What its life has been, for its character (character.mjs); nothing here reads them.
+    closeCalls: 0,       // stretches at an extreme, a day or more long, that someone ended
+    brink: false,        // in such a stretch now, not yet ended
+    fed: 0,              // hunger taken away by feeding, in points, over its life
+    petted: 0,           // happiness given by petting, in points, over its life
   };
 }
 
 /** One visit's verbs, in the order given. No verb, count or order can make any stat worse. */
 export function applyVisit(s, acts) {
+  const hunger = s.hunger, happy = s.happy;
   for (const [verb, n] of acts) {
     if (verb === 'feed') s.hunger = Math.max(0, s.hunger - R.feed * n);
     else if (verb === 'clean') s.messes = 0;
     else if (verb === 'pet') s.happy = Math.min(ceilingOf(s.messes), s.happy + R.pet * n);
     else throw new Error(`unknown verb: ${verb}`);
   }
+  // Counted for its character, never read by the rules. Only feeding lowers hunger and only
+  // petting raises happiness, so these are what the care itself did, however much was asked.
+  s.fed += hunger - s.hunger;
+  s.petted += s.happy - happy;
+  // A close call: a stretch at an extreme, with a day or more of it at one, ended. It counts
+  // once, when the last of its clocks stops, so a rock lifted off one extreme while the other
+  // runs on has not been saved yet, and one that dies first never was.
+  const long = since => since !== null && s.t - since >= GRACE_MS / 2;
+  if (long(s.starvingSince) || long(s.sorrowSince)) s.brink = true;
   // An extreme's clock resets when the stat LEAVES the extreme, not merely because someone came.
   if (s.hunger < 10) s.starvingSince = null;
   if (s.happy > -10) s.sorrowSince = null;
+  if (s.brink && s.starvingSince === null && s.sorrowSince === null) { s.closeCalls++; s.brink = false; }
   s.lastCare = s.t;
   s.visits++;
 }

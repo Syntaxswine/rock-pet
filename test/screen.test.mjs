@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { render, eyes, fullCare, shownHunger, shownHappy, MESS_SPOTS, W } from '../src/screen.mjs';
+import { DRAWINGS, DRAWING } from '../src/drawings.mjs';
+import { placeAt } from '../src/character.mjs';
 import { replay, applyVisit, born, HOUR } from '../src/engine.mjs';
 import { parseActions } from '../src/parse.mjs';
 import { RULES } from '../src/rules.mjs';
@@ -8,7 +10,18 @@ import { RULES } from '../src/rules.mjs';
 const MIN = 60_000, DAY = 24 * HOUR;
 const T0 = Date.UTC(2026, 0, 1);
 const state = o => ({ ...born(0), ...o });
-const show = (s, now = s.t) => render(s, { now, host: 'rockpet.example' });
+const show = (s, now = s.t, name = null) => render(s, { now, host: 'rockpet.example', name });
+
+// The drawing as a screen must show it, for a rock drawn front on: every outline cell where the
+// rock has moved to, its eyes in their cells. Only a mark slot may differ (moss grows outside it).
+function assertIntact(grid, s, now, d = DRAWINGS[DRAWING]) {
+  const { col: dx } = placeAt(s.born, s.dead ? s.dead.t : now);
+  const slots = new Set([...d.veins, ...d.polish, ...d.crystals].map(([r, c]) => `${r},${c}`));
+  d.front.forEach((row, r) => [...row].forEach((cell, c) => {
+    if (cell === ' ' || slots.has(`${r},${c}`)) return;
+    assert.equal(grid[1 + r][c + dx], cell === 'E' ? eyes(s)[0] : cell, `row ${1 + r}, column ${c + dx}:\n${grid.join('\n')}`);
+  }));
+}
 
 function mulberry(seed) {
   let a = seed >>> 0;
@@ -41,22 +54,38 @@ function sampleRocks(n, seed) {
 test('the alive screen is the DESIGN-NOTES mock', () => {
   const now = Date.UTC(2026, 10, 16, 14, 5);
   const s = state({ born: now - 41 * DAY - 20 * HOUR, t: now, hunger: 3.2, happy: -2.2, messes: 1, lastCare: now - 6 * HOUR - 40 * MIN, visits: 9 });
-  assert.equal(show(s), [
-    '3         -2', '', '', '   .----.', '  ( -  - )', "   '----'", '', '        @', '', '', '', '',
+  assert.equal(show(s, now, 'Pebble'), [
+    '3         -2', '', '    ___', '  _/   \\__', ' /  -  -  \\', ' \\________/', '', '        @', '', '', '', '',
     'hunger 3/10 (10=starving)  happy -2 (max 7)  mess 1 (@)',
-    'age 41d  now 14:05Z  last care 6h ago',
+    'Pebble  age 41d  now 14:05Z  last care 6h ago',
     'act: POST rockpet.example/act  body e.g. feed clean pet x6',
   ].join('\n') + '\n');
 });
 
-test('the dead screen is the DESIGN-NOTES mock', () => {
-  const died = Date.UTC(2026, 10, 16, 3, 14), now = died + 9 * HOUR;
-  const s = state({ born: died - 41 * DAY - 20 * HOUR, t: died, hunger: 10, happy: -10, messes: 3, starvingSince: died - 30 * HOUR, sorrowSince: died - 48 * HOUR, lastCare: now - 3 * DAY - 20 * HOUR, dead: { t: died, cause: 'lonely' } });
-  assert.equal(show(s, now), [
-    'died: lonely', '', '', '   .----.', '  ( x  x )', "   '----'", '', '  @     @', '     @', '', '', '',
-    'age 41d  died 2026-11-16 03:14Z',
+test('the dead screen is the DESIGN-NOTES mock: crosses for eyes, and the moss of its last days alone', () => {
+  // A real life, not a made-up state: cared for every 8h for six weeks, then left. It died alone
+  // three days later, with the messes of those days, and a crystal from its meals.
+  const b = Date.UTC(2026, 9, 5, 7), visits = [];
+  for (let t = b + HOUR; t < b + 41 * DAY; t += 8 * HOUR) visits.push({ t, acts: [['feed', 4], ['clean', 1], ['pet', 10]] });
+  const s = replay({ born: b, rules: RULES.version, visits }, Infinity);
+  assert.equal(show(s, s.dead.t + 9 * HOUR, 'Pebble'), [
+    'died: lonely', '    ",,', '  ,,___,"', '  _/   \\__', ' /  x  x  \\', ' \\______*_/', '', '  @     @', '     @', '         @', ' @', '',
+    'here lies Pebble  age 43d  died 2026-11-17 23:36Z',
     'last care 3d ago  it does not stir',
   ].join('\n') + '\n');
+});
+
+test('until it has a name, a screen says how to give it one, except at an extreme', () => {
+  const now = Date.UTC(2026, 10, 16, 14, 5);
+  const s = state({ born: now - 2 * DAY, t: now, hunger: 3, happy: 4, lastCare: now - HOUR, visits: 3 });
+  const lines = show(s, now).split('\n');
+  assert.equal(lines.at(-3), 'unnamed: POST rockpet.example/name  body: a one-word name');
+  assert.ok(show({ ...s, messes: 3, happy: 0 }, now).includes('\nunnamed: '), 'with messes about too');
+  assert.ok(lines.at(-2).startsWith('act: '), 'the act line stays last');
+  assert.ok(!show(s, now, 'Pebble').includes('unnamed'));
+  for (const extreme of [{ happy: -10, sorrowSince: now - HOUR }, { hunger: 10, starvingSince: now - HOUR }]) {
+    assert.ok(!show({ ...s, ...extreme }, now).includes('unnamed'), JSON.stringify(extreme));
+  }
 });
 
 test('every epitaph fills the top row exactly', () => {
@@ -80,9 +109,7 @@ test('every screen: a 12x12 grid with no trailing spaces, an @ per mess, the roc
     assert.equal(lines.pop(), '', 'ends with a newline');
     const grid = lines.slice(0, W);
     for (const row of grid) { assert.ok(row.length <= W, `row "${row}"`); assert.equal(row, row.trimEnd()); }
-    assert.equal(grid[3], '   .----.');
-    assert.equal(grid[4], `  ( ${eyes(s)} )`);
-    assert.equal(grid[5], "   '----'");
+    assertIntact(grid, s, now);
     assert.equal(grid.join('').split('@').length - 1, Math.min(s.messes, MESS_SPOTS.length), 'one @ per mess');
     if (s.dead) {
       assert.equal(grid[0], `died: ${s.dead.cause}`);
@@ -127,7 +154,7 @@ test('the face follows the mood', () => {
   assert.equal(eyes(state({ happy: -5 })), '-  -');
   assert.equal(eyes(state({ happy: -5.1 })), ';  ;');
   assert.equal(eyes(state({ happy: -10, sorrowSince: 0 })), 'T  T');
-  assert.equal(eyes(state({ happy: -10, sorrowSince: 0, dead: { t: 1, cause: 'lonely' } })), 'x  x');
+  assert.equal(eyes(state({ happy: -10, sorrowSince: 0, dead: { t: 1, cause: 'lonely' } })), 'x  x', 'crosses in death');
 });
 
 test('an extreme shows only while the stat is truly there', () => {
@@ -179,9 +206,27 @@ test('a rock never shows more messes than the grid has spots for', () => {
   assert.deepEqual(MESS_SPOTS.slice(0, 3), [[7, 8], [7, 2], [8, 5]], 'the first three are where the mocks draw them');
 });
 
-test('the screen stays small (token efficiency): at most 340 bytes, whatever the state', () => {
-  // The largest is a rock with many messes and both danger lines; a cared-for rock is ~160.
-  const sizes = sampleRocks(400, 13).map(({ s, now }) => Buffer.byteLength(show(s, now))).sort((a, b) => a - b);
-  console.log(`  screen bytes: median ${sizes[sizes.length >> 1]}, largest ${sizes.at(-1)}`);
-  assert.ok(sizes.at(-1) <= 340, `${sizes.at(-1)} bytes`);
+test('the screen stays small (token efficiency): at most 380 bytes, whatever the state', () => {
+  // A cared-for rock with a name is about 220 bytes. Sampled lives show the spread:
+  const sizes = sampleRocks(400, 13).map(({ s, now }) => Buffer.byteLength(show(s, now, 'Abcdefghijkl'))).sort((a, b) => a - b);
+  console.log(`  screen bytes, with a 12-letter name: median ${sizes[sizes.length >> 1]}, largest ${sizes.at(-1)}`);
+  assert.ok(sizes.at(-1) <= 380, `${sizes.at(-1)} bytes`);
+  // ...but no sample reaches the worst, so build it: the longest name, ten messes (the most a
+  // living rock carries), both danger lines with two-digit hours, a top full of moss, a
+  // four-digit age, a column over from where it began, every mark, in every drawing.
+  const age = 1066 * DAY + 5 * HOUR;
+  let b = Date.UTC(2023, 11, 1);
+  while (placeAt(b, b + age).col !== 1) b += HOUR;
+  const now = b + age;
+  const worst = { ...born(b), t: now, hunger: 10, starvingSince: now - 30 * HOUR, happy: -10, sorrowSince: now - 45 * HOUR, messes: 10, lastCare: now - 50 * HOUR, closeCalls: 3, petted: 3000, fed: 1500, visits: 4000 };
+  const bytes = Object.fromEntries(Object.entries(DRAWINGS).map(([name, drawing]) => [name, Buffer.byteLength(render(worst, { now, host: 'rockpet.example', name: 'Abcdefghijkl', drawing }))]));
+  console.log(`  the worst screen, by drawing: ${JSON.stringify(bytes)}`);
+  for (const [name, n] of Object.entries(bytes)) assert.ok(n <= 380, `${name}: ${n} bytes`);
+  assert.equal(Math.max(...Object.values(bytes)), 368, 'the worst, as CHARACTER.md and AGENTS.md say');
+  // A long credited outage makes it a little longer: last care is wall-clock time ("100d ago"),
+  // while moss and the danger clocks count only the time it lived through.
+  const outages = [{ start: now - 100 * DAY + HOUR, end: now - 49 * HOUR, evidence: 'host-1' }];
+  const paused = { ...worst, lastCare: now - 100 * DAY };
+  const longest = Math.max(...Object.values(DRAWINGS).map(drawing => Buffer.byteLength(render(paused, { now, host: 'rockpet.example', name: 'Abcdefghijkl', drawing, outages }))));
+  assert.equal(longest, 370, 'and after a long outage, as they also say');
 });
