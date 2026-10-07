@@ -6,6 +6,7 @@ import { placeAt } from '../src/character.mjs';
 import { replay, applyVisit, born, HOUR } from '../src/engine.mjs';
 import { parseActions } from '../src/parse.mjs';
 import { RULES } from '../src/rules.mjs';
+import { careTotals, DAILY_CARE } from '../src/personality.mjs';
 
 const MIN = 60_000, DAY = 24 * HOUR;
 const T0 = Date.UTC(2026, 0, 1);
@@ -54,7 +55,8 @@ function sampleRocks(n, seed) {
 test('the alive screen is the DESIGN-NOTES mock', () => {
   const now = Date.UTC(2026, 10, 16, 14, 5);
   const s = state({ born: now - 41 * DAY - 20 * HOUR, t: now, hunger: 3.2, happy: -2.2, messes: 1, lastCare: now - 6 * HOUR - 40 * MIN, visits: 9 });
-  assert.equal(show(s, now, 'Pebble'), [
+  // Even-tempered: each care given in proportion to its need (PERSONALITY.md), so its ground is bare.
+  assert.equal(render(s, { now, host: 'rockpet.example', name: 'Pebble', care: { feed: 25, clean: 15, pet: 36 } }), [
     '3         -2', '', '    ___', '  _/   \\__', ' /  -  -  \\', ' \\________/', '', '        @', '', '', '', '',
     'hunger 3/10 (10=starving)  happy -2 (max 7)  mess 1 (@)',
     'Pebble  age 41d  now 14:05Z  last care 6h ago',
@@ -64,12 +66,15 @@ test('the alive screen is the DESIGN-NOTES mock', () => {
 
 test('the dead screen is the DESIGN-NOTES mock: crosses for eyes, and the moss of its last days alone', () => {
   // A real life, not a made-up state: cared for every 8h for six weeks, then left. It died alone
-  // three days later, with the messes of those days, and a crystal from its meals.
+  // three days later, with the messes of those days, and a crystal from its meals. Its care ran
+  // heavy on meals and petting and light on cleaning, so it sits in a little sand, with a path
+  // worn to it (ground.mjs); one footprint lies under a mess.
   const b = Date.UTC(2026, 9, 5, 7), visits = [];
   for (let t = b + HOUR; t < b + 41 * DAY; t += 8 * HOUR) visits.push({ t, acts: [['feed', 4], ['clean', 1], ['pet', 10]] });
-  const s = replay({ born: b, rules: RULES.version, visits }, Infinity);
-  assert.equal(show(s, s.dead.t + 9 * HOUR, 'Pebble'), [
-    'died: lonely', '    ",,', '  ,,___,"', '  _/   \\__', ' /  x  x  \\', ' \\______*_/', '', '  @     @', '     @', '         @', ' @', '',
+  const log = { born: b, rules: RULES.version, visits };
+  const s = replay(log, Infinity);
+  assert.equal(render(s, { now: s.dead.t + 9 * HOUR, host: 'rockpet.example', name: 'Pebble', care: careTotals(log) }), [
+    'died: lonely', '    ",,', '  ,,___,"', '  _/   \\__', ' /  x  x  \\', '.\\______*_/.', '   :', '  @     @', '   : @', '         @', ' @', '',
     'here lies Pebble  age 43d  died 2026-11-17 23:36Z',
     'last care 3d ago  it does not stir',
   ].join('\n') + '\n');
@@ -213,20 +218,26 @@ test('the screen stays small (token efficiency): at most 380 bytes, whatever the
   assert.ok(sizes.at(-1) <= 380, `${sizes.at(-1)} bytes`);
   // ...but no sample reaches the worst, so build it: the longest name, ten messes (the most a
   // living rock carries), both danger lines with two-digit hours, a top full of moss, a
-  // four-digit age, a column over from where it began, every mark, in every drawing.
+  // four-digit age, a column over from where it began, every mark, in every drawing, on every
+  // ground its care could give it (0, 1, 2, 3 or 9 times each need: every mix of levels).
   const age = 1066 * DAY + 5 * HOUR;
   let b = Date.UTC(2023, 11, 1);
   while (placeAt(b, b + age).col !== 1) b += HOUR;
   const now = b + age;
   const worst = { ...born(b), t: now, hunger: 10, starvingSince: now - 30 * HOUR, happy: -10, sorrowSince: now - 45 * HOUR, messes: 10, lastCare: now - 50 * HOUR, closeCalls: 3, petted: 3000, fed: 1500, visits: 4000 };
-  const bytes = Object.fromEntries(Object.entries(DRAWINGS).map(([name, drawing]) => [name, Buffer.byteLength(render(worst, { now, host: 'rockpet.example', name: 'Abcdefghijkl', drawing }))]));
+  const grounds = [null];
+  for (const f of [0, 1, 2, 3, 9]) for (const c of [0, 1, 2, 3, 9]) for (const p of [0, 1, 2, 3, 9]) {
+    grounds.push({ feed: Math.round(100 * f * DAILY_CARE.feed), clean: Math.round(100 * c * DAILY_CARE.clean), pet: Math.round(100 * p * DAILY_CARE.pet) });
+  }
+  const largest = (s, outages = []) => Object.fromEntries(Object.entries(DRAWINGS).map(([name, drawing]) => [name,
+    Math.max(...grounds.map(care => Buffer.byteLength(render(s, { now, host: 'rockpet.example', name: 'Abcdefghijkl', drawing, outages, care }))))]));
+  const bytes = largest(worst);
   console.log(`  the worst screen, by drawing: ${JSON.stringify(bytes)}`);
   for (const [name, n] of Object.entries(bytes)) assert.ok(n <= 380, `${name}: ${n} bytes`);
-  assert.equal(Math.max(...Object.values(bytes)), 368, 'the worst, as CHARACTER.md and AGENTS.md say');
+  assert.equal(Math.max(...Object.values(bytes)), 369, 'the worst, as CHARACTER.md and AGENTS.md say');
   // A long credited outage makes it a little longer: last care is wall-clock time ("100d ago"),
   // while moss and the danger clocks count only the time it lived through.
   const outages = [{ start: now - 100 * DAY + HOUR, end: now - 49 * HOUR, evidence: 'host-1' }];
-  const paused = { ...worst, lastCare: now - 100 * DAY };
-  const longest = Math.max(...Object.values(DRAWINGS).map(drawing => Buffer.byteLength(render(paused, { now, host: 'rockpet.example', name: 'Abcdefghijkl', drawing, outages }))));
-  assert.equal(longest, 370, 'and after a long outage, as they also say');
+  const longest = Math.max(...Object.values(largest({ ...worst, lastCare: now - 100 * DAY }, outages)));
+  assert.equal(longest, 371, 'and after a long outage, as they also say');
 });

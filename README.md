@@ -44,6 +44,7 @@ curl -s -d "<one word>" 127.0.0.1:7625/name
   - A close call leaves a vein, kept for life.
   - Long petting polishes it, and a well-fed life grows crystals in it.
   - When it dies its eyes are crosses, and the moss creeps over the stone.
+- **Its ground shows its personality.** Each care is weighed against its daily need. Fed more than it is cleaned or petted, it settles into sand; cleaned more, it sits on a raked floor; petted more, footprints are worn up to it. While its care is balanced the ground stays bare. The ground fills in over its first two weeks.
 - **Its nature:** what kind of stone it is, its birth-fixed habit and care-derived personality. None of it touches its needs or its lifespan.
 
 The `history:` link leads to `GET /history`, the shared biography. It holds:

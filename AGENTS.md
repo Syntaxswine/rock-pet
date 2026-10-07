@@ -28,6 +28,7 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 | `src/story.mjs` | The rock's authored lines: one reaction after effective care or a visit milestone, one line on a look on a day that is not ordinary, and the shared biography at `GET /history`. Never changes the engine. |
 | `src/character.mjs` | The rock's character: its nature (kind and its weekday for facing the wall), its days, and where it has moved to. `CHARACTER.md` is the design. |
 | `src/marks.mjs` | The marks its life leaves: moss while nobody comes and on a grave; veins, polish and crystals, kept for life. |
+| `src/ground.mjs` | Its personality, drawn as the ground around it: sand (feed), a raked floor (clean) and footprints (pet), each as large as that care's weighted share stands above the least-given one's. Bare when its care is balanced; it forms over two weeks. |
 | `src/drawings.mjs` | The drawings it can have, for the owner to choose from (`DRAWING`), each with its back and its mark slots. |
 | `src/name.mjs` | Its name: one word, given once, never twice. |
 | `tools/model-sheet.mjs` | Every face, mark, pose and drawing, drawn by the real renderer. CHARACTER.md shows its output, and a test fails if the two differ. |
@@ -43,8 +44,8 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 - **GitHub Pages** (this repo) is the public face and the archive: rules, `llms.txt`, a human page, and a periodic export of the event log.
 - **Remove `--new-rock`** from anything hosted.
 - **Keep every name a rock has had,** as permanently as the rock: a name is never given twice.
-- **Check the screen's size with your host.** The screen tests hold every screen to 380 bytes with a 15-character host (`rockpet.example`); the worst, built on purpose in `test/screen.test.mjs`, is 368, and 370 after a long credited outage ("last care 100d ago"). On those worst screens the host appears once (the act line), so each character beyond 15 adds a byte. A host over 25 characters needs the bound raised, or a shorter host.
-- **Freeze the character's formulas once hosted:** its kind, days, moves, visitors and mark thresholds. Each is computed again from the log on every request, so a change would rewrite a living rock's past. If one must change, version it like `RULES.version` (CHARACTER.md, "Size, and staying the same").
+- **Check the screen's size with your host.** The screen tests hold every screen to 380 bytes with a 15-character host (`rockpet.example`); the worst, built on purpose in `test/screen.test.mjs`, is 369, and 371 after a long credited outage ("last care 100d ago"). On those worst screens the host appears once (the act line), so each character beyond 15 adds a byte. A host over 24 characters needs the bound raised, or a shorter host.
+- **Freeze the character's formulas once hosted:** its kind, days, moves, visitors, mark thresholds, and how its care becomes its ground. Each is computed again from the log on every request, so a change would rewrite a living rock's past. If one must change, version it like `RULES.version` (CHARACTER.md, "Size, and staying the same").
 - **Keep the state, not just the log.** Every local request re-reads and replays the whole log, about 1 ms per 1,000 visits (measured in review round 2). That is fine for a local rock and wrong for a hosted one: keep the replayed state in the Durable Object (or a checkpoint row) and replay only what follows it.
 
 ## Invariants (must hold; these are the reasons the design is the way it is)
@@ -118,6 +119,7 @@ Status in brackets: what the local build does today.
     - Its eyes follow its mood, and are `x  x` when it is dead.
     - On its wall day a look draws it from behind.
     - Moss, veins, polish, crystals and a trail mark its life (CHARACTER.md).
+    - The ground at its base and in front of it shows its personality: sand, a raked floor, footprints (CHARACTER.md, "Its ground").
   - Each mess is an `@` at a fixed position.
   - Trailing spaces are trimmed.
 - Then the named lines:

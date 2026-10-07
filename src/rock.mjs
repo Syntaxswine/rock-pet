@@ -11,6 +11,7 @@ import { isTime, validateOutages } from './outages.mjs';
 import { biography, reaction, remark } from './story.mjs';
 import { occasion, inDanger } from './character.mjs';
 import { parseName, isTaken, NAMED } from './name.mjs';
+import { careTotals } from './personality.mjs';
 
 /** The log of a rock born at `now`. */
 export const newLog = now => ({ born: now, rules: RULES.version, visits: [], died: null });
@@ -23,9 +24,9 @@ function moment(log, now) {
   return Math.max(now, log.born, log.visits.at(-1)?.t ?? -Infinity, log.died?.t ?? -Infinity, log.outages?.at(-1)?.end ?? -Infinity, log.name?.t ?? -Infinity);
 }
 
-// What a screen of this log shows besides the rock itself: its name, and the verified downtime
-// its moss does not count.
-const seen = log => ({ name: log.name?.name ?? null, outages: log.outages ?? [] });
+// What a screen of this log shows besides the rock itself: its name, the verified downtime its
+// moss does not count, and the care its ground shows.
+const seen = log => ({ name: log.name?.name ?? null, outages: log.outages ?? [], care: careTotals(log) });
 
 // The rock at t. A recorded death must be the one the visits produce.
 function rockAt(log, t) {
@@ -81,7 +82,7 @@ export function act(log, body, { now, host }) {
   const visit = { t, acts: parsed.acts };
   const afterLog = { ...log, visits: [...log.visits, visit] };
   const after = replay(afterLog, t);
-  return { status: 200, text: render(after, { now: t, host, ...seen(log) }) + reaction(afterLog, s, after) + `history: ${host}/history\n`, visit };
+  return { status: 200, text: render(after, { now: t, host, ...seen(afterLog) }) + reaction(afterLog, s, after) + `history: ${host}/history\n`, visit };
 }
 
 /**

@@ -18,6 +18,9 @@ import { sheet } from '../tools/model-sheet.mjs';
 const DAY = 24 * HOUR, MIN = 60_000;
 const T = Date.UTC(2026, 9, 6); // a Tuesday; this rock faces the wall on Tuesdays
 const FULL = [['feed', 4], ['clean', 1], ['pet', 10]];
+// Full care in proportion to each need (personality.mjs DAILY_CARE), so its ground stays bare
+// and a base row shows only what a test is looking for (ground.mjs).
+const EVEN = [['feed', 5], ['clean', 3], ['pet', 7]];
 const opts = now => ({ now, host: 'rock.test' });
 const quirks = text => text.split('\n').filter(l => l.startsWith('quirk: '));
 const grid = text => text.split('\n').slice(0, W);
@@ -162,7 +165,7 @@ test('it may move on a winter morning, by one column, and leaves a trail that da
   let day = 1;
   while (placeAt(b, b + day * DAY + 12 * HOUR).from === null || [7, 30, 100].includes(day)) day++;
   const t = b + day * DAY + 10 * HOUR, p = placeAt(b, t);
-  const care = until => { const v = []; for (let at = b + HOUR; at < until; at += 8 * HOUR) v.push({ t: at, acts: FULL }); return v; };
+  const care = until => { const v = []; for (let at = b + HOUR; at < until; at += 8 * HOUR) v.push({ t: at, acts: EVEN }); return v; };
   const log = { ...newLog(b), visits: care(t) };
   const g = grid(look(log, opts(t)).text);
   assert.equal(baseAt(g[5]), BASE_LEFT + p.col, `the base, at column ${BASE_LEFT + p.col}: "${g[5]}"`);

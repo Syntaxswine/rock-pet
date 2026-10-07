@@ -137,7 +137,7 @@ const MUTANTS = [
   ['it faces the wall the day after its day', 'src/character.mjs', '=== nature(s.born).wallDay', '=== (nature(s.born).wallDay + 1) % 7'],
   ['it does odd things at an extreme', 'src/character.mjs', 'if (s.dead || inDanger(s)) return null;', 'if (s.dead) return null;'],
   ['starving counts as no extreme', 'src/character.mjs', 'export const inDanger = s => s.starvingSince !== null || s.sorrowSince !== null;', 'export const inDanger = s => s.sorrowSince !== null;'],
-  ['care leaves it facing the wall', 'src/rock.mjs', 'render(after, { now: t, host, ...seen(log) }) + reaction', "render(after, { now: t, host, ...seen(log), pose: occasion(after, t)?.what === 'wall' ? 'away' : 'front' }) + reaction"],
+  ['care leaves it facing the wall', 'src/rock.mjs', 'render(after, { now: t, host, ...seen(afterLog) }) + reaction', "render(after, { now: t, host, ...seen(afterLog), pose: occasion(after, t)?.what === 'wall' ? 'away' : 'front' }) + reaction"],
   ['it moves in summer too', 'src/character.mjs', '(month === 11 || month <= 1) && ', ''],
   ['it moves before the ice breaks up', 'src/character.mjs', ' || (d === today && t - d * DAY < SAILS_AT)', ''],
   ['it wanders off the screen', 'src/character.mjs', 'col = col !== 0 ? 0 : hash(born, 5, d) % 2 ? 1 : -1;', 'col += hash(born, 5, d) % 2 ? 1 : -1;'],
@@ -196,7 +196,22 @@ const MUTANTS = [
   ['satisfied milestones are silent', 'src/story.mjs', 'else if (after.visits > before.visits && VISITS[after.visits])', 'else if ((did.pet || did.clean || did.feed) && after.visits > before.visits && VISITS[after.visits])'],
   ['later rescues announce undrawn veins', 'src/story.mjs', "after.closeCalls > 3 ? 'it has weathered another close call.' : ", ''],
   ['cleaning never reveals the stone', 'src/story.mjs', 'did.clean && hash(birth, 9, after.visits) % 4 === 0', 'false'],
-
+  // The ground: its personality, drawn (ground.mjs).
+  ['a balanced rock shows every trace', 'src/ground.mjs', 'const least = Math.min(p.shares.feed, p.shares.clean, p.shares.pet);', 'const least = 0;'],
+  ['the ground is full grown at birth', 'src/ground.mjs', 'const grown = Math.min(1, age / (FORMING_DAYS * 24 * HOUR));', 'const grown = 1;'],
+  ['the ground keeps growing past two weeks', 'src/ground.mjs', 'Math.min(1, age / (FORMING_DAYS * 24 * HOUR))', 'age / (FORMING_DAYS * 24 * HOUR)'],
+  ['the ground takes three weeks to form', 'src/ground.mjs', 'export const FORMING_DAYS = 14;', 'export const FORMING_DAYS = 21;'],
+  ['the second level comes later', 'src/ground.mjs', '[0.12, 0.35, 0.6]', '[0.12, 0.4, 0.6]'],
+  ["a grave's ground keeps growing", 'src/screen.mjs', 'groundOf(care, (s.dead ? s.dead.t : now) - s.born)', 'groundOf(care, now - s.born)'],
+  ['a look shows no ground', 'src/rock.mjs', ', care: careTotals(log) })', ' })'],
+  ["a visit's reply shows the ground from before it", 'src/rock.mjs', 'render(after, { now: t, host, ...seen(afterLog) })', 'render(after, { now: t, host, ...seen(log) })'],
+  ['sand on one side only', 'src/ground.mjs', 'for (const c of [left - 1, right + 1])', 'for (const c of [left - 1])'],
+  ['deep sand buries its marks and moss', 'src/ground.mjs', "if (own !== ' ' && g[BASE][c] === own) g[BASE][c] = '.';", "if (own !== ' ') g[BASE][c] = '.';"],
+  ['light raking spans the whole row', 'src/ground.mjs', 'ground.clean >= 2 ? [0, W - 1] : [left, right]', '[0, W - 1]'],
+  ['deep raking looks like light raking', 'src/ground.mjs', "const rake = ground.clean >= 3 ? '=' : '-';", "const rake = '-';"],
+  ['footprints walk a straight line', 'src/ground.mjs', 'c = left + (i % 2 ? 1 : 2)', 'c = left + 2'],
+  ['more petting wears no more footprints', 'src/ground.mjs', 'export const STEPS = [0, 2, 3, 5];', 'export const STEPS = [0, 2, 3, 3];'],
+  ['footprints never step on a stone', 'src/ground.mjs', "    else if (g[r][c] === '-' || g[r][c] === '=') g[r][c] = 'o';\n", ''],
 ];
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

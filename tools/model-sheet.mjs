@@ -12,6 +12,7 @@ import { RULES } from '../src/rules.mjs';
 import { render, W } from '../src/screen.mjs';
 import { DRAWINGS, DRAWING } from '../src/drawings.mjs';
 import { placeAt } from '../src/character.mjs';
+import { CARE_AXES, DAILY_CARE } from '../src/personality.mjs';
 
 const DAY = 24 * HOUR;
 const T = Date.UTC(2026, 10, 16, 14, 5); // a Monday afternoon in November
@@ -40,8 +41,14 @@ function sailingDay(b) {
   for (let t = T; ; t += DAY) { const p = placeAt(b, t); if (p.from !== null) return { t, p }; }
 }
 
-function grid(s, { now = T, pose, drawing } = {}) {
-  return render(s, { now, host: 'rock', pose, name: 'Pebble', drawing }).split('\n').slice(0, W).map(row => row.padEnd(W));
+// Lifetime care totals for a rock `days` old, given each care at its daily need (personality.mjs)
+// times `x` (1 if not given): every need met, and more of the cares it is given more of.
+const given = (x = {}, days = 41) => Object.fromEntries(CARE_AXES.map(k => [k, Math.round(days * DAILY_CARE[k] * (x[k] ?? 1))]));
+// A rock of `days` old, cared for in full, drawn with the ground that care gives it.
+const kept = (x, days = 41) => [rock({ born: T - days * DAY }), { care: given(x, days) }];
+
+function grid(s, { now = T, pose, drawing, care } = {}) {
+  return render(s, { now, host: 'rock', pose, name: 'Pebble', drawing, care }).split('\n').slice(0, W).map(row => row.padEnd(W));
 }
 function row(frames) {
   const out = [frames.map(([label]) => label.padEnd(W + 2)).join('  ').trimEnd()];
@@ -72,6 +79,20 @@ export function sheet() {
       ['polished', grid(rock({ petted: 500 }))], ['worn smooth', grid(rock({ petted: 3000 }))],
       ['a crystal', grid(rock({ fed: 300 }))], ['two', grid(rock({ fed: 1500 }))],
     ]),
+    'its ground: the care it has been given more of (its personality). Every need met, and six\n' +
+      'times the need of one care, or five times the need of two',
+    row([
+      ['even-tempered', grid(...kept())], ['comfort-loving', grid(...kept({ feed: 6 }))],
+      ['orderly', grid(...kept({ clean: 6 }))], ['affectionate', grid(...kept({ pet: 6 }))],
+    ]),
+    row([
+      ['settled', grid(...kept({ feed: 5, clean: 5 }))], ['sociable', grid(...kept({ feed: 5, pet: 5 }))],
+      ['gentle', grid(...kept({ clean: 5, pet: 5 }))],
+    ]),
+    'its ground, the shades between: petted at 1.5, 3 and 6 times its need',
+    row([['1.5', grid(...kept({ pet: 1.5 }))], ['3', grid(...kept({ pet: 3 }))], ['6', grid(...kept({ pet: 6 }))]]),
+    'its ground forms over two weeks: a gentle rock at 2, 7 and 14 days old',
+    row([2, 7, 14].map(d => [`${d} days`, grid(...kept({ clean: 5, pet: 5 }, d))])),
     'its days: the wall, a morning it moved',
     row([
       ['facing the wall', grid(rock({ closeCalls: 1 }), { pose: 'away' })],
