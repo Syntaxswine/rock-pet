@@ -212,7 +212,7 @@ test('a stable short reaction follows care milestones or effective care and cann
   // Ordinary reads stay quiet. Not every day is ordinary: this rock faces the wall on Tuesdays,
   // and a look then says so (test/character.test.mjs), so this look is the next morning.
   const cared = { ...log, visits: [r.visit] };
-  assert.equal(occasion(replay(cared, h(30)), h(30)), null);
+  assert.equal(occasion(replay(cared, h(30)), h(30), []), null);
   assert.equal(look(cared, options(h(30))).text.includes('quirk:'), false);
   assert.match(act(log, 'feed clean pet x10', options(T)).text, /quirk: it has had its first visitor\./);
   assert.equal(act(cared, 'feed clean pet x10', options(h(20))).text.includes('quirk:'), false);

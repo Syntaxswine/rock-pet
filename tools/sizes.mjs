@@ -2,11 +2,12 @@
 // same"). The screen's worst is built on purpose in test/screen.test.mjs. A look or a reply adds
 // lines that depend on the rock's life (a reaction, a day's remark, the naming line), so this
 // searches real lives for them: long and short ones, cared for in full and then neglected, with
-// every drawing and all 64 mixes of ground levels forced onto each rock, as the screen test does.
+// every drawing, all 64 mixes of ground levels and every spot its room allows (with no furrow, or
+// the longest) forced onto each rock, as the tests do.
 // Error replies add their one error line and go to the sender alone; they are not counted here.
 // It samples, so it can miss the worst. The largest known are built from real lives and held in
-// test/character.test.mjs: a reply of 424 bytes and a look of 423 (430 after downtime) with a
-// 15-character host, against the 409 for a look that this finds.
+// test/character.test.mjs: a reply of 427 bytes and a look of 427 (433 after downtime) with a
+// 15-character host.
 //
 //   node tools/sizes.mjs [host length, 15] [lives, 100] [seed, 1]
 
@@ -18,6 +19,7 @@ import { mealAt } from '../src/meal.mjs';
 import { reaction, remark } from '../src/story.mjs';
 import { parseActions } from '../src/parse.mjs';
 import { newLog } from '../src/rock.mjs';
+import { roomOf } from '../src/wander.mjs';
 
 const DAY = 24 * HOUR;
 const [hostLength = 15, lives = 100, seed = 1] = process.argv.slice(2).map(Number);
@@ -42,6 +44,12 @@ function mulberry(n) {
   };
 }
 const rnd = mulberry(seed);
+// Every spot a drawing can wander to, with no furrow and with the longest (from the far end).
+function placesOf(drawing) {
+  const { min, max } = roomOf(drawing), out = [];
+  for (let dx = min; dx <= max; dx++) out.push({ dx, from: null, furrow: false }, { dx, from: dx - min > max - dx ? min : max, furrow: true });
+  return out;
+}
 
 // A life: full care every 8h for about a thousand days (most lives) or twenty, then a week of
 // scant, irregular care, to pile up messes and hunger. Half are named.
@@ -73,15 +81,15 @@ for (let i = 0; i < lives; i++) {
     const now = log.visits.at(-1).t + Math.floor(rnd() * 40 * HOUR);
     const s = replay(log, now);
     if (s.dead) continue;
-    const o = occasion(s, now), pose = o?.what === 'wall' ? 'away' : 'front';
+    const o = occasion(s, now, log.outages ?? []), pose = o?.what === 'wall' ? 'away' : 'front';
     const views = [{ s, meal: mealAt(log, now), pose, tail: remark(o), what: 'a look' }];
     for (const body of BODIES) {
       const afterLog = { ...log, visits: [...log.visits, { t: now, acts: parseActions(body).acts }] }, after = replay(afterLog, now);
       views.push({ s: after, meal: mealAt(afterLog, now), pose: 'front', tail: reaction(afterLog, s, after), what: `a reply to "${body}"` });
     }
-    for (const view of views) for (const [drawing, d] of Object.entries(DRAWINGS)) for (const { ground, reachable } of grounds) {
-      const text = render(view.s, { now, host, pose: view.pose, name, drawing: d, outages, ground, meal: view.meal }) + view.tail + `history: ${host}/history\n`;
-      const n = Buffer.byteLength(text), what = `${view.what}, ${drawing}, ground ${ground.feed}${ground.clean}${ground.pet}`;
+    for (const view of views) for (const [drawing, d] of Object.entries(DRAWINGS)) for (const place of placesOf(d)) for (const { ground, reachable } of grounds) {
+      const text = render(view.s, { now, host, pose: view.pose, name, drawing: d, outages, ground, meal: view.meal, place }) + view.tail + `history: ${host}/history\n`;
+      const n = Buffer.byteLength(text), what = `${view.what}, ${drawing} at ${place.dx}, ground ${ground.feed}${ground.clean}${ground.pet}`;
       const kind = view.what === 'a look' ? 'look' : 'reply';
       keep(kind, n, text, what);
       if (reachable) keep(`${kind}Reached`, n, text, what);

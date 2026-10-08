@@ -6,13 +6,13 @@ import { personality, careTotals, PERSONALITIES } from '../src/personality.mjs';
 import { render, sprite, fullCare, faint, W, MESS_SPOTS } from '../src/screen.mjs';
 import { DRAWINGS, DRAWING } from '../src/drawings.mjs';
 import { born, replay, HOUR } from '../src/engine.mjs';
-import { placeAt } from '../src/character.mjs';
+import { whereAt, roomOf } from '../src/wander.mjs';
 import { parseActions } from '../src/parse.mjs';
 import { RULES } from '../src/rules.mjs';
 import { act, look, name, newLog } from '../src/rock.mjs';
 
 const DAY = 24 * HOUR;
-const T = Date.UTC(2026, 10, 16, 14, 5); // a November afternoon: no winter move, no trail
+const T = Date.UTC(2026, 10, 16, 14, 5); // a November afternoon: no ice
 // Lifetime care in proportion to each daily need (10/3 feeds, 2 cleans, 4.8 pets): together these
 // sit at the triangle's center, and each alone at a corner (PERSONALITY.md's own example).
 const NEED = { feed: 25, clean: 15, pet: 36 };
@@ -25,6 +25,23 @@ const near = (got, want, what) => { for (const k of Object.keys(want)) assert.ok
 // Where footprints fall, nearest the rock first, for a rock that has not moved (spelled out here,
 // not read from ground.mjs).
 const PATH = [[6, 3], [7, 4], [8, 3], [9, 4], [10, 3]];
+// Every offset a drawing's room allows (wander.mjs); and the screen's footprint cells, with the
+// first `messes` mess spots on top of them, for a rock `dx` columns over with `steps` prints.
+const spotsOf = d => { const { min, max } = roomOf(d); return Array.from({ length: max - min + 1 }, (_, i) => min + i); };
+function pathRows(dx, steps, messes) {
+  const g = Array.from({ length: W }, () => Array(W).fill(' '));
+  for (const [r, c] of PATH.slice(0, steps)) g[r][c + dx] = ':';
+  for (const [r, c] of MESS_SPOTS.slice(0, messes)) g[r][c] = '@';
+  return g.map(row => row.join('').trimEnd());
+}
+// The cells a base swept as it slid, a column at a time, from `from` to `dx`, less those it covers
+// now: where its furrow should lie (worked out here, not with the screen's own formula).
+function swept(base, from, dx) {
+  const left = base.search(/\S/), right = base.trimEnd().length - 1, cells = new Set();
+  for (let x = from; x !== dx; x += Math.sign(dx - from)) for (let c = left + x; c <= right + x; c++) cells.add(c);
+  for (let c = left + dx; c <= right + dx; c++) cells.delete(c);
+  return [...cells].sort((p, q) => p - q);
+}
 // One visit's acts for care totals, in words of at most 20.
 const acts = care => Object.entries(care).flatMap(([verb, n]) => Array.from({ length: Math.ceil(n / 20) }, (_, i) => [verb, Math.min(20, n - 20 * i)]));
 
@@ -235,24 +252,31 @@ test('the ground keeps a level reached between visits, as a look saw it, and los
   while (first < b + 14 * DAY && groundAt(log, first).pet === 0) first += 10 * 60_000;
   assert.ok(first < b + 14 * DAY, 'the path shows while the ground is still growing');
   assert.ok(first > log.visits.at(-1).t, 'reached between visits');
-  const prints = text => grid(text).slice(6, 8).map(row => row.padEnd(W)).map((row, i) => row[[3, 4][i]]);
+  // Its first two footprint cells, wherever it has wandered to by then; a print a mess lies on
+  // can't be read, so the other must be (CHARACTER.md: "a mess may lie on its path").
+  const prints = (text, lg, t) => {
+    const dx = whereAt(lg, t, DRAWINGS[DRAWING]).dx, cells = grid(text).slice(6, 8).map(row => row.padEnd(W)).map((row, i) => row[[3, 4][i] + dx]);
+    assert.ok(cells.includes(':') || cells.includes(' '), `both prints under messes at ${new Date(t).toISOString()}`);
+    return cells.map(c => (c === '@' ? null : c));
+  };
+  const like = (got, want, what) => assert.deepEqual(got.map((c, i) => c ?? want[i]), want, what);
   const scaled = (visit, t) => tracesOf(careTotals({ visits: [...log.visits, visit] })).pet * (t - b) / (14 * DAY);
-  assert.deepEqual(prints(look(log, { now: first + HOUR - 60_000, host: 'h' }).text), [':', ':']);
+  like(prints(look(log, { now: first + HOUR - 60_000, host: 'h' }).text, log, first + HOUR - 60_000), [':', ':']);
   const r = act(log, 'feed x20 feed x10', { now: first + HOUR, host: 'h' });
   assert.equal(r.status, 200);
   const after = scaled(r.visit, first + HOUR);
   assert.ok(after > 0.28 && after < 0.3, `the trace after the meal: ${after}`);
-  assert.deepEqual(prints(r.text), [':', ':'], 'the reply keeps the path the look showed');
+  like(prints(r.text, { ...log, visits: [...log.visits, r.visit] }, first + HOUR), [':', ':'], 'the reply keeps the path the look showed');
   // A heavier meal lowers it by more than 0.02: the path goes with that visit, and does not come
   // back until the growing trace reaches the level again, more than half a day later.
   const heavy = act(log, 'feed x20 clean x10', { now: first + HOUR, host: 'h' });
   const low = scaled(heavy.visit, first + HOUR);
   assert.ok(low < 0.28, `the trace after the heavier meal: ${low}`);
-  assert.deepEqual(prints(heavy.text), [' ', ' '], 'the reply has lost the path');
+  like(prints(heavy.text, { ...log, visits: [...log.visits, heavy.visit] }, first + HOUR), [' ', ' '], 'the reply has lost the path');
   const later = { ...log, visits: [...log.visits, heavy.visit] };
   for (const hours of [3, 7, 12]) {
     assert.ok(scaled(heavy.visit, first + (1 + hours) * HOUR) < 0.3);
-    assert.deepEqual(prints(look(later, { now: first + (1 + hours) * HOUR, host: 'h' }).text), [' ', ' '], `${hours}h on: not back before its trace is`);
+    like(prints(look(later, { now: first + (1 + hours) * HOUR, host: 'h' }).text, later, first + (1 + hours) * HOUR), [' ', ' '], `${hours}h on: not back before its trace is`);
   }
 });
 
@@ -294,18 +318,11 @@ test('care that settles right on a level does not flicker its trace', () => {
   assert.equal(seen.at(-1), 1);
 });
 
-// A well-kept rock 41 days old, as the model sheet draws it, on whichever drawing; and the same
-// rock the day after it has moved a column either way (found, not assumed).
+// A well-kept rock 41 days old, as the model sheet draws it, on whichever drawing, `dx` columns
+// along its ground from where its drawing puts it, having moved from `from` (wander.mjs).
 const kept = { ...born(T - 41 * DAY), t: T, lastCare: T - 2 * HOUR, visits: 90, hunger: 2, happy: 6 };
-function moved(col, onTheDay = false) {
-  for (let b = Date.UTC(2026, 10, 1); ; b += HOUR) {
-    for (let d = 30; d < 110; d++) {
-      const t = Math.floor(b / DAY) * DAY + d * DAY + 14 * HOUR, p = placeAt(b, t);
-      if (p.col === col && (p.from !== null) === onTheDay) return [{ ...born(b), t, lastCare: t - 2 * HOUR, visits: 90, hunger: 2, happy: 6 }, t];
-    }
-  }
-}
-const groundRows = (care, drawing = DRAWINGS.lump, [s, now] = [kept, T]) => grid(render(s, { now, host: 'h', drawing, ground: groundOf(care, 41 * DAY) })).slice(5, 11);
+const at = (dx, from = null) => ({ dx, from, furrow: from !== null });
+const groundRows = (care, drawing = DRAWINGS.lump, place = at(0)) => grid(render(kept, { now: T, host: 'h', drawing, ground: groundOf(care, 41 * DAY), place })).slice(5, 11);
 
 test('the ground, drawn: the seven personalities and the first level of each care, on the lump', () => {
   const lump = ' \\________/', none = ['', '', '', '', ''];
@@ -328,8 +345,8 @@ test('the ground, drawn: the seven personalities and the first level of each car
   assert.deepEqual(sand(DRAWINGS.pebble), ["  .'----'.", '....----....', '............']);
 });
 
-test('the ground goes where the rock has moved, and a trail lies on top of it', () => {
-  const right = moved(1), left = moved(-1);
+test('the ground goes where the rock has moved, and its furrow lies on top of it', () => {
+  const right = at(1), left = at(-1);
   assert.deepEqual(groundRows(times({ feed: 3 }), DRAWINGS.lump, right)[0], ' .\\________/', 'sand at its foot, one column over');
   assert.deepEqual(groundRows(times({ feed: 3 }), DRAWINGS.lump, left)[0], '\\________/.');
   assert.deepEqual(groundRows(times({ feed: 3 }), DRAWINGS.pebble, right)[0], "   .'----'.");
@@ -337,25 +354,26 @@ test('the ground goes where the rock has moved, and a trail lies on top of it', 
   assert.deepEqual(groundRows(only('feed'), DRAWINGS.pebble, right)[0], '............');
   assert.deepEqual(groundRows(only('clean', 'pet'), DRAWINGS.lump, right).slice(1, 4), ['----o-------', '-----o------', '    :'], 'the path moves with it');
   assert.deepEqual(groundRows(only('clean', 'pet'), DRAWINGS.lump, left).slice(1, 4), ['--o---------', '---o--------', '  :']);
-  // On the morning it moved, its trail is drawn over the sand: ~ where it slid, never sand.
-  for (const col of [1, -1]) {
-    const [s, t] = moved(col, true), p = placeAt(s.born, t);
+  assert.deepEqual(groundRows(times({ feed: 3 }), DRAWINGS.pip, at(3))[0], "     .'----'", 'the pip, three columns over');
+  assert.deepEqual(groundRows(only('clean', 'pet'), DRAWINGS.pip, at(-3)).slice(1, 4), ['o-----------', '-o----------', ':'], 'its path, three columns the other way');
+  // Its furrow lies over the sand: ~ on the ground its base slid off, never sand.
+  for (const [drawing, from, dx] of [[DRAWINGS.lump, 0, 1], [DRAWINGS.lump, 0, -1], [DRAWINGS.pip, -3, 3], [DRAWINGS.pip, 2, -1]]) {
+    const furrow = swept(drawing.front[4], from, dx);
     for (const care of [times({ feed: 4 }), only('feed')]) {
-      const row = groundRows(care, DRAWINGS.lump, [s, t])[0], base = DRAWINGS.lump.front[4];
-      const trail = p.col > p.from ? [base.search(/\S/) + p.col - 2, base.search(/\S/) + p.col - 1] : [base.trimEnd().length + p.col, base.trimEnd().length + p.col + 1];
-      for (const c of trail.filter(c => c >= 0 && c < W)) assert.equal(row[c], '~', `moved ${p.from}>${p.col}: "${row}"`);
+      const row = groundRows(care, drawing, at(dx, from))[0].padEnd(W);
+      for (let c = 0; c < W; c++) assert.equal(row[c] === '~', furrow.includes(c), `moved ${from}>${dx}: "${row}"`);
     }
   }
 });
 
-test("every drawing's back stands on its front's base, which the ground and the trail both read", () => {
+test("every drawing's back stands on its front's base, which the ground and the furrow both read", () => {
   for (const [name, drawing] of Object.entries(DRAWINGS)) assert.equal(drawing.back[4], drawing.front[4], name);
 });
 
 // The rock's box drawn into a bare grid, `dx` columns over, as render does.
 function boxed(s, now, pose, drawing, dx) {
   const g = Array.from({ length: W }, () => Array(W).fill(' '));
-  sprite(s, now, pose, drawing).forEach((row, r) => { for (let c = 0; c < W; c++) if (row[c] !== ' ' && c + dx >= 0 && c + dx < W) g[1 + r][c + dx] = row[c]; });
+  sprite(s, now, pose, drawing, [], dx).forEach((row, r) => { for (let c = 0; c < W; c++) if (row[c] !== ' ' && c + dx >= 0 && c + dx < W) g[1 + r][c + dx] = row[c]; });
   return g;
 }
 
@@ -366,7 +384,7 @@ test('the ground never covers the rock, its marks, its moss or a mess, and each 
   const states = [[marked, T], [hungry, T], [grave, grave.dead.t + 120 * DAY]];
   const STEPS = [0, 2, 3, 5];
   let buried = 0, corners = 0, stones = 0;
-  for (const [name, drawing] of Object.entries(DRAWINGS)) for (const pose of ['front', 'away']) for (const dx of [-1, 0, 1]) for (const [s, now] of states) {
+  for (const [name, drawing] of Object.entries(DRAWINGS)) for (const pose of ['front', 'away']) for (const dx of spotsOf(drawing)) for (const [s, now] of states) {
     const lines = faint(s) ? drawing.faint : drawing, rows = pose === 'away' ? lines.back : lines.front;
     const outline = c => rows[4][c - dx] ?? ' ';
     const left = rows[4].search(/\S/) + dx, right = rows[4].trimEnd().length - 1 + dx;
@@ -425,15 +443,15 @@ test('the ground never covers the rock, its marks, its moss or a mess, and each 
   assert.ok(buried > 0 && corners > 0 && stones > 0, 'the cases include a buried base, buried corners and stepping stones');
 });
 
-test('the footprints keep off the mess spots a rock is likely to have, wherever it has moved', () => {
+test('where it sits at home, the footprints keep off the mess spots a rock is likely to have', () => {
   const early = new Set(MESS_SPOTS.slice(0, 14).map(([r, c]) => `${r},${c}`));
-  for (const dx of [-1, 0, 1]) for (const [r, c] of PATH) assert.ok(!early.has(`${r},${c + dx}`), `a footprint on a mess spot at ${r},${c + dx}`);
-  // So the messes a once-a-day visitor finds leave both of a light path's prints.
+  for (const [r, c] of PATH) assert.ok(!early.has(`${r},${c}`), `a footprint on a mess spot at ${r},${c}`);
+  // Wandered off, a mess may lie on its path; the path is drawn under it.
   const b = Date.UTC(2026, 9, 6), log = newLog(b);
   for (let t = b + HOUR; t < b + 20 * DAY; t += 24 * HOUR) log.visits.push({ t, acts: [['feed', 4], ['clean', 1], ['pet', 10]] });
-  const s = replay(log, b + 20 * DAY);
+  const s = replay(log, b + 20 * DAY), dx = whereAt(log, b + 20 * DAY, DRAWINGS[DRAWING]).dx;
   assert.ok(s.messes >= 1);
-  assert.deepEqual(grid(look(log, { now: b + 20 * DAY, host: 'h' }).text).slice(6, 8).map(row => [row.padEnd(W)[3], row.padEnd(W)[4]]), [[':', ' '], [' ', ':']]);
+  assert.deepEqual(grid(look(log, { now: b + 20 * DAY, host: 'h' }).text).slice(6, 11), pathRows(dx, 2, s.messes).slice(6, 11), `a once-a-day visitor's two prints, ${dx} columns over`);
 });
 
 test('a grave keeps the ground it had when it died', () => {
@@ -444,8 +462,9 @@ test('a grave keeps the ground it had when it died', () => {
   const end = replay(log, Infinity).dead;
   assert.ok(end.t - b < 9 * DAY, 'it died young');
   // (Its base row greens over with moss as the months go by; the ground in front stays as it was.)
-  const rows = ['   :       @', '  @ :   @', '     @', '         @', ' @'];
-  assert.equal(grid(look(log, { now: end.t + HOUR, host: 'h' }).text)[5], DRAWINGS[DRAWING].front[4]);
+  const dx = whereAt(log, end.t, DRAWINGS[DRAWING]).dx, rows = pathRows(dx, 2, replay(log, Infinity).messes).slice(6, 11);
+  const base = DRAWINGS[DRAWING].front[4];
+  assert.equal(grid(look(log, { now: end.t + HOUR, host: 'h' }).text)[5], (dx >= 0 ? ' '.repeat(dx) + base : base.slice(-dx)));
   for (const later of [HOUR, 30 * DAY, 400 * DAY]) {
     assert.deepEqual(grid(look(log, { now: end.t + later, host: 'h' }).text).slice(6, 11), rows, `${later / DAY} days on`);
   }
@@ -470,8 +489,8 @@ test('the game draws the ground from the whole log, the visit just made included
   // One visit with 400 pets tips it: two footprints, in that visit's own reply.
   const r = act(log, Array(20).fill('pet x20').join(' '), opts);
   assert.equal(r.status, 200);
-  assert.deepEqual(grid(r.text).slice(6, 8), ['   :', '    :   @']);
   const after = { ...log, visits: [...log.visits, r.visit] };
+  assert.deepEqual(grid(r.text).slice(6, 8), pathRows(whereAt(after, now, DRAWINGS[DRAWING]).dx, 2, 1).slice(6, 8));
   const seen = grid(look(after, opts).text).slice(5);
   assert.deepEqual(seen, grid(r.text).slice(5), 'and looks after it see the same ground');
   // Every other reply draws it too: a refused body, a refused name, a name given.
@@ -485,5 +504,6 @@ test('the game draws the ground from the whole log, the visit just made included
   const fond = newLog(b);
   for (let t = b + HOUR; t < b + 20 * DAY; t += 8 * HOUR) fond.visits.push({ t, acts: [['feed', 5], ['clean', 3], ['pet', 20]] });
   assert.deepEqual(groundAt(fond, b + 20 * DAY), { ...BARE, pet: 1 });
-  assert.deepEqual(grid(look(fond, { now: b + 20 * DAY, host: 'h' }).text).slice(6, 9).map(row => row.slice(0, 5).trimEnd()), ['   :', '    :', '']);
+  const fondDx = whereAt(fond, b + 20 * DAY, DRAWINGS[DRAWING]).dx, rows = grid(look(fond, { now: b + 20 * DAY, host: 'h' }).text).map(row => row.padEnd(W));
+  assert.deepEqual([rows[6][3 + fondDx], rows[7][4 + fondDx], rows[8].includes(':')], [':', ':', false]);
 });

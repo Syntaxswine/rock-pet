@@ -6,7 +6,8 @@ import { mealAt, drawMeal } from '../src/meal.mjs';
 import { render, sprite, faint, shownHunger, W } from '../src/screen.mjs';
 import { DRAWINGS, DRAWING } from '../src/drawings.mjs';
 import { replay, born, HOUR } from '../src/engine.mjs';
-import { nature, placeAt } from '../src/character.mjs';
+import { nature } from '../src/character.mjs';
+import { whereAt, roomOf } from '../src/wander.mjs';
 import { look, act, name, newLog } from '../src/rock.mjs';
 
 const MIN = 60_000, DAY = 24 * HOUR;
@@ -18,6 +19,9 @@ const eyesOf = d => d.front.findIndex(row => row.includes('E')); // a box row; t
 const EYES = eyesOf(D);
 const face = (eye, rows = D.front) => rows[EYES].replaceAll('E', eye);
 const shifted = (row, dx) => (dx >= 0 ? ' '.repeat(dx) + row : row.slice(-dx));
+// Where the game draws the rock with this log at t (wander.mjs): where it died, for a grave.
+const dxOf = (log, t) => { const s = replay(log, t); return whereAt(log, s.dead ? s.dead.t : t, D).dx; };
+const spotsOf = d => { const { min, max } = roomOf(d); return Array.from({ length: max - min + 1 }, (_, i) => min + i); };
 // The face row as it should look while it eats, spelled out here rather than read from meal.mjs:
 // the food just past the row's right end, or past its left end where the grid has no room on the
 // right; while its mouth is open, the end on that side turned toward the food.
@@ -71,7 +75,7 @@ test('every feed starts a meal, whatever else the visit does; other care neither
   const full = { ...newLog(T), visits: [{ t: T, acts: [['feed', 1]] }] };
   assert.equal(replay(full, T).fed, 0, 'the feed took no hunger away');
   assert.deepEqual(mealAt(full, T + 2 * MIN), { food: '#', open: true }, 'and it eats anyway');
-  assert.equal(grid(act(newLog(T), 'feed', { now: T, host: 'h' }).text)[1 + EYES], eating(face('^'), { food: '#', open: true }), 'in the reply too');
+  assert.equal(grid(act(newLog(T), 'feed', { now: T, host: 'h' }).text)[1 + EYES], eating(face('^'), { food: '#', open: true }, dxOf(full, T)), 'in the reply too');
 });
 
 test('a meal counts only the time it lives: host downtime pauses it', () => {
@@ -99,18 +103,18 @@ function keptUntil(t) {
 
 test('the reply to a feed opens its mouth beside the food, and looks after it see the meal go', () => {
   assert.notEqual(new Date(WEDNESDAY).getUTCDay(), nature(T).wallDay, 'a day it faces out');
-  assert.equal(placeAt(T, WEDNESDAY).col, 0, 'and has not moved');
   const log = keptUntil(WEDNESDAY);
   const r = act(log, 'feed x4 clean pet x10', { now: WEDNESDAY, host: 'h' });
   assert.equal(r.status, 200);
   const row = text => grid(text)[1 + EYES];
-  assert.equal(row(r.text), eating(face('^'), { food: '#', open: true }), 'its reply');
-  const after = { ...log, visits: [...log.visits, r.visit] };
+  const after = { ...log, visits: [...log.visits, r.visit] }, dx = dxOf(after, WEDNESDAY);
+  assert.equal(row(r.text), eating(face('^'), { food: '#', open: true }, dx), 'its reply, where it went to eat');
   for (const [ms, meal] of [[MIN, { food: '#', open: false }], [29 * MIN, { food: '#', open: false }], [30 * MIN, { food: '+', open: true }], [59 * MIN, { food: '+', open: false }]]) {
-    assert.equal(row(look(after, { now: WEDNESDAY + ms, host: 'h' }).text), eating(face('^'), meal), `${ms / MIN} minutes on`);
+    assert.equal(dxOf(after, WEDNESDAY + ms), dx, 'it rests where it eats');
+    assert.equal(row(look(after, { now: WEDNESDAY + ms, host: 'h' }).text), eating(face('^'), meal, dx), `${ms / MIN} minutes on`);
   }
-  assert.equal(row(look(after, { now: WEDNESDAY + HOUR, host: 'h' }).text), face('^'), 'an hour on, it has eaten it all');
-  assert.equal(row(act(after, 'pet', { now: WEDNESDAY + 2 * MIN, host: 'h' }).text), eating(face('^'), { food: '#', open: true }), 'care that is not food leaves the meal going');
+  assert.equal(row(look(after, { now: WEDNESDAY + HOUR, host: 'h' }).text), shifted(face('^'), dxOf(after, WEDNESDAY + HOUR)).trimEnd(), 'an hour on, it has eaten it all');
+  assert.equal(row(act(after, 'pet', { now: WEDNESDAY + 2 * MIN, host: 'h' }).text), eating(face('^'), { food: '#', open: true }, dx), 'care that is not food leaves the meal going');
 });
 
 test('every reply draws the meal, from the whole log, the visit just made included', () => {
@@ -120,7 +124,7 @@ test('every reply draws the meal, from the whole log, the visit just made includ
   const opts = { now: WEDNESDAY + 2 * MIN, host: 'h' };
   const row = text => grid(text.split('\n').filter(l => !l.startsWith('error:')).join('\n'))[1 + EYES];
   const seen = row(look(after, opts).text);
-  assert.equal(seen, eating(face('^'), { food: '#', open: true }));
+  assert.equal(seen, eating(face('^'), { food: '#', open: true }, dxOf(after, opts.now)));
   assert.equal(row(act(after, 'dance', opts).text), seen, 'a refused act');
   assert.equal(row(name(after, 'x', opts).text), seen, 'a refused name');
   const named = name(after, 'Basalto', opts);
@@ -132,11 +136,11 @@ test('from behind it eats with its back to anyone who only looks; care turns it 
   // Born on its own day for facing the wall, fed in its first hour.
   const log = newLog(T);
   const r = act(log, 'feed x4 clean pet x10', { now: T + HOUR, host: 'h' });
-  assert.equal(grid(r.text)[1 + EYES], eating(face('^'), { food: '#', open: true }), 'care turns it round, and it eats');
-  const after = { ...log, visits: [r.visit] };
+  const after = { ...log, visits: [r.visit] }, dx = dxOf(after, T + HOUR);
+  assert.equal(grid(r.text)[1 + EYES], eating(face('^'), { food: '#', open: true }, dx), 'care turns it round, and it eats');
   const seen = look(after, { now: T + HOUR + 2 * MIN, host: 'h' }); // a minute when its mouth is open
   assert.ok(seen.text.includes('quirk: it is facing the wall today.'), seen.text);
-  assert.equal(grid(seen.text)[1 + EYES], eating(D.back[EYES], { food: '#', open: false }), 'the food beside its back, and no mouth');
+  assert.equal(grid(seen.text)[1 + EYES], eating(D.back[EYES], { food: '#', open: false }, dx), 'the food beside its back, and no mouth');
 });
 
 test('a grave eats nothing', () => {
@@ -149,16 +153,17 @@ test('a grave eats nothing', () => {
   assert.ok(s.dead, 'it died');
   const opts = { now: s.dead.t + MIN, host: 'h' };
   assert.ok(mealAt(log, opts.now), 'its last feed was within the hour');
-  assert.equal(grid(look(log, opts).text)[1 + EYES], face('x'), 'a stone again: crosses, and no food');
+  const lies = shifted(face('x'), dxOf(log, opts.now)).trimEnd();
+  assert.equal(grid(look(log, opts).text)[1 + EYES], lies, 'a stone again: crosses, and no food');
   const refused = act(log, 'feed', opts);
   assert.equal(refused.status, 410);
-  assert.equal(grid(refused.text)[1 + EYES], face('x'), 'nor in the grave care gets back');
+  assert.equal(grid(refused.text)[1 + EYES], lies, 'nor in the grave care gets back');
 });
 
 // The rock's box drawn into a bare grid, `dx` columns over, as render does.
 function boxed(s, now, pose, drawing, dx) {
   const g = Array.from({ length: W }, () => Array(W).fill(' '));
-  sprite(s, now, pose, drawing).forEach((row, r) => { for (let c = 0; c < W; c++) if (row[c] !== ' ' && c + dx >= 0 && c + dx < W) g[1 + r][c + dx] = row[c]; });
+  sprite(s, now, pose, drawing, [], dx).forEach((row, r) => { for (let c = 0; c < W; c++) if (row[c] !== ' ' && c + dx >= 0 && c + dx < W) g[1 + r][c + dx] = row[c]; });
   return g;
 }
 
@@ -167,7 +172,7 @@ test('every drawing eats on its right where there is room, else its left: only t
   const hungry = { ...marked, hunger: 7 }; // fed once from starving: still faint while it eats
   const MEALS = [{ food: '#', open: true }, { food: '#', open: false }, { food: '+', open: true }, { food: '+', open: false }];
   let lefts = 0, rights = 0;
-  for (const [name, drawing] of Object.entries(DRAWINGS)) for (const pose of ['front', 'away']) for (const dx of [-1, 0, 1]) for (const s of [marked, hungry]) {
+  for (const [name, drawing] of Object.entries(DRAWINGS)) for (const pose of ['front', 'away']) for (const dx of spotsOf(drawing)) for (const s of [marked, hungry]) {
     const lines = faint(s) ? drawing.faint : drawing, rows = pose === 'away' ? lines.back : lines.front;
     const eyes = eyesOf(drawing), r = 1 + eyes;
     const slots = new Set([...drawing.veins, ...drawing.polish, ...drawing.crystals].map(([mr, mc]) => `${1 + mr},${mc + dx}`));
@@ -246,13 +251,13 @@ test('a rock petted but never fed shows happy eyes in every reply, drawn faint f
     assert.equal(r.status, 200);
     log = { ...log, visits: [...log.visits, r.visit] };
     const row = grid(r.text)[1 + EYES], hunger = Number(grid(r.text)[0].split(/ +/)[0]);
-    assert.equal(row, face('^', hunger >= 7 ? D.faint.front : D.front), `at ${(t - T) / HOUR}h, hunger ${hunger}`);
+    assert.equal(row, shifted(face('^', hunger >= 7 ? D.faint.front : D.front), dxOf(log, t)).trimEnd(), `at ${(t - T) / HOUR}h, hunger ${hunger}`);
     seen.push(hunger >= 7);
   }
   assert.deepEqual(seen, [false, true, true, true, true, true, true, true], 'faint from the second visit, at hunger 7');
   const grave = replay(log, Infinity).dead;
   assert.equal(grave.cause, 'hungry');
-  assert.equal(grid(look(log, { now: grave.t + HOUR, host: 'h' }).text)[1 + EYES], face('x'), 'and solid in its grave');
+  assert.equal(grid(look(log, { now: grave.t + HOUR, host: 'h' }).text)[1 + EYES], shifted(face('x'), dxOf(log, grave.t + HOUR)).trimEnd(), 'and solid in its grave');
 });
 
 test('every drawing has a faint front and back: the same cells and eyes, in lighter lines', () => {

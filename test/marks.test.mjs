@@ -6,13 +6,13 @@ import assert from 'node:assert/strict';
 import { mossAt, marksOf, POLISH_AT, CRYSTALS_AT } from '../src/marks.mjs';
 import { DRAWINGS, DRAWING, mossCells, MOSS_CELLS } from '../src/drawings.mjs';
 import { render, sprite, eyes, faint, W } from '../src/screen.mjs';
-import { placeAt } from '../src/character.mjs';
+import { whereAt, roomOf, furrowShows } from '../src/wander.mjs';
 import { replay, born, applyVisit, HOUR } from '../src/engine.mjs';
 import { look, act, history, newLog } from '../src/rock.mjs';
 import { RULES } from '../src/rules.mjs';
 
 const DAY = 24 * HOUR;
-const T = Date.UTC(2026, 9, 6); // October: no rock moves by itself
+const T = Date.UTC(2026, 9, 6); // October: no ice
 const FULL = [['feed', 4], ['clean', 1], ['pet', 10]];
 const opts = now => ({ now, host: 'rock.test' });
 const grid = text => text.split('\n').slice(0, W);
@@ -61,6 +61,38 @@ test('moss grows on a rock nobody comes to, and any visit brushes it off', () =>
   assert.equal(moss(grid(act(log, 'pet', opts(T + 40 * HOUR)).text).slice(1, 6)), 0, 'a visit brushes it off');
 });
 
+test('wherever it has moved, moss is its first tufts that the grid can show, and a grave greens over a stage at a time', () => {
+  // On every drawing at every spot of its room: alone 13, 25 and 49 hours, its first 2, 4 and 7
+  // tufts, less any past the grid's edge (only the pip at its far left loses one, its 7th); and a
+  // grave, at its death and a week, a month and a season later, greener at each stage than at the
+  // last, its last stage a second layer on its top.
+  const D0 = T - 41 * DAY, onGrid = (d, dx, n) => mossCells(d.front).slice(0, n).filter(([, c]) => c + dx >= 0 && c + dx < W).length;
+  const grave = { ...born(D0), t: T, lastCare: T - 50 * HOUR, visits: 90, happy: -10, sorrowSince: T - 48 * HOUR, dead: { t: T, cause: 'lonely' } };
+  let short = 0;
+  for (const [name, d] of Object.entries(DRAWINGS)) {
+    const { min, max } = roomOf(d);
+    for (let dx = min; dx <= max; dx++) {
+      const tufts = (s, now) => moss(grid(render(s, { now, host: 'h', drawing: d, place: { dx, from: null, furrow: false } })).slice(1, 6));
+      for (const [hours, level] of [[13, 1], [25, 2], [49, 3]]) {
+        const n = tufts({ ...born(D0), t: T, lastCare: T - hours * HOUR, visits: 90 }, T);
+        assert.equal(n, onGrid(d, dx, TUFTS[level]), `${name} at ${dx}, alone ${hours}h`);
+        if (n < TUFTS[level]) short++;
+        // On its front and on its back (its wall day): the very cells, from the side that shows.
+        for (const [pose, rows] of [['front', d.front], ['away', d.back]]) {
+          const draw = lastCare => grid(render({ ...born(D0), t: T, lastCare, visits: 90 }, { now: T, host: 'h', drawing: d, pose, place: { dx, from: null, furrow: false } })).slice(1, 6).map(r => r.padEnd(W));
+          const bare = draw(T), mossy = draw(T - hours * HOUR), got = [];
+          for (let r = 0; r < 5; r++) for (let c = 0; c < W; c++) if (bare[r][c] !== mossy[r][c]) got.push(`${r},${c - dx}`);
+          const want = mossCells(rows).slice(0, TUFTS[level]).filter(([, c]) => c + dx >= 0 && c + dx < W).map(([r, c]) => `${r},${c}`);
+          assert.deepEqual(got.sort(), want.sort(), `${name} ${pose} at ${dx}, alone ${hours}h`);
+        }
+      }
+      const stages = [0, 7, 30, 90].map(days => tufts(grave, T + days * DAY));
+      for (let k = 1; k < stages.length; k++) assert.ok(stages[k] > stages[k - 1], `${name}'s grave at ${dx}: ${stages.join(', ')}`);
+    }
+  }
+  assert.equal(short, 1, 'one tuft short at 48h, on the pip at its far left, and nowhere else');
+});
+
 test('verified host downtime grows no moss: it pauses moss as it pauses everything else', () => {
   // A full visit, then the host down for 50h (credited), then a look an hour after it came back.
   const visit = { t: T + HOUR, acts: FULL };
@@ -92,9 +124,10 @@ test('a grave keeps the moss of its last days alone, and greens over: a week, a 
   assert.equal(fed.dead.cause, 'hungry');
   assert.deepEqual([0, 7 * DAY, 30 * DAY, 90 * DAY].map(d => at(fed, d)), [0, 4, 5, 6]);
   const drawn = d => grid(look(newLog(T), opts(lonely.dead.t + d)).text).slice(1, 6);
-  const room = mossCells(DRAWINGS[DRAWING].front).length;
-  assert.deepEqual([0, 7 * DAY, 30 * DAY, 90 * DAY].map(d => moss(drawn(d))), [3, 4, 5, 6].map(l => Math.min(TUFTS[l], room)));
-  const d = DRAWINGS[DRAWING], dx = placeAt(T, lonely.dead.t).col;
+  // Where it lies (it wandered before it died): a tuft past the grid's edge isn't drawn.
+  const d = DRAWINGS[DRAWING], dx = whereAt(newLog(T), lonely.dead.t, d).dx;
+  const shown = n => mossCells(d.front).slice(0, n).filter(([, c]) => c + dx >= 0 && c + dx < W).length;
+  assert.deepEqual([0, 7 * DAY, 30 * DAY, 90 * DAY].map(day => moss(drawn(day))), [3, 4, 5, 6].map(l => shown(TUFTS[l])));
   for (const [r, row] of d.front.entries()) for (const [c, cell] of [...row].entries()) if (cell === 'E') assert.equal(drawn(0)[r][c + dx], 'x', 'crosses for eyes');
 });
 
@@ -197,35 +230,38 @@ test('every drawing is well formed', () => {
   }
 });
 
-test('every drawing leaves its trail beside its base on the day it moves, and none the next', () => {
-  const visits = b => { const v = []; for (let at = b + HOUR; at < b + 120 * DAY; at += 8 * HOUR) v.push({ t: at, acts: FULL }); return v; };
+// The cells a base swept as it slid, a column at a time, from `from` to `dx`, less those it covers
+// now: where its furrow should lie (worked out here, not with the screen's own formula).
+function swept(base, from, dx) {
+  const left = base.search(/\S/), right = base.trimEnd().length - 1, cells = new Set();
+  for (let x = from; x !== dx; x += Math.sign(dx - from)) for (let c = left + x; c <= right + x; c++) cells.add(c);
+  for (let c = left + dx; c <= right + dx; c++) cells.delete(c);
+  return [...cells].sort((p, q) => p - q);
+}
+
+test('every drawing leaves its furrow on the ground its base slid off, between any two of its spots', () => {
+  const s = { ...born(T), t: T, lastCare: T - HOUR, visits: 3, hunger: 2, happy: 6 };
   for (const [name, drawing] of Object.entries(DRAWINGS)) {
-    const base = drawing.front[4], left = base.search(/\S/), right = base.trimEnd().length - 1;
-    const seen = {};
-    for (let b = Date.UTC(2026, 10, 1); Object.keys(seen).length < 4; b += 5 * HOUR) {
-      for (let day = 1; day < 110 && Object.keys(seen).length < 4; day++) {
-        const t = Math.floor(b / DAY) * DAY + day * DAY + 11 * HOUR, p = placeAt(b, t);
-        if (p.from === null || seen[`${p.from}>${p.col}`]) continue;
-        const log = { ...newLog(b), visits: visits(b).filter(v => v.t <= t) };
-        const g = grid(render(replay(log, t), { now: t, host: 'x', drawing }));
-        const trail = p.col > p.from ? [left + p.col - 1, left + p.col - 2] : [right + p.col + 1, right + p.col + 2];
-        const furrow = trail.filter(c => c >= 0 && c < W).map(c => g[5][c]).join('');
-        assert.equal(furrow, '~'.repeat(furrow.length), `${name}, moved ${p.from}>${p.col}: "${g[5]}"`);
-        assert.ok(furrow.length >= 1, `${name}: some room for a trail`);
-        const next = grid(render(replay(log, t + DAY), { now: t + DAY, host: 'x', drawing }));
-        if (placeAt(b, t + DAY).from === null) assert.ok(!next[5].includes('~'), `${name}: gone the next day: "${next[5]}"`);
-        seen[`${p.from}>${p.col}`] = true;
-      }
+    const base = drawing.front[4], left = base.search(/\S/), right = base.trimEnd().length - 1, { min, max } = roomOf(drawing);
+    for (let from = min; from <= max; from++) for (let dx = min; dx <= max; dx++) {
+      if (from === dx) continue;
+      const g = grid(render(s, { now: T, host: 'x', drawing, place: { dx, from, furrow: true } })).map(row => row.padEnd(W));
+      const furrow = [...g[5]].flatMap((ch, c) => (ch === '~' ? [c] : []));
+      assert.deepEqual(furrow, swept(base, from, dx), `${name}, moved ${from}>${dx}: "${g[5]}"`);
+      assert.equal(g[5].slice(left + dx, right + dx + 1), base.slice(left), `${name}: its base is whole beside it`);
+      assert.ok(!render(s, { now: T, host: 'x', drawing, place: { dx, from, furrow: false } }).includes('~'), `${name}: no furrow once it has gone`);
     }
   }
 });
 
-test('every drawing draws every rock whole: the eyes, the outline, an @ per mess, the trail beside its base', () => {
+test('every drawing draws every rock whole: the eyes, the outline, an @ per mess, the furrow beside its base', () => {
   for (const { log, now } of lives(150, 9)) {
     const s = replay(log, now);
-    const { col: dx, from } = placeAt(s.born, s.dead ? s.dead.t : now);
     for (const [name, drawing] of Object.entries(DRAWINGS)) {
-      const g = render(s, { now, host: 'x', drawing }).split('\n').slice(0, W);
+      const p = whereAt(log, s.dead ? s.dead.t : now, drawing), dx = p.dx, furrow = !s.dead && furrowShows(log, p, now);
+      const { min, max } = roomOf(drawing);
+      assert.ok(dx >= min && dx <= max, `${name}: within its room`);
+      const g = render(s, { now, host: 'x', drawing, place: { dx, from: p.from, furrow } }).split('\n').slice(0, W);
       const slots = new Set([...drawing.veins, ...drawing.polish, ...drawing.crystals].map(([r, c]) => `${r},${c}`));
       // Its front, in dotted lines while it is hungry.
       (faint(s) ? drawing.faint.front : drawing.front).forEach((row, r) => [...row].forEach((cell, c) => {
@@ -234,9 +270,7 @@ test('every drawing draws every rock whole: the eyes, the outline, an @ per mess
       }));
       for (const row of g) assert.ok(row.length <= W && row === row.trimEnd(), `${name}: "${row}"`);
       assert.equal(g.join('').split('@').length - 1, Math.min(s.messes, 16), `${name}: an @ per mess`);
-      const base = drawing.front[4], left = base.search(/\S/) + dx, right = base.trimEnd().length - 1 + dx;
-      const beside = [g[5][left - 1], g[5][left - 2], g[5][right + 1], g[5][right + 2]].filter(c => c === '~').length;
-      assert.equal(beside > 0, !s.dead && from !== null, `${name}: a trail only the day it moved, and not on a grave:\n${g.join('\n')}`);
+      assert.equal(g[5].includes('~'), furrow, `${name}: a furrow only while it shows, and not on a grave:\n${g.join('\n')}`);
     }
   }
 });

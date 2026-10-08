@@ -8,9 +8,17 @@
 //   The base keeps its line, lightening only at its ends: sand is `.` on that row, and a faint
 //   rock's sand must read as sand. Ticks stay off the cells beside polish slots.
 // - `veins`, `polish`, `crystals`: where each mark of its life goes, [row, col, mark], in order.
-// Every drawing keeps to columns 1-10, so a rock that has moved a column either way still fits.
+// Every drawing keeps to columns 1-10. It wanders along its ground as far as the room either side
+// of it allows (wander.mjs): the small pip has three columns each way, the wide lump one.
 
 export const DRAWINGS = {
+  pip: {
+    about: 'a small round stone, with room to wander',
+    front: ['', '', '   .----.', '   (E  E)', "   '----'"],
+    back: ['', '', '   .----.', '   (    )', "   '----'"],
+    faint: { front: ['', '', '   ......', '   :E  E:', "   '----'"], back: ['', '', '   ......', '   :    :', "   '----'"] },
+    veins: [[2, 5, '/'], [4, 6, '/'], [2, 7, '/']], polish: [[2, 4, "'"], [2, 6, "'"]], crystals: [[4, 4, '*'], [4, 7, '*']],
+  },
   lump: {
     about: 'a lump with a flat base',
     front: ['', '    ___', '  _/   \\__', ' /  E  E  \\', ' \\________/'],
@@ -62,11 +70,17 @@ export const DRAWINGS = {
   },
 };
 
-/** The one the screen draws. The owner's choice. */
-export const DRAWING = 'lump';
+/**
+ * The one the screen draws. The owner's choice: the pip, small enough to wander, from 2026-10-08
+ * ("the pet should wander around the screen"); the lump before.
+ */
+export const DRAWING = 'pip';
 
 // Where moss grows on a drawing, in the order it spreads: the cell above its outline in each
-// column, from the middle out, then down its sides.
+// column, from the middle out, then down its sides, then a second layer on its top, wherever the
+// box has room above the first. Only a grave's last stage reaches the second layer. It lies in
+// the rock's own columns, so no edge of the grid hides it: a rock moved to the edge has a side
+// past it, but its grave's last stage is still greener than the one before.
 export function mossCells(rows) {
   const b = rows.map(r => r.padEnd(12));
   const top = [];
@@ -81,12 +95,13 @@ export function mossCells(rows) {
     if (left > 0) sides.push([r, left - 1]);
     if (right >= 0 && right < 11) sides.push([r, right + 1]);
   }
+  const layer = top.filter(([r]) => r > 0).map(([r, c]) => [r - 1, c]);
   const seen = new Set(top.map(([r, c]) => `${r},${c}`));
-  return [...top, ...sides.filter(([r, c]) => !seen.has(`${r},${c}`) && seen.add(`${r},${c}`))];
+  return [...top, ...[...sides, ...layer].filter(([r, c]) => !seen.has(`${r},${c}`) && seen.add(`${r},${c}`))];
 }
 /**
  * How many of those cells hold moss at each level, 0-6 (marks.mjs says when). Every drawing has
- * at least 12; at the last level, a season after death, all of them do (but a side that a moved
+ * at least 12; at the last level, a season after death, all of them do (but a tuft that a moved
  * rock has pushed past the grid's edge is not drawn).
  */
 export const MOSS_CELLS = [0, 2, 4, 7, 9, 11, Infinity];

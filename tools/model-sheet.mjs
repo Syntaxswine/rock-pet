@@ -12,10 +12,11 @@ import { born, replay, HOUR } from '../src/engine.mjs';
 import { RULES } from '../src/rules.mjs';
 import { render, W } from '../src/screen.mjs';
 import { DRAWINGS, DRAWING } from '../src/drawings.mjs';
-import { placeAt } from '../src/character.mjs';
+import { iceTimes } from '../src/character.mjs';
 import { CARE_AXES, DAILY_CARE } from '../src/personality.mjs';
 import { groundOf } from '../src/ground.mjs';
 import { mealAt } from '../src/meal.mjs';
+import { whereAt, furrowShows } from '../src/wander.mjs';
 
 const DAY = 24 * HOUR;
 const T = Date.UTC(2026, 10, 16, 14, 5); // a Monday afternoon in November
@@ -39,9 +40,33 @@ const LONELY = (() => {
 })();
 const graveAt = since => [LONELY, { now: LONELY.dead.t + since }];
 
-// The first winter day after T on which this rock moves, for the sailing frame.
-function sailingDay(b) {
-  for (let t = T; ; t += DAY) { const p = placeAt(b, t); if (p.from !== null) return { t, p }; }
+// A rock cared for in full every 8h from its birth, 41 days before T, up to `until`; and where it
+// is at t (wander.mjs), as rock.mjs would draw it then, with the state it is in.
+const keptLog = until => {
+  const log = { born: T - 41 * DAY, rules: RULES.version, visits: [] };
+  for (let t = log.born + HOUR; t <= until; t += 8 * HOUR) log.visits.push({ t, acts: FULL });
+  return log;
+};
+const seenAt = (log, t, drawing = DRAWINGS[DRAWING]) => {
+  const p = whereAt(log, t, drawing);
+  return [replay(log, t), { now: t, drawing, place: { dx: p.dx, from: p.from, furrow: furrowShows(log, p, t) }, meal: mealAt(log, t) }];
+};
+// Its first moves of a day, each seen five minutes after it was made, so its furrow shows: the
+// first day after T on which they include a walk to its food, so the sheet shows both kinds.
+function aDayOfMoves(n) {
+  for (let day = Math.ceil(T / DAY) * DAY; ; day += DAY) {
+    const log = keptLog(day + DAY), out = [];
+    for (let t = day; out.length < n && t < day + DAY; t += 60_000) {
+      const p = whereAt(log, t, DRAWINGS[DRAWING]);
+      if (p.at === t) out.push([`${new Date(t).toISOString().slice(11, 16)} ${p.why === 'food' ? 'to food' : p.why}`, ...seenAt(log, t + 5 * 60_000)]);
+    }
+    if (out.some(([label]) => label.endsWith('to food'))) return out;
+  }
+}
+// Its first morning on the ice after T, seen that evening.
+function onTheIce() {
+  const t = iceTimes(T - 41 * DAY, T + 120 * DAY, []).find(at => at > T) + 9 * HOUR;
+  return seenAt(keptLog(t), t);
 }
 
 // Lifetime care totals for a rock `days` old, given each care at its daily need (personality.mjs)
@@ -56,8 +81,8 @@ const kept = (x, days = 41) => [rock({ born: T - days * DAY }), { ground: ground
 const MIN = 60_000;
 const eating = (ms, o = {}) => [rock({ hunger: ms / (2.4 * HOUR), lastCare: T - ms, ...o }), { meal: mealAt({ born: T - 41 * DAY, rules: RULES.version, visits: [{ t: T - ms, acts: [['feed', 2]] }] }, T) }];
 
-function grid(s, { now = T, pose, drawing, ground, meal } = {}) {
-  return render(s, { now, host: 'rock', pose, name: 'Pebble', drawing, ground, meal }).split('\n').slice(0, W).map(row => row.padEnd(W));
+function grid(s, { now = T, pose, drawing, ground, meal, place } = {}) {
+  return render(s, { now, host: 'rock', pose, name: 'Pebble', drawing, ground, meal, place }).split('\n').slice(0, W).map(row => row.padEnd(W));
 }
 function row(frames) {
   const out = [frames.map(([label]) => label.padEnd(W + 2)).join('  ').trimEnd()];
@@ -73,8 +98,6 @@ const FEED_PET = { feed: 2, clean: 0, pet: 2 }, CLEAN_PET = { feed: 0, clean: 2,
 
 /** The sheet, as text. */
 export function sheet() {
-  const sail = sailingDay(T - 41 * DAY);
-  const sailNow = sail.t + 9 * HOUR;
   return [
     `the rock, as drawn now (${DRAWING}): faces, by happiness`,
     row([
@@ -118,10 +141,13 @@ export function sheet() {
     row([2, 3, 4, 8].map(x => [`${x} times`, grid(...kept({ pet: x }))])),
     'its ground forms over two weeks: petted at 8 times its need, at 2, 7, 10 and 14 days old',
     row([2, 7, 10, 14].map(d => [`${d} days`, grid(...kept({ pet: 8 }, d))])),
-    'its days: the wall, a morning it moved',
+    'where it is: about once in four hours it moves along its ground, to its food if it has just\n' +
+      'been fed. A day of its moves, each five minutes after it made it, with the furrow it left',
+    row(aDayOfMoves(4).map(([label, s, o]) => [label, grid(s, o)])),
+    'its days: the wall, and an evening after it slid on the ice',
     row([
       ['facing the wall', grid(rock({ closeCalls: 1 }), { pose: 'away' })],
-      [`moved ${sail.p.col > sail.p.from ? 'right' : 'left'}`, grid(rock({ born: T - 41 * DAY, t: sailNow, lastCare: sailNow - 2 * HOUR }), { now: sailNow })],
+      ['slid on the ice', grid(...onTheIce())],
     ]),
     'the grave of a rock once saved, then left: at death, then more moss',
     row([
