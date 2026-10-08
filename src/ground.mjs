@@ -7,8 +7,9 @@
 //
 //   feed   it settles into sand: at its foot, then over the corners of its base, then over the
 //          whole base, with only its marks and moss showing through
-//   clean  a raked floor in front of it: under it, then the whole row, then raked deeper
-//   pet    footprints worn up to its front: 2, 3 or 5. Where they cross the raked floor they step
+//   clean  a raked floor in front of it: a line under it, then two lines across the ground, then
+//          three, the way a dry garden's gravel is raked in lines (the owner's choice, 2026-10-08)
+//   pet    footprints worn up to its front: 2, 3 or 5. Where they cross a raked line they step
 //          on a stone, the way a garden's stepping stones keep feet off its raking.
 
 import { addCare, CARE_AXES, DAILY_CARE } from './personality.mjs';
@@ -39,7 +40,8 @@ export const FADE = 0.02;
 export const STEPS = [0, 2, 3, 5];
 /**
  * Where footprints fall, nearest the rock first, moved as the rock has moved. The same cells
- * for every drawing; they keep off the first fourteen mess spots (screen.mjs), wherever it is.
+ * for every drawing. Where it sits at home they keep off the first fourteen mess spots
+ * (screen.mjs); once it has wandered, a mess may lie on one.
  */
 export const FOOTPRINTS = [[6, 3], [7, 4], [8, 3], [9, 4], [10, 3]];
 
@@ -111,9 +113,9 @@ export function groundAt(log, end) {
 /**
  * Draw `ground` into the grid `g` (rows of single characters) around a rock drawn from `rows`
  * (its drawing's front or back), `dx` columns from where it began. Call it after the rock and
- * before its trail and the messes, which lie on top. It draws on bare cells, with two
+ * before its furrow and the messes, which lie on top. It draws on bare cells, with two
  * exceptions: sand covers the outline of the rock's base (its corners, then all of it; marks
- * and moss there still show), and a footprint on the raked floor becomes a stone.
+ * and moss there still show), and a footprint on a raked line becomes a stone.
  */
 export function drawGround(g, ground, rows, dx) {
   const W = g[BASE].length;
@@ -127,12 +129,12 @@ export function drawGround(g, ground, rows, dx) {
     for (const c of [left, right]) if (outline(c)) g[BASE][c] = '.';
   }
   if (ground.feed >= 3) for (let c = left; c <= right; c++) if (outline(c)) g[BASE][c] = '.';
-  const rake = ground.clean >= 3 ? '=' : '-';
+  // One raked line for each level of cleaning: the first under it, then across the ground.
   const [from, to] = ground.clean >= 2 ? [0, W - 1] : [left, right];
-  if (ground.clean >= 1) for (let c = from; c <= to; c++) if (bare(BASE + 1, c)) g[BASE + 1][c] = rake;
+  for (let line = 1; line <= ground.clean; line++) for (let c = from; c <= to; c++) if (bare(BASE + line, c)) g[BASE + line][c] = '-';
   for (const [r, col] of FOOTPRINTS.slice(0, STEPS[ground.pet])) {
     const c = col + dx;
     if (g[r][c] === ' ') g[r][c] = ':';
-    else if (g[r][c] === '-' || g[r][c] === '=') g[r][c] = 'o';
+    else if (g[r][c] === '-') g[r][c] = 'o';
   }
 }

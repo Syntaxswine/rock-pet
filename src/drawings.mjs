@@ -3,59 +3,84 @@
 // the air above the rock, where moss grows.
 // - `front`: the rock, with E at each eye.
 // - `back`: the rock from behind, for a day it faces the wall.
+// - `faint`: its front and back again in dotted lines, for while it is hungry (screen.mjs). Each
+//   fills exactly the cells its solid form does, so its marks, moss and ground go where they did.
+//   The base keeps its line, lightening only at its ends: sand is `.` on that row, and a faint
+//   rock's sand must read as sand. Ticks stay off the cells beside polish slots.
 // - `veins`, `polish`, `crystals`: where each mark of its life goes, [row, col, mark], in order.
-// Every drawing keeps to columns 1-10, so a rock that has moved a column either way still fits.
+// Every drawing keeps to columns 1-10. It wanders along its ground as far as the room either side
+// of it allows (wander.mjs): the small pip has three columns each way, the wide lump one.
 
 export const DRAWINGS = {
+  pip: {
+    about: 'a small round stone, with room to wander',
+    front: ['', '', '   .----.', '   (E  E)', "   '----'"],
+    back: ['', '', '   .----.', '   (    )', "   '----'"],
+    faint: { front: ['', '', '   ......', '   :E  E:', "   '----'"], back: ['', '', '   ......', '   :    :', "   '----'"] },
+    veins: [[2, 5, '/'], [4, 6, '/'], [2, 7, '/']], polish: [[2, 4, "'"], [2, 6, "'"]], crystals: [[4, 4, '*'], [4, 7, '*']],
+  },
   lump: {
     about: 'a lump with a flat base',
     front: ['', '    ___', '  _/   \\__', ' /  E  E  \\', ' \\________/'],
     back: ['', '     ___', '  __/   \\_', ' /        \\', ' \\________/'],
+    faint: { front: ['', '    ...', '  .:   :..', ' :  E  E  :', " '________'"], back: ['', '     ...', '  ..:   :.', ' :        :', " '________'"] },
     veins: [[2, 5, '/'], [4, 7, '/'], [2, 8, '/']], polish: [[3, 2, "'"], [2, 4, "'"]], crystals: [[4, 8, '*'], [4, 3, '*']],
   },
   googly: {
     about: 'googly eyes, the craft-table pet rock',
     front: ['', '    ____', "  .'    '.", ' / (E)(E) \\', ' \\________/'],
     back: ['', '    ____', "  .'    '.", ' /        \\', ' \\________/'],
+    faint: { front: ['', '    ....', "  .'    '.", ' : (E)(E) :', " '________'"], back: ['', '    ....', "  .'    '.", ' :        :', " '________'"] },
     veins: [[2, 6, '/'], [4, 7, '/'], [2, 4, '\\']], polish: [[3, 2, "'"], [2, 5, "'"]], crystals: [[4, 8, '*'], [4, 3, '*']],
   },
   boulder: {
     about: 'round and solid',
     front: ['', '   .----.', '  /      \\', ' |  E  E  |', '  \\______/'],
     back: ['', '   .----.', '  /      \\', ' |        |', '  \\______/'],
+    faint: { front: ['', '   ......', '  :      :', ' :  E  E  :', "  '______'"], back: ['', '   ......', '  :      :', ' :        :', "  '______'"] },
     veins: [[2, 6, '/'], [4, 5, '/'], [3, 9, '/']], polish: [[2, 4, "'"], [3, 2, "'"]], crystals: [[4, 7, '*'], [2, 8, '*']],
   },
   cairn: {
     about: 'a small stone perched on a flat one',
     front: ['', '    .--.', '   (E  E)', '  .------.', ' (________)'],
     back: ['', '    .--.', '   (    )', '  .------.', ' (________)'],
+    faint: { front: ['', '    ....', '   :E  E:', '  ........', ' :________:'], back: ['', '    ....', '   :    :', '  ........', ' :________:'] },
     veins: [[3, 5, '/'], [4, 7, '/'], [4, 3, '/']], polish: [[1, 5, "'"], [3, 3, "'"]], crystals: [[4, 9, '*'], [3, 8, '*']],
   },
   sett: {
     about: 'a squared paving stone, a sett (a cobble is rounded)',
     front: ['', '', '  ._______.', '  | E   E |', '  |_______|'],
     back: ['', '', '  ._______.', '  |       |', '  |_______|'],
+    faint: { front: ['', '', '  .........', '  : E   E :', '  :_______:'], back: ['', '', '  .........', '  :       :', '  :_______:'] },
     veins: [[2, 6, '/'], [4, 7, '/'], [2, 8, '/']], polish: [[3, 3, "'"], [2, 4, "'"]], crystals: [[4, 8, '*'], [4, 4, '*']],
   },
   hoodoo: {
     about: 'a little spire with a cap stone',
     front: ['', '   ______', '  (______)', '   | EE |', '   |____|'],
     back: ['', '   ______', '  (______)', '   |    |', '   |____|'],
+    faint: { front: ['', '   ......', '  :......:', '   : EE :', '   :____:'], back: ['', '   ......', '  :......:', '   :    :', '   :____:'] },
     veins: [[1, 6, '/'], [3, 7, '/'], [2, 4, '/']], polish: [[3, 4, "'"], [2, 7, "'"]], crystals: [[4, 5, '*'], [4, 6, '*']],
   },
   pebble: {
     about: 'the first drawing, a small pebble',
     front: ['', '', '   .----.', '  ( E  E )', "   '----'"],
     back: ['', '', '   .----.', '  (      )', "   '----'"],
+    faint: { front: ['', '', '   ......', '  : E  E :', "   '----'"], back: ['', '', '   ......', '  :      :', "   '----'"] },
     veins: [[2, 5, '/'], [4, 6, '/'], [3, 3, '/']], polish: [[2, 7, "'"], [3, 8, "'"]], crystals: [[4, 4, '*'], [4, 7, '*']],
   },
 };
 
-/** The one the screen draws. The owner's choice. */
-export const DRAWING = 'lump';
+/**
+ * The one the screen draws. The owner's choice: the pip, small enough to wander, from 2026-10-08
+ * ("the pet should wander around the screen"); the lump before.
+ */
+export const DRAWING = 'pip';
 
 // Where moss grows on a drawing, in the order it spreads: the cell above its outline in each
-// column, from the middle out, then down its sides.
+// column, from the middle out, then down its sides, then a second layer on its top, wherever the
+// box has room above the first. Only a grave's last stage reaches the second layer. It lies in
+// the rock's own columns, so no edge of the grid hides it: a rock moved to the edge has a side
+// past it, but its grave's last stage is still greener than the one before.
 export function mossCells(rows) {
   const b = rows.map(r => r.padEnd(12));
   const top = [];
@@ -70,12 +95,13 @@ export function mossCells(rows) {
     if (left > 0) sides.push([r, left - 1]);
     if (right >= 0 && right < 11) sides.push([r, right + 1]);
   }
+  const layer = top.filter(([r]) => r > 0).map(([r, c]) => [r - 1, c]);
   const seen = new Set(top.map(([r, c]) => `${r},${c}`));
-  return [...top, ...sides.filter(([r, c]) => !seen.has(`${r},${c}`) && seen.add(`${r},${c}`))];
+  return [...top, ...[...sides, ...layer].filter(([r, c]) => !seen.has(`${r},${c}`) && seen.add(`${r},${c}`))];
 }
 /**
  * How many of those cells hold moss at each level, 0-6 (marks.mjs says when). Every drawing has
- * at least 12; at the last level, a season after death, all of them do (but a side that a moved
+ * at least 12; at the last level, a season after death, all of them do (but a tuft that a moved
  * rock has pushed past the grid's edge is not drawn).
  */
 export const MOSS_CELLS = [0, 2, 4, 7, 9, 11, Infinity];

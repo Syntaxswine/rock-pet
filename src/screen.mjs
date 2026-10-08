@@ -4,10 +4,10 @@
 
 import { RULES as R } from './rules.mjs';
 import { HOUR, ceilingOf } from './engine.mjs';
-import { placeAt } from './character.mjs';
 import { mossAt, marksOf } from './marks.mjs';
 import { DRAWINGS, DRAWING, mossCells, MOSS_CELLS } from './drawings.mjs';
 import { drawGround } from './ground.mjs';
+import { drawMeal } from './meal.mjs';
 
 export const W = 12; // the grid is W x W
 
@@ -22,6 +22,22 @@ export const MESS_SPOTS = [
 // is truly there, since that is when its 48h clock runs.
 export const shownHunger = s => (s.starvingSince !== null ? 10 : Math.min(9, Math.round(s.hunger)));
 export const shownHappy = s => (s.sorrowSince !== null ? -10 : Math.max(-9, Math.round(s.happy)) || 0);
+
+/**
+ * From hunger 7 on the screen it is drawn faint, in dotted lines, until a feed brings it below 7
+ * (CHARACTER.md, "When it is hungry"). By then hunger is draining its happiness, which starts just
+ * above 6. Its eyes show only its mood, so without this a rock petted but never fed would look
+ * content until it died of hunger. A grave is a stone again, and drawn solid.
+ */
+export const FAINT_AT = 7;
+export const faint = s => !s.dead && shownHunger(s) >= FAINT_AT;
+
+// The rows it is drawn from: its front, or its back on its day for facing the wall; faint while it
+// is hungry.
+const rowsOf = (s, pose, drawing) => {
+  const lines = faint(s) ? drawing.faint : drawing;
+  return pose === 'away' ? lines.back : lines.front;
+};
 
 /** The rock's eyes follow its mood, and are crosses when it is dead. */
 export function eyes(s) {
@@ -53,10 +69,12 @@ export function fullCare(s) {
 /**
  * The rock's box: 5 rows of W characters, drawn at screen rows 1-5, from a drawing in
  * drawings.mjs. On its front go its eyes and the marks of its life (marks.mjs); facing the wall
- * (pose 'away') it shows its back. Moss grows on whichever side shows, `,` with every third `"`.
+ * (pose 'away') it shows its back. Moss grows on whichever side shows, `,` with every third `"`;
+ * a tuft past the grid's edge, with the box `dx` columns over, isn't drawn. While it is hungry,
+ * either side is drawn faint.
  */
-export function sprite(s, now, pose = 'front', drawing = DRAWINGS[DRAWING], outages = []) {
-  const rows = pose === 'away' ? drawing.back : drawing.front;
+export function sprite(s, now, pose = 'front', drawing = DRAWINGS[DRAWING], outages = [], dx = 0) {
+  const rows = rowsOf(s, pose, drawing);
   const b = rows.map(row => row.padEnd(W).split(''));
   const eye = eyes(s)[0];
   for (const row of b) for (let c = 0; c < W; c++) if (row[c] === 'E') row[c] = eye;
@@ -64,7 +82,11 @@ export function sprite(s, now, pose = 'front', drawing = DRAWINGS[DRAWING], outa
     const m = marksOf(s);
     for (const [row, col, mark] of [...drawing.veins.slice(0, m.veins), ...drawing.polish.slice(0, m.polish), ...drawing.crystals.slice(0, m.crystals)]) b[row][col] = mark;
   }
-  for (const [i, [row, col]] of mossCells(rows).slice(0, MOSS_CELLS[mossAt(s, now, outages)]).entries()) b[row][col] = i % 3 === 2 ? '"' : ',';
+  // Its tufts in the order moss spreads, less any past the grid's edge. At the edge it can show a
+  // tuft fewer, but its grave still greens over a stage at a time.
+  for (const [i, [row, col]] of mossCells(rows).slice(0, MOSS_CELLS[mossAt(s, now, outages)]).entries()) {
+    if (col + dx >= 0 && col + dx < W) b[row][col] = i % 3 === 2 ? '"' : ',';
+  }
   return b.map(row => row.join(''));
 }
 
@@ -84,25 +106,38 @@ const iso = t => new Date(t).toISOString();
  * `name` is its name, if it has one (name.mjs); until then, while it is not at an extreme, a line
  * says how to give it one. `outages` is the log's verified host downtime, which moss does not
  * count. `ground` is the levels of the ground around it, which shows its personality
- * (groundAt in ground.mjs); without it the ground is bare. `drawing` is for showing the others
+ * (groundAt in ground.mjs); without it the ground is bare. `meal` is what it is eating, if
+ * anything (mealAt in meal.mjs); a grave eats nothing. `place` is where it is along its ground
+ * (whereAt in wander.mjs): `dx`, its offset from where its drawing puts it; `from`, the offset it
+ * last moved from; and `furrow`, whether the furrow of that move still shows (never on a grave).
+ * Without it, it sits where its drawing puts it. `drawing` is for showing the others
  * (tools/model-sheet.mjs).
  */
-export function render(s, { now, host, pose = 'front', name = null, drawing = DRAWINGS[DRAWING], outages = [], ground = { feed: 0, clean: 0, pet: 0 } }) {
+export function render(s, { now, host, pose = 'front', name = null, drawing = DRAWINGS[DRAWING], outages = [], ground = { feed: 0, clean: 0, pet: 0 }, meal = null, place = { dx: 0, from: null, furrow: false } }) {
   const g = Array.from({ length: W }, () => Array(W).fill(' '));
   const put = (row, col, text) => { for (let i = 0; i < text.length; i++) g[row][col + i] = text[i]; };
   const hunger = String(shownHunger(s)), happy = String(shownHappy(s));
   if (s.dead) put(0, 0, `died: ${s.dead.cause}`);
   else { put(0, 0, hunger); put(0, W - happy.length, happy); }
-  // Where it has sailed to (it stops when it dies), and on the day it moved, its trail: the
-  // furrow it slid along, ~~ beside its base.
-  const { col: dx, from } = placeAt(s.born, s.dead ? s.dead.t : now);
-  sprite(s, now, pose, drawing, outages).forEach((row, r) => { for (let c = 0; c < W; c++) if (row[c] !== ' ' && c + dx >= 0 && c + dx < W) g[1 + r][c + dx] = row[c]; });
+  const { dx, from } = place;
+  const rows = rowsOf(s, pose, drawing);
+  // Its room keeps the rock on the grid, and its moss keeps to the cells there, so nothing is clipped.
+  sprite(s, now, pose, drawing, outages, dx).forEach((row, r) => {
+    for (let c = 0; c < W; c++) {
+      if (row[c] === ' ') continue;
+      if (c + dx < 0 || c + dx >= W) throw new Error(`the rock drawn off the grid, at column ${c + dx}`);
+      g[1 + r][c + dx] = row[c];
+    }
+  });
+  // Its food beside it while it eats, and its mouth.
+  if (meal && !s.dead) drawMeal(g, meal, rows, drawing.front.findIndex(row => row.includes('E')), dx, pose);
   // The ground it sits on, which shows the care it has been given more of.
-  drawGround(g, ground, pose === 'away' ? drawing.back : drawing.front, dx);
-  if (!s.dead && from !== null) {
+  drawGround(g, ground, rows, dx);
+  // The furrow of its last move, while it shows: the ground its base slid off, beside it now.
+  if (!s.dead && place.furrow && from !== null) {
     const base = drawing.front[4], left = base.search(/\S/), right = base.trimEnd().length - 1;
-    const trail = dx > from ? [left + dx - 2, left + dx - 1] : [right + dx + 1, right + dx + 2];
-    for (const c of trail) if (c >= 0 && c < W) g[5][c] = '~';
+    const [a, z] = dx > from ? [left + from, left + dx - 1] : [right + dx + 1, right + from];
+    for (let c = Math.max(0, a); c <= Math.min(W - 1, z); c++) g[5][c] = '~';
   }
   for (const [row, col] of MESS_SPOTS.slice(0, s.messes)) g[row][col] = '@';
   const lines = g.map(row => row.join('').trimEnd());
