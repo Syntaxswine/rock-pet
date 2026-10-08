@@ -3,6 +3,8 @@
 // the air above the rock, where moss grows.
 // - `front`: the rock, with E at each eye.
 // - `back`: the rock from behind, for a day it faces the wall.
+// - `faint`: its front and back again in dotted lines, for while it is hungry (screen.mjs). Each
+//   fills exactly the cells its solid form does, so its marks, moss and ground go where they did.
 // - `veins`, `polish`, `crystals`: where each mark of its life goes, [row, col, mark], in order.
 // Every drawing keeps to columns 1-10, so a rock that has moved a column either way still fits.
 
@@ -11,42 +13,49 @@ export const DRAWINGS = {
     about: 'a lump with a flat base',
     front: ['', '    ___', '  _/   \\__', ' /  E  E  \\', ' \\________/'],
     back: ['', '     ___', '  __/   \\_', ' /        \\', ' \\________/'],
+    faint: { front: ['', '    ...', "  .'   '..", ' :  E  E  :', " '........'"], back: ['', '     ...', "  ..'   '.", ' :        :', " '........'"] },
     veins: [[2, 5, '/'], [4, 7, '/'], [2, 8, '/']], polish: [[3, 2, "'"], [2, 4, "'"]], crystals: [[4, 8, '*'], [4, 3, '*']],
   },
   googly: {
     about: 'googly eyes, the craft-table pet rock',
     front: ['', '    ____', "  .'    '.", ' / (E)(E) \\', ' \\________/'],
     back: ['', '    ____', "  .'    '.", ' /        \\', ' \\________/'],
+    faint: { front: ['', '    ....', "  .'    '.", ' : (E)(E) :', " '........'"], back: ['', '    ....', "  .'    '.", ' :        :', " '........'"] },
     veins: [[2, 6, '/'], [4, 7, '/'], [2, 4, '\\']], polish: [[3, 2, "'"], [2, 5, "'"]], crystals: [[4, 8, '*'], [4, 3, '*']],
   },
   boulder: {
     about: 'round and solid',
     front: ['', '   .----.', '  /      \\', ' |  E  E  |', '  \\______/'],
     back: ['', '   .----.', '  /      \\', ' |        |', '  \\______/'],
+    faint: { front: ['', '   ......', "  '      '", ' :  E  E  :', "  '......'"], back: ['', '   ......', "  '      '", ' :        :', "  '......'"] },
     veins: [[2, 6, '/'], [4, 5, '/'], [3, 9, '/']], polish: [[2, 4, "'"], [3, 2, "'"]], crystals: [[4, 7, '*'], [2, 8, '*']],
   },
   cairn: {
     about: 'a small stone perched on a flat one',
     front: ['', '    .--.', '   (E  E)', '  .------.', ' (________)'],
     back: ['', '    .--.', '   (    )', '  .------.', ' (________)'],
+    faint: { front: ['', '    ....', '   :E  E:', '  ........', ' :........:'], back: ['', '    ....', '   :    :', '  ........', ' :........:'] },
     veins: [[3, 5, '/'], [4, 7, '/'], [4, 3, '/']], polish: [[1, 5, "'"], [3, 3, "'"]], crystals: [[4, 9, '*'], [3, 8, '*']],
   },
   sett: {
     about: 'a squared paving stone, a sett (a cobble is rounded)',
     front: ['', '', '  ._______.', '  | E   E |', '  |_______|'],
     back: ['', '', '  ._______.', '  |       |', '  |_______|'],
+    faint: { front: ['', '', '  .........', '  : E   E :', '  :.......:'], back: ['', '', '  .........', '  :       :', '  :.......:'] },
     veins: [[2, 6, '/'], [4, 7, '/'], [2, 8, '/']], polish: [[3, 3, "'"], [2, 4, "'"]], crystals: [[4, 8, '*'], [4, 4, '*']],
   },
   hoodoo: {
     about: 'a little spire with a cap stone',
     front: ['', '   ______', '  (______)', '   | EE |', '   |____|'],
     back: ['', '   ______', '  (______)', '   |    |', '   |____|'],
+    faint: { front: ['', '   ......', '  :......:', '   : EE :', '   :....:'], back: ['', '   ......', '  :......:', '   :    :', '   :....:'] },
     veins: [[1, 6, '/'], [3, 7, '/'], [2, 4, '/']], polish: [[3, 4, "'"], [2, 7, "'"]], crystals: [[4, 5, '*'], [4, 6, '*']],
   },
   pebble: {
     about: 'the first drawing, a small pebble',
     front: ['', '', '   .----.', '  ( E  E )', "   '----'"],
     back: ['', '', '   .----.', '  (      )', "   '----'"],
+    faint: { front: ['', '', '   ......', '  : E  E :', "   '....'"], back: ['', '', '   ......', '  :      :', "   '....'"] },
     veins: [[2, 5, '/'], [4, 6, '/'], [3, 3, '/']], polish: [[2, 7, "'"], [3, 8, "'"]], crystals: [[4, 4, '*'], [4, 7, '*']],
   },
 };

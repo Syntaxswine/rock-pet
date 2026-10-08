@@ -7,7 +7,8 @@
 //
 //   feed   it settles into sand: at its foot, then over the corners of its base, then over the
 //          whole base, with only its marks and moss showing through
-//   clean  a raked floor in front of it: under it, then the whole row, then raked deeper
+//   clean  a raked floor in front of it: a line under it, then two lines across the ground, then
+//          three, the way a dry garden's gravel is raked in lines (the owner's choice, 2026-10-08)
 //   pet    footprints worn up to its front: 2, 3 or 5. Where they cross the raked floor they step
 //          on a stone, the way a garden's stepping stones keep feet off its raking.
 
@@ -127,12 +128,12 @@ export function drawGround(g, ground, rows, dx) {
     for (const c of [left, right]) if (outline(c)) g[BASE][c] = '.';
   }
   if (ground.feed >= 3) for (let c = left; c <= right; c++) if (outline(c)) g[BASE][c] = '.';
-  const rake = ground.clean >= 3 ? '=' : '-';
+  // One raked line for each level of cleaning: the first under it, then across the ground.
   const [from, to] = ground.clean >= 2 ? [0, W - 1] : [left, right];
-  if (ground.clean >= 1) for (let c = from; c <= to; c++) if (bare(BASE + 1, c)) g[BASE + 1][c] = rake;
+  for (let line = 1; line <= ground.clean; line++) for (let c = from; c <= to; c++) if (bare(BASE + line, c)) g[BASE + line][c] = '-';
   for (const [r, col] of FOOTPRINTS.slice(0, STEPS[ground.pet])) {
     const c = col + dx;
     if (g[r][c] === ' ') g[r][c] = ':';
-    else if (g[r][c] === '-' || g[r][c] === '=') g[r][c] = 'o';
+    else if (g[r][c] === '-') g[r][c] = 'o';
   }
 }

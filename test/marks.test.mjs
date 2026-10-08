@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mossAt, marksOf, POLISH_AT, CRYSTALS_AT } from '../src/marks.mjs';
 import { DRAWINGS, DRAWING, mossCells, MOSS_CELLS } from '../src/drawings.mjs';
-import { render, sprite, eyes, W } from '../src/screen.mjs';
+import { render, sprite, eyes, faint, W } from '../src/screen.mjs';
 import { placeAt } from '../src/character.mjs';
 import { replay, born, applyVisit, HOUR } from '../src/engine.mjs';
 import { look, act, history, newLog } from '../src/rock.mjs';
@@ -227,7 +227,8 @@ test('every drawing draws every rock whole: the eyes, the outline, an @ per mess
     for (const [name, drawing] of Object.entries(DRAWINGS)) {
       const g = render(s, { now, host: 'x', drawing }).split('\n').slice(0, W);
       const slots = new Set([...drawing.veins, ...drawing.polish, ...drawing.crystals].map(([r, c]) => `${r},${c}`));
-      drawing.front.forEach((row, r) => [...row].forEach((cell, c) => {
+      // Its front, in dotted lines while it is hungry.
+      (faint(s) ? drawing.faint.front : drawing.front).forEach((row, r) => [...row].forEach((cell, c) => {
         if (cell === ' ' || slots.has(`${r},${c}`)) return;
         assert.equal(g[1 + r][c + dx], cell === 'E' ? eyes(s)[0] : cell, `${name}, row ${1 + r}:\n${g.join('\n')}`);
       }));

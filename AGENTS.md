@@ -28,10 +28,11 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 | `src/story.mjs` | The rock's authored lines: one reaction after effective care or a visit milestone, one line on a look on a day that is not ordinary, and the shared biography at `GET /history`. Never changes the engine. |
 | `src/character.mjs` | The rock's character: its nature (kind and its weekday for facing the wall), its days, and where it has moved to. `CHARACTER.md` is the design. |
 | `src/marks.mjs` | The marks its life leaves: moss while nobody comes and on a grave; veins, polish and crystals, kept for life. |
-| `src/ground.mjs` | Its personality, drawn as the ground around it: sand (feed), a raked floor (clean) and footprints (pet), each as large as that care's weighted share stands above the least-given one's. Bare when its care is balanced, as when the act line's suggestion is followed every 3 to 10 hours. Follows the care visit by visit: a level holds until its trace falls 0.02 below it. It forms over its first two weeks of life (downtime excluded). |
-| `src/drawings.mjs` | The drawings it can have, for the owner to choose from (`DRAWING`), each with its back and its mark slots. |
+| `src/ground.mjs` | Its personality, drawn as the ground around it: sand (feed), one to three raked lines (clean) and footprints (pet), each as large as that care's weighted share stands above the least-given one's. Bare when its care is balanced, as when the act line's suggestion is followed every 3 to 10 hours. Follows the care visit by visit: a level holds until its trace falls 0.02 below it. It forms over its first two weeks of life (downtime excluded). |
+| `src/meal.mjs` | Its meals: for an hour after a feed, its food beside it (`#`, then `=`, then `-`) and its mouth opening and shutting, minute by minute. Drawn only. |
+| `src/drawings.mjs` | The drawings it can have, for the owner to choose from (`DRAWING`), each with its back, its faint front and back for when it is hungry, and its mark slots. |
 | `src/name.mjs` | Its name: one word, given once, never twice. |
-| `tools/model-sheet.mjs` | Every face, mark, pose, ground and drawing, drawn by the real renderer. CHARACTER.md shows its output, and a test fails if the two differ. |
+| `tools/model-sheet.mjs` | Every face, mark, pose, meal, hunger, ground and drawing, drawn by the real renderer. CHARACTER.md shows its output, and a test fails if the two differ. |
 | `src/personality.mjs` | Three lifetime accepted-action counters, daily-demand weights, triangle coordinates and seven continuous personality blends. See `PERSONALITY.md`; extra care counts, and no survival rule changes. |
 | `src/outages.mjs`, `tools/credit-outage.mjs` | Validated outage intervals and the offline operator tool. Independent verification/detection remains a hosting responsibility. |
 
@@ -44,8 +45,8 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 - **GitHub Pages** (this repo) is the public face and the archive: rules, `llms.txt`, a human page, and a periodic export of the event log.
 - **Remove `--new-rock`** from anything hosted.
 - **Keep every name a rock has had,** as permanently as the rock: a name is never given twice.
-- **Check the screen's size with your host.** The screen tests hold every screen to 380 bytes with a 15-character host (`rockpet.example`); the worst, built on purpose in `test/screen.test.mjs`, is 369, and 371 after a credited outage of 100 days or more ("last care 100d ago"; one more from 1,000 days). On those worst screens the host appears once (the act line), so each character beyond 15 adds a byte. A host over 24 characters (23 after a 1,000-day outage) needs the bound raised, or a shorter host.
-- **Freeze the character's formulas once hosted:** its kind, days, moves, visitors, mark thresholds, and how its care becomes its ground. Each is computed again from the log on every request, so a change would rewrite a living rock's past. If one must change, version it like `RULES.version` (CHARACTER.md, "Size, and staying the same").
+- **Check the screen's size with your host.** The screen tests hold every screen to 390 bytes with a 15-character host (`rockpet.example`); the worst, built on purpose in `test/screen.test.mjs`, is 378, and 380 after a credited outage of 100 days or more ("last care 100d ago"; one more from 1,000 days). On those worst screens the host appears once (the act line), so each character beyond 15 adds a byte. A host over 25 characters (24 after a 1,000-day outage) needs the bound raised, or a shorter host. Looks and replies are held under 450; with a 24-character host the largest found is 440 (CHARACTER.md, "Size, and staying the same").
+- **Freeze the character's formulas once hosted:** its kind, days, moves, visitors, mark thresholds, how its care becomes its ground, its meals' timing, and the hunger from which it is drawn faint. Each is computed again from the log on every request, so a change would rewrite a living rock's past. If one must change, version it like `RULES.version` (CHARACTER.md, "Size, and staying the same").
 - **Keep the state, not just the log.** Every local request re-reads and replays the whole log, about 2 ms per 1,000 visits: 1 ms for the engine's replay and the parse, and about as much again for the ground, which follows the care visit by visit (measured 2026-10-07). That is fine for a local rock and wrong for a hosted one: keep the replayed state in the Durable Object (or a checkpoint row) and replay only what follows it. The checkpoint must hold the ground too, as `groundAt` has it after the last visit: the three levels and the three care totals. Credit for an outage only ever comes after the latest event, so it never changes what an earlier visit settled.
 
 ## Invariants (must hold; these are the reasons the design is the way it is)
@@ -119,7 +120,9 @@ Status in brackets: what the local build does today.
     - Its eyes follow its mood, and are `x  x` when it is dead.
     - On its wall day a look draws it from behind.
     - Moss, veins, polish, crystals and a trail mark its life (CHARACTER.md).
-    - The ground at its base and in front of it shows its personality: sand, a raked floor, footprints (CHARACTER.md, "Its ground").
+    - The ground at its base and in front of it shows its personality: sand, raked lines, footprints (CHARACTER.md, "Its ground").
+    - For an hour after a feed its food lies beside its face, `#` then `=` then `-`, and its mouth opens and shuts (CHARACTER.md, "Its meals").
+    - From hunger 7 it is drawn faint, in dotted lines, until it is fed (CHARACTER.md, "When it is hungry").
   - Each mess is an `@` at a fixed position.
   - Trailing spaces are trimmed.
 - Then the named lines:

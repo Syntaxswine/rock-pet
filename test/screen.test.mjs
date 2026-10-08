@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { render, eyes, fullCare, shownHunger, shownHappy, MESS_SPOTS, W } from '../src/screen.mjs';
+import { render, eyes, faint, fullCare, shownHunger, shownHappy, MESS_SPOTS, W } from '../src/screen.mjs';
 import { DRAWINGS, DRAWING } from '../src/drawings.mjs';
 import { placeAt } from '../src/character.mjs';
 import { replay, applyVisit, born, HOUR } from '../src/engine.mjs';
@@ -14,11 +14,12 @@ const state = o => ({ ...born(0), ...o });
 const show = (s, now = s.t, name = null) => render(s, { now, host: 'rockpet.example', name });
 
 // The drawing as a screen must show it, for a rock drawn front on: every outline cell where the
-// rock has moved to, its eyes in their cells. Only a mark slot may differ (moss grows outside it).
+// rock has moved to (in dotted lines while it is hungry), its eyes in their cells. Only a mark
+// slot may differ (moss grows outside it).
 function assertIntact(grid, s, now, d = DRAWINGS[DRAWING]) {
   const { col: dx } = placeAt(s.born, s.dead ? s.dead.t : now);
   const slots = new Set([...d.veins, ...d.polish, ...d.crystals].map(([r, c]) => `${r},${c}`));
-  d.front.forEach((row, r) => [...row].forEach((cell, c) => {
+  (faint(s) ? d.faint.front : d.front).forEach((row, r) => [...row].forEach((cell, c) => {
     if (cell === ' ' || slots.has(`${r},${c}`)) return;
     assert.equal(grid[1 + r][c + dx], cell === 'E' ? eyes(s)[0] : cell, `row ${1 + r}, column ${c + dx}:\n${grid.join('\n')}`);
   }));
@@ -210,15 +211,16 @@ test('a rock never shows more messes than the grid has spots for', () => {
   assert.deepEqual(MESS_SPOTS.slice(0, 3), [[7, 8], [7, 2], [8, 5]], 'the first three are where the mocks draw them');
 });
 
-test('the screen stays small (token efficiency): at most 380 bytes, whatever the state', () => {
+test('the screen stays small (token efficiency): at most 390 bytes, whatever the state', () => {
   // A cared-for rock with a name is about 220 bytes. Sampled lives show the spread:
   const sizes = sampleRocks(400, 13).map(({ s, now }) => Buffer.byteLength(show(s, now, 'Abcdefghijkl'))).sort((a, b) => a - b);
   console.log(`  screen bytes, with a 12-letter name: median ${sizes[sizes.length >> 1]}, largest ${sizes.at(-1)}`);
-  assert.ok(sizes.at(-1) <= 380, `${sizes.at(-1)} bytes`);
+  assert.ok(sizes.at(-1) <= 390, `${sizes.at(-1)} bytes`);
   // ...but no sample reaches the worst, so build it: the longest name, ten messes (the most a
   // living rock carries), both danger lines with two-digit hours, a top full of moss, a
   // four-digit age, a column over from where it began, every mark, in every drawing, on every
-  // ground its care could give it.
+  // ground its care could give it. (Hungry, it is drawn faint, which costs nothing. It can't be
+  // eating: a feed within the hour leaves hunger at 7.42 at most, test/meal.test.mjs.)
   const age = 1066 * DAY + 5 * HOUR;
   let b = Date.UTC(2023, 11, 1);
   while (placeAt(b, b + age).col !== 1) b += HOUR;
@@ -232,11 +234,12 @@ test('the screen stays small (token efficiency): at most 380 bytes, whatever the
     Math.max(...grounds.map(ground => Buffer.byteLength(render(s, { now, host: 'rockpet.example', name: 'Abcdefghijkl', drawing, outages, ground }))))]));
   const bytes = largest(worst);
   console.log(`  the worst screen, by drawing: ${JSON.stringify(bytes)}`);
-  for (const [name, n] of Object.entries(bytes)) assert.ok(n <= 380, `${name}: ${n} bytes`);
-  assert.equal(Math.max(...Object.values(bytes)), 369, 'the worst, as CHARACTER.md and AGENTS.md say');
+  for (const [name, n] of Object.entries(bytes)) assert.ok(n <= 390, `${name}: ${n} bytes`);
+  // Three raked lines across ten messes' rows made it 378 (369 with one).
+  assert.equal(Math.max(...Object.values(bytes)), 378, 'the worst, as CHARACTER.md and AGENTS.md say');
   // A long credited outage makes it a little longer: last care is wall-clock time ("100d ago"),
   // while moss and the danger clocks count only the time it lived through.
   const outages = [{ start: now - 100 * DAY + HOUR, end: now - 49 * HOUR, evidence: 'host-1' }];
   const longest = Math.max(...Object.values(largest({ ...worst, lastCare: now - 100 * DAY }, outages)));
-  assert.equal(longest, 371, 'and after a long outage, as they also say');
+  assert.equal(longest, 380, 'and after a long outage, as they also say');
 });

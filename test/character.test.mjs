@@ -24,7 +24,7 @@ const grid = text => text.split('\n').slice(0, W);
 // The drawing the screen uses, so these tests hold whichever one the owner picks.
 const D = DRAWINGS[DRAWING];
 const EYE_ROW = D.front.findIndex(r => r.includes('E')); // a box row; the screen row is one more
-const faceOf = eye => D.front[EYE_ROW].replaceAll('E', eye);
+const faceOf = (eye, faintly = false) => (faintly ? D.faint : D).front[EYE_ROW].replaceAll('E', eye);
 const BASE_LEFT = D.front[4].search(/\S/), BASE_RIGHT = D.front[4].trimEnd().length - 1;
 const baseAt = row => row.search(/[^ .,"~]/); // where a base row's outline starts, past moss, sand and trail
 
@@ -135,7 +135,7 @@ test('it faces the wall on its weekday, for someone who only looks; care turns i
   assert.equal(new Date(floor + MIN).getUTCDay(), nature(T).wallDay, 'still its day when it reaches the floor');
   const sad = look(newLog(T), opts(floor + MIN)).text;
   assert.deepEqual(quirks(sad), []);
-  assert.equal(grid(sad)[1 + EYE_ROW], faceOf('T'));
+  assert.equal(grid(sad)[1 + EYE_ROW], faceOf('T', true), 'hungry by then too, so drawn faint');
 });
 
 test('it may move on a winter morning, by one column, and leaves a trail that day', () => {
@@ -288,7 +288,7 @@ test('a look or a visit stays small', () => {
   for (const [what, list] of Object.entries(sizes)) {
     list.sort((a, b) => a - b);
     console.log(`  ${what} bytes: median ${list[list.length >> 1]}, largest ${list.at(-1)}`);
-    assert.ok(list.at(-1) < 440, `${what}: ${list.at(-1)} bytes`);
+    assert.ok(list.at(-1) < 450, `${what}: ${list.at(-1)} bytes`);
   }
 });
 

@@ -160,7 +160,7 @@ test('the log keeps the name once, in time order, before any death', () => {
   assert.throws(() => creditOutage(withName, { start: T + 30 * 60_000, end: T + 2 * HOUR, evidence: 'host-1' }, { now: T + 3 * HOUR }), /follow the latest/);
 });
 
-test('with the longest name, every screen still keeps to 380 bytes', () => {
+test('with the longest name, every screen still keeps to 390 bytes', () => {
   let a = 7;
   const rnd = () => ((a = (Math.imul(a, 1103515245) + 12345) >>> 0) / 4294967296);
   let largest = 0;
@@ -174,7 +174,7 @@ test('with the longest name, every screen still keeps to 380 bytes', () => {
     const s = replay({ ...newLog(b), visits }, now);
     largest = Math.max(largest, Buffer.byteLength(render(s, { now, host: 'rockpet.example', name: 'Abcdefghijkl' })));
   }
-  assert.ok(largest <= 380, `${largest} bytes`); // the worst, built on purpose, is in test/screen.test.mjs
+  assert.ok(largest <= 390, `${largest} bytes`); // the worst, built on purpose, is in test/screen.test.mjs
 });
 
 async function withServer(fn, { seed } = {}) {

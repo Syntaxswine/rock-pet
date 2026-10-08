@@ -124,12 +124,13 @@ The rock in these mocks is the character from CHARACTER.md, which has every face
 - **The name:** Pebble is a visitor's name for it. Until a rock has a name, a line `unnamed: POST <host>/name  body: a one-word name` stands above the act line.
 - **The grave is a real life:** cared for every 8h for six weeks, then left. It died alone three days later, with those days' messes and moss, and the crystal its meals grew (the screen test replays it).
 - **The ground shows its personality** (CHARACTER.md, "Its ground"). The grave's care ran heavy on petting, so a path is worn up to it. The living rock in the first mock is even-tempered, so its ground is bare.
+- **Meals and hunger** (CHARACTER.md, "Its meals" and "When it is hungry"). For an hour after a feed its food lies beside it and it eats; from hunger 7 it is drawn faint. The living rock in the first mock was last cared for 6h ago at hunger 3, so neither shows.
 
 **Why the screen looks like this:**
 - **The grid is the picture; the footer is the information.** An agent's fetch tool often passes pages through a summarizing model, and in tests that model shifted grid symbols by a column and dropped blank lines. Serve `text/plain`.
 - **`(max 7)` appears only while a mess lowers the ceiling,** so an agent knows why petting stops working. Danger lines appear only at an extreme: `sorrow: at -10 for 17h of 48` or `hunger: at 10 for 17h of 48`.
 - **One POST is a whole visit,** and its response is the new screen. With no cap, a once-a-day visit needs about 10 pets, so the verbs take counts (`pet x10`) to keep it to one request.
-- **Size, measured on the build:** a well-kept rock with a name is about 220 bytes. The most is 369: the longest name, ten messes, both danger lines, full moss, a four-digit age, sand at its foot. It is 371 after a credited outage of 100 days or more. A test builds both states on purpose and holds every screen to 380, with a 15-character host. The first build drew a three-row pebble, at 157 bytes median and 308 at most; CHARACTER.md has what the character adds.
+- **Size, measured on the build:** a well-kept rock with a name is about 220 bytes. The most is 378: the longest name, ten messes, both danger lines, full moss, a four-digit age, three raked lines and sand at its foot. It is 380 after a credited outage of 100 days or more. A test builds both states on purpose and holds every screen to 390, with a 15-character host. The first build drew a three-row pebble, at 157 bytes median and 308 at most; CHARACTER.md has what the character adds.
 - **Continuity additions:**
   - The base screen keeps that budget.
   - API responses add a short `history:` link.

@@ -12,6 +12,7 @@ import { biography, reaction, remark } from './story.mjs';
 import { occasion, inDanger } from './character.mjs';
 import { parseName, isTaken, NAMED } from './name.mjs';
 import { groundAt } from './ground.mjs';
+import { mealAt } from './meal.mjs';
 
 /** The log of a rock born at `now`. */
 export const newLog = now => ({ born: now, rules: RULES.version, visits: [], died: null });
@@ -25,8 +26,8 @@ function moment(log, now) {
 }
 
 // What a screen of rock `s` at `t` shows besides the rock itself: its name, the verified downtime
-// its moss does not count, and its ground (a grave's, as it was when it died).
-const seen = (log, s, t) => ({ name: log.name?.name ?? null, outages: log.outages ?? [], ground: groundAt(log, s.dead ? s.dead.t : t) });
+// its moss does not count, its ground (a grave's, as it was when it died), and its meal.
+const seen = (log, s, t) => ({ name: log.name?.name ?? null, outages: log.outages ?? [], ground: groundAt(log, s.dead ? s.dead.t : t), meal: mealAt(log, t) });
 
 // The rock at t. A recorded death must be the one the visits produce.
 function rockAt(log, t) {

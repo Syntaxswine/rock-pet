@@ -1,7 +1,8 @@
-// The rock's model sheet: every face, mark, pose and ground, drawn by the game's own renderer
-// (src/screen.mjs) from states the engine could reach, side by side; then every drawing it could
-// have, for the owner to choose from (src/drawings.mjs), and the ground on each. CHARACTER.md
-// shows this output, and test/character.test.mjs fails if the two ever differ.
+// The rock's model sheet: every face, mark, pose, meal, hunger and ground, drawn by the game's own
+// renderer (src/screen.mjs) from states the engine could reach, side by side; then every drawing
+// it could have, for the owner to choose from (src/drawings.mjs), and the ground, a meal and
+// hunger on each. CHARACTER.md shows this output, and test/character.test.mjs fails if the two
+// ever differ.
 //
 //   node tools/model-sheet.mjs
 
@@ -14,6 +15,7 @@ import { DRAWINGS, DRAWING } from '../src/drawings.mjs';
 import { placeAt } from '../src/character.mjs';
 import { CARE_AXES, DAILY_CARE } from '../src/personality.mjs';
 import { groundOf } from '../src/ground.mjs';
+import { mealAt } from '../src/meal.mjs';
 
 const DAY = 24 * HOUR;
 const T = Date.UTC(2026, 10, 16, 14, 5); // a Monday afternoon in November
@@ -49,8 +51,13 @@ const given = (x = {}, days = 41) => Object.fromEntries(CARE_AXES.map(k => [k, M
 // ground that care gives it.
 const kept = (x, days = 41) => [rock({ born: T - days * DAY }), { ground: groundOf(given(x, days), days * DAY) }];
 
-function grid(s, { now = T, pose, drawing, ground } = {}) {
-  return render(s, { now, host: 'rock', pose, name: 'Pebble', drawing, ground }).split('\n').slice(0, W).map(row => row.padEnd(W));
+// A rock fed down to hunger 0 `ms` ago, as it is at T (its hunger is what has come back since):
+// the rock, and the meal that feed gives it.
+const MIN = 60_000;
+const eating = (ms, o = {}) => [rock({ hunger: ms / (2.4 * HOUR), lastCare: T - ms, ...o }), { meal: mealAt({ born: T - 41 * DAY, rules: RULES.version, visits: [{ t: T - ms, acts: [['feed', 2]] }] }, T) }];
+
+function grid(s, { now = T, pose, drawing, ground, meal } = {}) {
+  return render(s, { now, host: 'rock', pose, name: 'Pebble', drawing, ground, meal }).split('\n').slice(0, W).map(row => row.padEnd(W));
 }
 function row(frames) {
   const out = [frames.map(([label]) => label.padEnd(W + 2)).join('  ').trimEnd()];
@@ -74,7 +81,8 @@ export function sheet() {
       ['5 and up', grid(rock({ happy: 9 }))], ['0 to 5', grid(rock({ happy: 2 }))], ['-5 to 0', grid(rock({ happy: -2 }))],
       ['below -5', grid(rock({ happy: -7 }))], ['at -10', grid(rock(floor))],
     ]),
-    'moss: hours since anyone came (cared for every 8h until then)',
+    'moss: hours since anyone came (cared for every 8h until then). By a day it is hungry too, and\n' +
+      'drawn faint',
     row([['6', grid(alone(6))], ['12', grid(alone(12))], ['24', grid(alone(24))], ['48', grid(alone(48))]]),
     'marks of a long life: veins (close calls)',
     row([
@@ -84,6 +92,16 @@ export function sheet() {
     row([
       ['polished', grid(rock({ petted: 500 }))], ['worn smooth', grid(rock({ petted: 3000 }))],
       ['a crystal', grid(rock({ fed: 300 }))], ['two', grid(rock({ fed: 1500 }))],
+    ]),
+    'its meals: the hour after a feed, the food going and its mouth opening and shutting',
+    row([
+      ['the feed reply', grid(...eating(0))], ['a minute on', grid(...eating(MIN))], ['20 minutes', grid(...eating(20 * MIN))],
+      ['40 minutes', grid(...eating(40 * MIN))], ['an hour on', grid(...eating(HOUR))],
+    ]),
+    'when it is hungry: from 7 on the screen it is drawn faint, whatever its mood, until it is fed',
+    row([
+      ['hunger 6', grid(rock({ hunger: 6.4 }))], ['hunger 7', grid(rock({ hunger: 6.6 }))],
+      ['starving', grid(rock({ hunger: 10, starvingSince: T - 5 * HOUR }))], ['fed once, at 7', grid(...eating(0, { hunger: 7 }))],
     ]),
     'its ground: the care it has been given more of (its personality). Every need met, and six\n' +
       'times the need of one care, or five times the need of two',
@@ -118,10 +136,15 @@ export function sheet() {
       ['dead a month', grid(LONELY, { now: LONELY.dead.t + 30 * DAY, drawing })],
     ])),
     'its ground on each drawing, at a side\'s middle: feed and pet (sand over its corners, a path),\n' +
-      'then clean and pet (a raked floor, a stepping stone, a path)',
+      'then clean and pet (two raked lines, stepping stones, a path)',
     ...[0, 2, 4, 6].map(i => standing(Object.entries(DRAWINGS).slice(i, i + 2).flatMap(([name, drawing]) => [
       [name, grid(rock(), { drawing, ground: FEED_PET })], ['', grid(rock(), { drawing, ground: CLEAN_PET })],
     ]))),
+    'a meal and hunger on each drawing: just fed, then hungry',
+    ...[0, 2, 4, 6].map(i => short(Object.entries(DRAWINGS).slice(i, i + 2).flatMap(([name, drawing]) => {
+      const [fed, meal] = eating(0);
+      return [[name, grid(fed, { drawing, ...meal })], ['', grid(rock({ hunger: 6.6 }), { drawing })]];
+    }))),
   ].join('\n\n') + '\n';
 }
 

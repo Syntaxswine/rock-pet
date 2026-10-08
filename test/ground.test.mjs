@@ -312,11 +312,11 @@ test('the ground, drawn: the seven personalities and the first level of each car
   const cases = [
     ['even-tempered', NEED, [lump, ...none]],
     ['comfort-loving: its base sunk in sand', only('feed'), ['............', ...none]],
-    ['orderly: a floor raked deep', only('clean'), [lump, '============', '', '', '', '']],
+    ['orderly: three raked lines', only('clean'), [lump, '------------', '------------', '------------', '', '']],
     ['affectionate: five footprints', only('pet'), [lump, '   :', '    :', '   :', '    :', '   :']],
-    ['settled: sand over its corners, a raked floor', only('feed', 'clean'), ['..________..', '------------', '', '', '', '']],
+    ['settled: sand over its corners, two raked lines', only('feed', 'clean'), ['..________..', '------------', '------------', '', '', '']],
     ['sociable', only('feed', 'pet'), ['..________..', '   :', '    :', '   :', '', '']],
-    ['gentle: footprints step on a stone where they cross the raking', only('clean', 'pet'), [lump, '---o--------', '    :', '   :', '', '']],
+    ['gentle: footprints step on stones where they cross the raking', only('clean', 'pet'), [lump, '---o--------', '----o-------', '   :', '', '']],
     ['a little more feeding: sand at its foot', times({ feed: 3 }), ['.\\________/.', ...none]],
     ['a little more cleaning: raked under it', times({ clean: 3 }), [lump, ' ----------', '', '', '', '']],
     ['a little more petting: two footprints', times({ pet: 3 }), [lump, '   :', '    :', '', '', '']],
@@ -335,8 +335,8 @@ test('the ground goes where the rock has moved, and a trail lies on top of it', 
   assert.deepEqual(groundRows(times({ feed: 3 }), DRAWINGS.pebble, right)[0], "   .'----'.");
   assert.deepEqual(groundRows(times({ feed: 3 }), DRAWINGS.pebble, left)[0], " .'----'.");
   assert.deepEqual(groundRows(only('feed'), DRAWINGS.pebble, right)[0], '............');
-  assert.deepEqual(groundRows(only('clean', 'pet'), DRAWINGS.lump, right).slice(1, 4), ['----o-------', '     :', '    :'], 'the path moves with it');
-  assert.deepEqual(groundRows(only('clean', 'pet'), DRAWINGS.lump, left).slice(1, 4), ['--o---------', '   :', '  :']);
+  assert.deepEqual(groundRows(only('clean', 'pet'), DRAWINGS.lump, right).slice(1, 4), ['----o-------', '-----o------', '    :'], 'the path moves with it');
+  assert.deepEqual(groundRows(only('clean', 'pet'), DRAWINGS.lump, left).slice(1, 4), ['--o---------', '---o--------', '  :']);
   // On the morning it moved, its trail is drawn over the sand: ~ where it slid, never sand.
   for (const col of [1, -1]) {
     const [s, t] = moved(col, true), p = placeAt(s.born, t);
@@ -378,7 +378,7 @@ test('the ground never covers the rock, its marks, its moss or a mess, and each 
         const g = before.map(row => [...row]);
         drawGround(g, { feed: f, clean: c, pet: p }, rows, dx);
         const at = `${name} ${pose} dx ${dx} feed ${f} clean ${c} pet ${p} messes ${messes}${s.dead ? ' grave' : ''}`;
-        const cells = new Set();
+        const cells = new Set(), raked = new Set();
         let prints = 0;
         for (let r = 0; r < W; r++) for (let col = 0; col < W; col++) {
           const was = before[r][col], is = g[r][col];
@@ -391,20 +391,22 @@ test('the ground never covers the rock, its marks, its moss or a mess, and each 
             const corner = col === left || col === right;
             assert.ok(was === ' ' || (was === outline(col) && (f === 3 || (f === 2 && corner))), `${at}: sand over "${was}" at column ${col}`);
             if (was !== ' ') { buried++; if (f === 2) corners++; }
-          } else if (r === 6 && is !== ':' && is !== 'o') {
+          } else if (is === '-') {
+            // The raked floor: one line for each level of cleaning, from the row under it.
             assert.equal(was, ' ', at);
-            assert.equal(is, c === 3 ? '=' : '-', `${at}: the raked floor`);
-            assert.ok(c >= 1, at);
+            assert.ok(r - 5 <= c, `${at}: a raked line on row ${r}`);
+            raked.add(r);
           } else {
-            // A footprint on bare ground, or a stone where it crosses the raked floor (row 6).
+            // A footprint on bare ground, or a stone where it crosses a raked line.
             assert.ok(steps.has(`${r},${col}`), `${at}: a footprint off the path at ${r},${col}`);
             assert.equal(was, ' ', `${at}: "${is}" over "${was}"`);
-            assert.ok(is === ':' || (is === 'o' && r === 6 && c >= 1), `${at}: "${is}" at ${r},${col}`);
+            assert.ok(is === ':' || (is === 'o' && r - 5 <= c), `${at}: "${is}" at ${r},${col}`);
             if (is === 'o') stones++;
           }
         }
         if (f === 3) assert.ok([...Array(W).keys()].every(col => outline(col) === ' ' || g[5][col] !== outline(col)), `${at}: deep sand covers the whole base`);
         if (messes === 0) assert.equal(prints, STEPS[p], `${at}: footprints`);
+        assert.equal(raked.size, c, `${at}: raked lines`);
         changed[`${f}${c}${p}`] = cells;
       }
       // Each level draws everything the level below it drew, and more.
