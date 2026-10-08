@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { groundOf, groundAt, tracesOf, drawGround } from '../src/ground.mjs';
 import { personality, careTotals, PERSONALITIES } from '../src/personality.mjs';
-import { render, sprite, fullCare, W, MESS_SPOTS } from '../src/screen.mjs';
+import { render, sprite, fullCare, faint, W, MESS_SPOTS } from '../src/screen.mjs';
 import { DRAWINGS, DRAWING } from '../src/drawings.mjs';
 import { born, replay, HOUR } from '../src/engine.mjs';
 import { placeAt } from '../src/character.mjs';
@@ -362,11 +362,12 @@ function boxed(s, now, pose, drawing, dx) {
 test('the ground never covers the rock, its marks, its moss or a mess, and each level holds the last', () => {
   const marked = { ...kept, closeCalls: 3, petted: 3000, fed: 1500 };
   const grave = replay({ born: T, rules: RULES.version, visits: [] }, Infinity);
-  const states = [[marked, T], [grave, grave.dead.t + 120 * DAY]];
+  const hungry = { ...marked, hunger: 7 }; // drawn faint
+  const states = [[marked, T], [hungry, T], [grave, grave.dead.t + 120 * DAY]];
   const STEPS = [0, 2, 3, 5];
   let buried = 0, corners = 0, stones = 0;
   for (const [name, drawing] of Object.entries(DRAWINGS)) for (const pose of ['front', 'away']) for (const dx of [-1, 0, 1]) for (const [s, now] of states) {
-    const rows = pose === 'away' ? drawing.back : drawing.front;
+    const lines = faint(s) ? drawing.faint : drawing, rows = pose === 'away' ? lines.back : lines.front;
     const outline = c => rows[4][c - dx] ?? ' ';
     const left = rows[4].search(/\S/) + dx, right = rows[4].trimEnd().length - 1 + dx;
     const steps = new Set(PATH.map(([r, c]) => `${r},${c + dx}`));
@@ -408,6 +409,10 @@ test('the ground never covers the rock, its marks, its moss or a mess, and each 
         if (messes === 0) assert.equal(prints, STEPS[p], `${at}: footprints`);
         assert.equal(raked.size, c, `${at}: raked lines`);
         changed[`${f}${c}${p}`] = cells;
+      }
+      // Deep sand covers more than sand over its corners, on a solid or a faint base alike.
+      if (messes === 0) for (let c = 0; c < 4; c++) for (let p = 0; p < 4; p++) {
+        assert.ok(changed[`3${c}${p}`].size > changed[`2${c}${p}`].size, `${name} ${pose} dx ${dx}${faint(s) ? ' faint' : ''}: sand at level 3 looks like level 2`);
       }
       // Each level draws everything the level below it drew, and more.
       for (const key of Object.keys(changed)) for (let i = 0; i < 3; i++) {

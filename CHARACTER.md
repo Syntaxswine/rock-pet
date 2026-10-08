@@ -24,7 +24,7 @@ It is a pebble with a face, sitting on a floor, looked after by visitors who mos
 
 This one keeps the record its visitors can't keep for themselves. Each time someone brings it back from the brink, it keeps a vein. A lot of petting polishes it, and a lot of meals grow crystals in it. The history page counts all of these with everything else that was done, and names nobody.
 
-**Its ground keeps another record:** which care it has been given more of. That is its personality (PERSONALITY.md), and it shows as sand it has settled into, a raked floor, or footprints worn up to it.
+**Its ground keeps another record:** which care it has been given more of. That is its personality (PERSONALITY.md), and it shows as sand it has settled into, raked lines, or footprints worn up to it.
 
 **It shows what it needs.** For an hour after someone feeds it, its food lies beside it and it eats. When it is hungry, its outline goes faint, whatever its mood.
 
@@ -101,9 +101,9 @@ drawn faint
 |3          6|  |5          5|  |10       -10|  |10       -10|
 |            |  |     ,,     |  |    ",,     |  |    ",,     |
 |    ___     |  |    ___     |  |    ...,    |  |  ,,...,"   |
-|  _/   \__  |  |  _/   \__  |  |  .'   '..  |  |  .'   '..  |
+|  _/   \__  |  |  _/   \__  |  |  .:   :..  |  |  .:   :..  |
 | /  ^  ^  \ |  | /  o  o  \ |  | :  T  T  : |  | :  T  T  : |
-| \________/ |  | \________/ |  | '........' |  | '........' |
+| \________/ |  | \________/ |  | '________' |  | '________' |
 |            |  |            |  |            |  |            |
 |        @   |  |        @   |  |  @     @   |  |  @     @   |
 |            |  |            |  |            |  |     @      |
@@ -150,7 +150,7 @@ the feed reply  a minute on     20 minutes      40 minutes      an hour on
 |            |  |            |  |            |  |            |  |            |
 |    ___     |  |    ___     |  |    ___     |  |    ___     |  |    ___     |
 |  _/   \__  |  |  _/   \__  |  |  _/   \__  |  |  _/   \__  |  |  _/   \__  |
-| /  ^  ^  <#|  | /  ^  ^  \#|  | /  ^  ^  <=|  | /  ^  ^  <-|  | /  ^  ^  \ |
+| /  ^  ^  <#|  | /  ^  ^  \#|  | /  ^  ^  <+|  | /  ^  ^  <.|  | /  ^  ^  \ |
 | \________/ |  | \________/ |  | \________/ |  | \________/ |  | \________/ |
 |            |  |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |  |            |
@@ -159,15 +159,16 @@ the feed reply  a minute on     20 minutes      40 minutes      an hour on
 |            |  |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |  |            |
 
-when it is hungry: from 7 on the screen it is drawn faint, whatever its mood, until it is fed
+when it is hungry: from 7 on the screen it is drawn faint, whatever its mood, until a feed
+brings it below 7
 
 hunger 6        hunger 7        starving        fed once, at 7
 |6          6|  |7          6|  |10         6|  |7          6|
 |            |  |            |  |            |  |            |
 |    ___     |  |    ...     |  |    ...     |  |    ...     |
-|  _/   \__  |  |  .'   '..  |  |  .'   '..  |  |  .'   '..  |
+|  _/   \__  |  |  .:   :..  |  |  .:   :..  |  |  .:   :..  |
 | /  ^  ^  \ |  | :  ^  ^  : |  | :  ^  ^  : |  | :  ^  ^  <#|
-| \________/ |  | '........' |  | '........' |  | '........' |
+| \________/ |  | '________' |  | '________' |  | '________' |
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
@@ -277,9 +278,9 @@ happy           48h alone       a long life     the wall        dead a month
 |2          9|  |10       -10|  |2          6|  |2          6|  |died: lonely|
 |            |  |    ",,     |  |            |  |            |  |    ",,     |
 |    ___     |  |  ,,...,"   |  |    ___     |  |     ___    |  |  ,,___,",  |
-|  _/   \__  |  |  .'   '..  |  |  _/ / \__  |  |  __/   \_  |  | "_/ / \__, |
+|  _/   \__  |  |  .:   :..  |  |  _/ / \__  |  |  __/   \_  |  | "_/ / \__, |
 | /  ^  ^  \ |  | :  T  T  : |  | /' ^  ^  \ |  | /        \ |  |,/  x  x  \ |
-| \________/ |  | '........' |  | \______*_/ |  | \________/ |  | \________/ |
+| \________/ |  | '________' |  | \______*_/ |  | \________/ |  | \________/ |
 
 googly: googly eyes, the craft-table pet rock
 happy           48h alone       a long life     the wall        dead a month
@@ -288,16 +289,16 @@ happy           48h alone       a long life     the wall        dead a month
 |    ____    |  |  ,,...."   |  |    ____    |  |    ____    |  |  ,,____",  |
 |  .'    '.  |  |  .'    '.  |  |  .'  / '.  |  |  .'    '.  |  | ".'  / '., |
 | / (^)(^) \ |  | : (T)(T) : |  | /'(^)(^) \ |  | /        \ |  |,/ (x)(x) \ |
-| \________/ |  | '........' |  | \______*_/ |  | \________/ |  | \________/ |
+| \________/ |  | '________' |  | \______*_/ |  | \________/ |  | \________/ |
 
 boulder: round and solid
 happy           48h alone       a long life     the wall        dead a month
 |2          9|  |10       -10|  |2          6|  |2          6|  |died: lonely|
 |            |  |   ,",,,"   |  |            |  |            |  |   ,",,,"   |
 |   .----.   |  |  ,......   |  |   .----.   |  |   .----.   |  |  ,.----.,  |
-|  /      \  |  |  '      '  |  |  / ' /  \  |  |  /      \  |  | "/   /  \, |
+|  /      \  |  |  :      :  |  |  / ' /  \  |  |  /      \  |  | "/   /  \, |
 | |  ^  ^  | |  | :  T  T  : |  | |  ^  ^  | |  | |        | |  |,|  x  x  | |
-|  \______/  |  |  '......'  |  |  \____*_/  |  |  \______/  |  |  \______/  |
+|  \______/  |  |  '______'  |  |  \____*_/  |  |  \______/  |  |  \______/  |
 
 cairn: a small stone perched on a flat one
 happy           48h alone       a long life     the wall        dead a month
@@ -306,7 +307,7 @@ happy           48h alone       a long life     the wall        dead a month
 |    .--.    |  |   ,...."   |  |    .'-.    |  |    .--.    |  |   ,.--."   |
 |   (^  ^)   |  |  ,:T  T:   |  |   (^  ^)   |  |   (    )   |  |  ,(x  x),  |
 |  .------.  |  |  ........  |  |  .--/---.  |  |  .------.  |  | ".--/---., |
-| (________) |  | :........: |  | (_______*) |  | (________) |  |,(________) |
+| (________) |  | :________: |  | (_______*) |  | (________) |  |,(________) |
 
 sett: a squared paving stone, a sett (a cobble is rounded)
 happy           48h alone       a long life     the wall        dead a month
@@ -315,7 +316,7 @@ happy           48h alone       a long life     the wall        dead a month
 |            |  |  ,,",,,"   |  |            |  |            |  |  ,,",,,"," |
 |  ._______. |  |  ......... |  |  .___/___. |  |  ._______. |  | ,.___/___.,|
 |  | ^   ^ | |  |  : T   T : |  |  |'^   ^ | |  |  |       | |  |  | x   x | |
-|  |_______| |  |  :.......: |  |  |_____*_| |  |  |_______| |  |  |_______| |
+|  |_______| |  |  :_______: |  |  |_____*_| |  |  |_______| |  |  |_______| |
 
 hoodoo: a little spire with a cap stone
 happy           48h alone       a long life     the wall        dead a month
@@ -324,7 +325,7 @@ happy           48h alone       a long life     the wall        dead a month
 |   ______   |  |  ,......   |  |   ___/__   |  |   ______   |  |  ,___/__,  |
 |  (______)  |  |  :......:  |  |  (______)  |  |  (______)  |  | "(______), |
 |   | ^^ |   |  |   : TT :   |  |   |'^^ |   |  |   |    |   |  |  ,| xx |   |
-|   |____|   |  |   :....:   |  |   |_*__|   |  |   |____|   |  |   |____|   |
+|   |____|   |  |   :____:   |  |   |_*__|   |  |   |____|   |  |   |____|   |
 
 pebble: the first drawing, a small pebble
 happy           48h alone       a long life     the wall        dead a month
@@ -333,7 +334,7 @@ happy           48h alone       a long life     the wall        dead a month
 |            |  |   ,",,,"   |  |            |  |            |  |   ,",,,"   |
 |   .----.   |  |  ,......   |  |   .-/-'.   |  |   .----.   |  |  ,.-/--.,  |
 |  ( ^  ^ )  |  |  : T  T :  |  |  ( ^  ^ )  |  |  (      )  |  | "( x  x ), |
-|   '----'   |  |   '....'   |  |   '*---'   |  |   '----'   |  |  ,'----'   |
+|   '----'   |  |   '----'   |  |   '*---'   |  |   '----'   |  |  ,'----'   |
 
 its ground on each drawing, at a side's middle: feed and pet (sand over its corners, a path),
 then clean and pet (two raked lines, stepping stones, a path)
@@ -392,17 +393,17 @@ lump                            googly
 |0          6|  |7          6|  |0          6|  |7          6|
 |            |  |            |  |            |  |            |
 |    ___     |  |    ...     |  |    ____    |  |    ....    |
-|  _/   \__  |  |  .'   '..  |  |  .'    '.  |  |  .'    '.  |
+|  _/   \__  |  |  .:   :..  |  |  .'    '.  |  |  .'    '.  |
 | /  ^  ^  <#|  | :  ^  ^  : |  | / (^)(^) <#|  | : (^)(^) : |
-| \________/ |  | '........' |  | \________/ |  | '........' |
+| \________/ |  | '________' |  | \________/ |  | '________' |
 
 boulder                         cairn
 |0          6|  |7          6|  |0          6|  |7          6|
 |            |  |            |  |            |  |            |
 |   .----.   |  |   ......   |  |    .--.    |  |    ....    |
-|  /      \  |  |  '      '  |  |   (^  ^<#  |  |   :^  ^:   |
+|  /      \  |  |  :      :  |  |   (^  ^<#  |  |   :^  ^:   |
 | |  ^  ^  <#|  | :  ^  ^  : |  |  .------.  |  |  ........  |
-|  \______/  |  |  '......'  |  | (________) |  | :........: |
+|  \______/  |  |  '______'  |  | (________) |  | :________: |
 
 sett                            hoodoo
 |0          6|  |7          6|  |0          6|  |7          6|
@@ -410,7 +411,7 @@ sett                            hoodoo
 |            |  |            |  |   ______   |  |   ......   |
 |  ._______. |  |  ......... |  |  (______)  |  |  :......:  |
 |  | ^   ^ <#|  |  : ^   ^ : |  |   | ^^ <#  |  |   : ^^ :   |
-|  |_______| |  |  :.......: |  |   |____|   |  |   :....:   |
+|  |_______| |  |  :_______: |  |   |____|   |  |   :____:   |
 
 pebble
 |0          6|  |7          6|
@@ -418,7 +419,7 @@ pebble
 |            |  |            |
 |   .----.   |  |   ......   |
 |  ( ^  ^ <# |  |  : ^  ^ :  |
-|   '----'   |  |   '....'   |
+|   '----'   |  |   '----'   |
 ```
 
 ## Its face
@@ -443,8 +444,8 @@ The owner's idea (2026-10-08): "the food could be # and there could be a simple 
 | minutes since the feed | the food | its mouth |
 |---|---|---|
 | 0 to 20 | `#` | open in the meal's even minutes, shut in its odd ones |
-| 20 to 40 | `=` | the same |
-| 40 to 60 | `-` | the same |
+| 20 to 40 | `+` | the same |
+| 40 to 60 | `.` | the same |
 | 60 on | gone | |
 
 - **Where:** just past the end of its face row, on its right. A rock that has slid a column right has no room there, so its food goes on its left. Its mouth is the end of the row on that side, opening toward the food: `<#`, or `#>`.
@@ -454,14 +455,18 @@ The owner's idea (2026-10-08): "the food could be # and there could be a simple 
 - **Facing the wall,** it eats with its back to anyone who only looks: the food lies beside it, and there is no mouth to see. Care turns it round, as always.
 - **A grave eats nothing.**
 - **It is only drawn,** and changes nothing about the rock.
+- **Its food is `#`, `+` and `.`,** not `=` or `-`: beside its mouth those would read as `<=` and `<-`, arrows and operators to a language model.
+- **How often it shows:** following the act line's suggestion, a busy rock's looks catch each third of a meal, or none, about equally often. A bot sending the same `feed clean pet` every few minutes keeps the food whole. A rock visited once a day shows its meal only in the feed's own reply.
 - **What it costs:** 1 byte for the food on its right, none on its left, and only for that hour. Several frames in one reply would cost a whole extra grid on every feed. A meal never shares a screen with the hunger danger line: a feed takes 3 off hunger, which comes back at 10 a day, so within the hour it is 7.42 at most.
 
 ## When it is hungry
 
 The owner suggested playing with line weight (2026-10-08). Here it does a job the picture lacked. Its eyes show only its mood, so a rock that was petted but never fed showed `^  ^` in every reply until it died of hunger at 72 hours (`test/meal.test.mjs` replays that life).
 
-From hunger 7 on the screen, where hunger starts to drain its happiness, the rock is drawn faint, in dotted lines, until it is fed. The model sheet above shows it at hunger 6, 7 and 10, and eating while still at 7.
+From hunger 7 on the screen the rock is drawn faint, in dotted lines, until a feed brings it below 7. (Hunger starts to drain its happiness just above 6.) A starving rock fed once is at 7, so it stays faint while it eats. The model sheet above shows it at hunger 6, 7 and 10, and eating while still at 7.
 - **Every drawing has a faint front and back** (`src/drawings.mjs`). Each fills exactly the cells its solid form does, so its eyes, marks, moss and ground go where they did. A faint screen costs exactly as many bytes as a solid one.
+- **Its base keeps its line,** lightening only at its ends. Sand is `.` on that row, and a faint rock's sand has to read as sand at every level. Its other dots and colons stay off the cells beside its polish, so a polish mark doesn't run into them.
+- **A rock fed once a day,** the least it needs, is faint for the last third or so of each day (from 15.6 hours after the feed): it is hungry then, and it shows.
 - **It follows the number the screen shows,** so `hunger 7/10` and a faint outline always go together.
 - **A grave is a stone again,** and drawn solid.
 
@@ -718,7 +723,20 @@ The costs come from these places:
 - **A meal:** 1 byte, or none, for the hour after a feed.
 - **Hunger:** nothing. A faint rock fills the same cells as a solid one.
 
-The largest screen is 378 bytes. It has the longest name, ten messes (the most a living rock carries), both danger lines, a top full of moss, a four-digit age, the rock a column over, three raked lines and sand at its foot, and it is drawn faint. With one raked line it was 369: the second and third reach past the messes on their rows. A credited outage of 100 days or more adds 2 more, because "last care 100d ago" counts wall-clock time while moss and the danger clocks count lived time (each further digit adds another, from 1,000 days). The screen tests build both cases on purpose, since no sample reaches them. They hold every screen to 390, and every look and visit to under 450 (380 and 440 before the raked lines; 340 before moss and names). The bounds moved by 10 so a host keeps the room it had. Both assume a 15-character host. A longer one adds a byte to the screen for each extra character, so 25 characters is the most that fits (24 after an outage of 1,000 days or more). A look can print the host three times. Forcing every ground onto 1,200 real lives with a 24-character host (2026-10-08), the largest look was 434 bytes and the largest reply 440.
+The largest screen is 378 bytes. It has the longest name, ten messes (the most a living rock carries without host downtime), both danger lines, a top full of moss, a four-digit age, the rock a column over, three raked lines and sand at its foot, and it is drawn faint. With one raked line it was 369: the second and third reach past the messes on their rows.
+
+Credited host downtime makes the largest screen a little longer, in two ways:
+- **An eleventh mess.** Downtime in its last two days can let one land, since messes keep to the UTC clock while its sorrow clock pauses. That makes 380, and further messes add nothing.
+- **A longer "last care".** "last care 100d ago" counts wall-clock time, while moss and the danger clocks count lived time. That makes 382 after an outage of 100 days, and 383 after one of 1,000.
+
+The screen tests build each case on purpose, since no sample reaches them, and a test builds the eleventh mess from a real log. They hold every screen to 390 bytes (380 before the raked lines; 340 before moss and names). The bound assumes a 15-character host, and each extra character adds a byte to the screen, so a host of up to 22 characters keeps every screen within it.
+
+A look or a reply adds lines that depend on the rock's life: a reaction, a day's remark, the naming line.
+- `node tools/sizes.mjs <host length>` searches real lives for the largest, forcing every drawing and ground onto each.
+- With a 15-character host, the largest look it finds is 409 bytes and the largest reply 424.
+- A reply prints the host up to three times, so each extra character adds up to 3 bytes.
+- A test holds sampled looks and accepted visits under 450 bytes (440 before the raked lines). So a host of up to 23 characters fits, or 21 once the 5 bytes downtime can add are allowed for.
+- An error reply adds its one error line and goes to the sender alone, so it isn't held to the bound.
 
 **Staying the same.** Once the rock is hosted, these formulas must not change, or a living rock's past would change under it:
 - its kind;

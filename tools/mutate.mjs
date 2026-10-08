@@ -248,7 +248,7 @@ const MUTANTS = [
   // Its meals and its hunger (meal.mjs, screen.mjs).
   ['a meal lasts two hours', 'src/meal.mjs', 'export const MEAL_MS = HOUR;', 'export const MEAL_MS = 2 * HOUR;'],
   ['a meal lasts half an hour', 'src/meal.mjs', 'export const MEAL_MS = HOUR;', 'export const MEAL_MS = HOUR / 2;'],
-  ['the food is never eaten down', 'src/meal.mjs', "export const FOOD = ['#', '=', '-'];", "export const FOOD = ['#', '#', '#'];"],
+  ['the food is never eaten down', 'src/meal.mjs', "export const FOOD = ['#', '+', '.'];", "export const FOOD = ['#', '#', '#'];"],
   ['the food goes in halves', 'src/meal.mjs', 'Math.floor((ms * FOOD.length) / MEAL_MS)', 'Math.floor((ms * 2) / MEAL_MS)'],
   ['the mouth opens in odd minutes', 'src/meal.mjs', 'Math.floor(ms / MINUTE) % 2 === 0', 'Math.floor(ms / MINUTE) % 2 === 1'],
   ["the mouth keeps the clock's minutes, not the meal's", 'src/meal.mjs', 'Math.floor(ms / MINUTE) % 2 === 0', 'Math.floor(now / MINUTE) % 2 === 0'],
@@ -272,6 +272,8 @@ const MUTANTS = [
   ['a grave is drawn faint', 'src/screen.mjs', 'export const faint = s => !s.dead && ', 'export const faint = s => '],
   ['its back is never faint', 'src/screen.mjs', "return pose === 'away' ? lines.back : lines.front;", "return pose === 'away' ? drawing.back : lines.front;"],
   ['sand does not know a faint base', 'src/screen.mjs', 'drawGround(g, ground, rows, dx);', "drawGround(g, ground, pose === 'away' ? drawing.back : drawing.front, dx);"],
+  ['a faint base in dots, like sand', 'src/drawings.mjs', `' :  E  E  :', " '________'"], back: ['', '     ...',`, `' :  E  E  :', " '........'"], back: ['', '     ...',`],
+  ['a faint back out of step with its front', 'src/drawings.mjs', `back: ['', '    ....', "  .'    '.", ' :        :',`, `back: ['', '    ....', "  .'    '.", ' .        .',`],
 ];
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

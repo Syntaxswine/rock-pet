@@ -98,7 +98,8 @@ export function sheet() {
       ['the feed reply', grid(...eating(0))], ['a minute on', grid(...eating(MIN))], ['20 minutes', grid(...eating(20 * MIN))],
       ['40 minutes', grid(...eating(40 * MIN))], ['an hour on', grid(...eating(HOUR))],
     ]),
-    'when it is hungry: from 7 on the screen it is drawn faint, whatever its mood, until it is fed',
+    'when it is hungry: from 7 on the screen it is drawn faint, whatever its mood, until a feed\n' +
+      'brings it below 7',
     row([
       ['hunger 6', grid(rock({ hunger: 6.4 }))], ['hunger 7', grid(rock({ hunger: 6.6 }))],
       ['starving', grid(rock({ hunger: 10, starvingSince: T - 5 * HOUR }))], ['fed once, at 7', grid(...eating(0, { hunger: 7 }))],

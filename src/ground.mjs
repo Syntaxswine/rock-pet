@@ -9,7 +9,7 @@
 //          whole base, with only its marks and moss showing through
 //   clean  a raked floor in front of it: a line under it, then two lines across the ground, then
 //          three, the way a dry garden's gravel is raked in lines (the owner's choice, 2026-10-08)
-//   pet    footprints worn up to its front: 2, 3 or 5. Where they cross the raked floor they step
+//   pet    footprints worn up to its front: 2, 3 or 5. Where they cross a raked line they step
 //          on a stone, the way a garden's stepping stones keep feet off its raking.
 
 import { addCare, CARE_AXES, DAILY_CARE } from './personality.mjs';
@@ -114,7 +114,7 @@ export function groundAt(log, end) {
  * (its drawing's front or back), `dx` columns from where it began. Call it after the rock and
  * before its trail and the messes, which lie on top. It draws on bare cells, with two
  * exceptions: sand covers the outline of the rock's base (its corners, then all of it; marks
- * and moss there still show), and a footprint on the raked floor becomes a stone.
+ * and moss there still show), and a footprint on a raked line becomes a stone.
  */
 export function drawGround(g, ground, rows, dx) {
   const W = g[BASE].length;

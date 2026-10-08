@@ -7,6 +7,7 @@ import { replay, applyVisit, born, HOUR } from '../src/engine.mjs';
 import { parseActions } from '../src/parse.mjs';
 import { RULES } from '../src/rules.mjs';
 import { groundOf, groundAt } from '../src/ground.mjs';
+import { look, newLog, creditOutage } from '../src/rock.mjs';
 
 const MIN = 60_000, DAY = 24 * HOUR;
 const T0 = Date.UTC(2026, 0, 1);
@@ -199,6 +200,25 @@ test('the suggested body is the smallest full visit: sent as is, the screen read
   assert.ok(rocks.length > 150, `only ${rocks.length} live rocks`);
 });
 
+test('host downtime late in a life lets an eleventh mess land, and the screen shows it', () => {
+  // Fed and petted every half hour but never cleaned, a rock reaches the sorrow floor with its
+  // seventh mess, and has 48 hours of lived time left: ten messes at most. Downtime credited after
+  // its tenth pauses that clock but not the UTC clock that messes keep to (AGENTS.md, invariant 7),
+  // so an eleventh lands while it lives.
+  const b = Date.UTC(2026, 9, 6, 3), log = newLog(b), HALF = 12 * HOUR;
+  for (let t = b + HOUR; replay(log, t).messes < 10; t += 30 * MIN) log.visits.push({ t, acts: [['feed', 4], ['pet', 10]] });
+  const tenth = Math.ceil(log.visits.at(-1).t / HALF) * HALF, eleventh = tenth + HALF;
+  const plain = replay(log, eleventh + MIN);
+  assert.ok(plain.dead && plain.messes <= 10, 'without downtime it dies first, with ten at most');
+  const outage = creditOutage(log, { start: tenth + MIN, end: eleventh - MIN, evidence: 'host-1' }, { now: eleventh });
+  const down = { ...log, outages: [outage] };
+  const s = replay(down, eleventh + MIN);
+  assert.ok(!s.dead && s.messes === 11 && s.sorrowSince !== null, JSON.stringify(s));
+  const text = look(down, { now: eleventh + MIN, host: 'h' }).text;
+  assert.equal(text.split('\n').slice(0, W).join('').split('@').length - 1, 11, text);
+  assert.ok(text.includes('  mess 11 (@)\n'), text);
+});
+
 test('a rock never shows more messes than the grid has spots for', () => {
   // The most messes a rock can carry: fed and petted every hour, never cleaned.
   const visits = [];
@@ -217,7 +237,7 @@ test('the screen stays small (token efficiency): at most 390 bytes, whatever the
   console.log(`  screen bytes, with a 12-letter name: median ${sizes[sizes.length >> 1]}, largest ${sizes.at(-1)}`);
   assert.ok(sizes.at(-1) <= 390, `${sizes.at(-1)} bytes`);
   // ...but no sample reaches the worst, so build it: the longest name, ten messes (the most a
-  // living rock carries), both danger lines with two-digit hours, a top full of moss, a
+  // living rock carries without host downtime), both danger lines with two-digit hours, a top full of moss, a
   // four-digit age, a column over from where it began, every mark, in every drawing, on every
   // ground its care could give it. (Hungry, it is drawn faint, which costs nothing. It can't be
   // eating: a feed within the hour leaves hunger at 7.42 at most, test/meal.test.mjs.)
@@ -237,9 +257,17 @@ test('the screen stays small (token efficiency): at most 390 bytes, whatever the
   for (const [name, n] of Object.entries(bytes)) assert.ok(n <= 390, `${name}: ${n} bytes`);
   // Three raked lines across ten messes' rows made it 378 (369 with one).
   assert.equal(Math.max(...Object.values(bytes)), 378, 'the worst, as CHARACTER.md and AGENTS.md say');
-  // A long credited outage makes it a little longer: last care is wall-clock time ("100d ago"),
-  // while moss and the danger clocks count only the time it lived through.
-  const outages = [{ start: now - 100 * DAY + HOUR, end: now - 49 * HOUR, evidence: 'host-1' }];
-  const longest = Math.max(...Object.values(largest({ ...worst, lastCare: now - 100 * DAY }, outages)));
-  assert.equal(longest, 380, 'and after a long outage, as they also say');
+  // Credited host downtime in its last two days lets an eleventh mess land (the next test builds
+  // one from a real log), 2 bytes more; further messes add nothing. A long outage adds more:
+  // last care is wall-clock time ("100d ago"), while moss and the danger clocks count only the
+  // time it lived through.
+  const after = (alone, messes) => {
+    const outages = [{ start: now - alone + HOUR, end: now - 49 * HOUR, evidence: 'host-1' }];
+    return Math.max(...Object.values(largest({ ...worst, messes, lastCare: now - alone }, outages)));
+  };
+  assert.equal(after(60 * HOUR, 11), 380, 'eleven messes, after a short outage');
+  assert.equal(after(60 * HOUR, 16), 380, 'more add nothing');
+  assert.equal(after(100 * DAY, 11), 382, 'after an outage of 100 days, as CHARACTER.md and AGENTS.md say');
+  assert.equal(after(1000 * DAY, 11), 383, 'and of 1,000');
+  assert.ok(after(1000 * DAY, 11) <= 390);
 });

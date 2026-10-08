@@ -6,6 +6,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { nature, occasion, placeAt, inDanger, KINDS } from '../src/character.mjs';
 import { mossAt } from '../src/marks.mjs';
+import { groundAt } from '../src/ground.mjs';
+import { mealAt } from '../src/meal.mjs';
 import { NAMED } from '../src/name.mjs';
 import { reaction, remark, LINES } from '../src/story.mjs';
 import { render, W } from '../src/screen.mjs';
@@ -303,7 +305,7 @@ test('the character only reads the rock: drawing it and describing it never chan
   for (const { log, now } of lives(100, 3)) {
     const s = freeze(replay(log, now));
     const before = JSON.stringify(s);
-    for (const pose of ['front', 'away']) render(s, { now, host: 'x', pose });
+    for (const pose of ['front', 'away']) render(s, { now, host: 'x', pose, ground: groundAt(log, now), meal: mealAt(log, now) });
     remark(occasion(s, now));
     mossAt(s, now);
     reaction(log, s, s);

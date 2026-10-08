@@ -25,10 +25,10 @@ export const shownHunger = s => (s.starvingSince !== null ? 10 : Math.min(9, Mat
 export const shownHappy = s => (s.sorrowSince !== null ? -10 : Math.max(-9, Math.round(s.happy)) || 0);
 
 /**
- * From hunger 7 on the screen, where hunger starts to drain its happiness, it is drawn faint, in
- * dotted lines, until it is fed (CHARACTER.md, "When it is hungry"). Its eyes show only its mood,
- * so without this a rock petted but never fed would look content until it died of hunger. A grave
- * is a stone again, and drawn solid.
+ * From hunger 7 on the screen it is drawn faint, in dotted lines, until a feed brings it below 7
+ * (CHARACTER.md, "When it is hungry"). By then hunger is draining its happiness, which starts just
+ * above 6. Its eyes show only its mood, so without this a rock petted but never fed would look
+ * content until it died of hunger. A grave is a stone again, and drawn solid.
  */
 export const FAINT_AT = 7;
 export const faint = s => !s.dead && shownHunger(s) >= FAINT_AT;

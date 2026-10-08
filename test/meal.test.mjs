@@ -47,10 +47,10 @@ test('a meal lasts an hour of its life: whole, two thirds, a third, its mouth op
   assert.deepEqual(at(MIN), { food: '#', open: false }, 'a minute on, shut');
   assert.deepEqual(at(2 * MIN), { food: '#', open: true }, 'and open again');
   assert.deepEqual(at(20 * MIN - 1), { food: '#', open: false });
-  assert.deepEqual(at(20 * MIN), { food: '=', open: true }, 'a third of the way, two thirds left');
-  assert.deepEqual(at(40 * MIN - 1), { food: '=', open: false });
-  assert.deepEqual(at(40 * MIN), { food: '-', open: true }, 'a third left');
-  assert.deepEqual(at(HOUR - 1), { food: '-', open: false });
+  assert.deepEqual(at(20 * MIN), { food: '+', open: true }, 'a third of the way, two thirds left');
+  assert.deepEqual(at(40 * MIN - 1), { food: '+', open: false });
+  assert.deepEqual(at(40 * MIN), { food: '.', open: true }, 'a third left');
+  assert.deepEqual(at(HOUR - 1), { food: '.', open: false });
   assert.equal(at(HOUR), null, 'eaten, an hour on');
   // Its mouth keeps the meal's own minutes, not the clock's: fed half a minute into an odd minute
   // of the clock (T is a midnight, an even one), it is still open a quarter minute later.
@@ -63,23 +63,30 @@ test('a meal lasts an hour of its life: whole, two thirds, a third, its mouth op
 test('every feed starts a meal, whatever else the visit does; other care neither starts nor ends one', () => {
   const pets = { t: T + HOUR + 10 * MIN, acts: [['pet', 3], ['clean', 1]] };
   const log = { ...newLog(T), visits: [{ t: T + HOUR, acts: [['feed', 1]] }, pets] };
-  assert.deepEqual(mealAt(log, T + HOUR + 30 * MIN), { food: '=', open: true }, 'petting and cleaning leave the meal going');
+  assert.deepEqual(mealAt(log, T + HOUR + 30 * MIN), { food: '+', open: true }, 'petting and cleaning leave the meal going');
   assert.equal(mealAt({ ...log, visits: [pets] }, T + HOUR + 30 * MIN), null, 'and start none');
   const again = { ...log, visits: [...log.visits, { t: T + HOUR + 50 * MIN, acts: [['pet', 1], ['feed', 1]] }] };
   assert.deepEqual(mealAt(again, T + HOUR + 50 * MIN), { food: '#', open: true }, 'a feed among other care starts a new one');
-  assert.deepEqual(mealAt(again, T + 2 * HOUR + 30 * MIN), { food: '-', open: true }, 'an hour from the new feed, not the first');
+  assert.deepEqual(mealAt(again, T + 2 * HOUR + 30 * MIN), { food: '.', open: true }, 'an hour from the new feed, not the first');
   assert.equal(mealAt(again, T + 2 * HOUR + 50 * MIN), null);
+  // A feed it didn't need still starts one: fed at its birth, at hunger 0, it eats anyway.
+  const full = { ...newLog(T), visits: [{ t: T, acts: [['feed', 1]] }] };
+  assert.equal(replay(full, T).fed, 0, 'the feed took no hunger away');
+  assert.deepEqual(mealAt(full, T + 2 * MIN), { food: '#', open: true }, 'and it eats anyway');
+  assert.equal(grid(act(newLog(T), 'feed', { now: T, host: 'h' }).text)[1 + EYES], eating(face('^'), { food: '#', open: true }), 'in the reply too');
 });
 
 test('a meal counts only the time it lives: host downtime pauses it', () => {
-  // Fed, then the host was down from ten minutes later until four hours on. It has lived ten
-  // minutes of its meal when the host comes back, so the meal goes on from there.
-  const log = { ...newLog(T), visits: [{ t: T + HOUR, acts: [['feed', 1]] }], outages: [{ start: T + HOUR + 10 * MIN, end: T + 5 * HOUR, evidence: 'host-1' }] };
-  assert.deepEqual(mealAt(log, T + 5 * HOUR), { food: '#', open: true }, 'ten minutes lived');
-  assert.deepEqual(mealAt(log, T + 5 * HOUR + 15 * MIN), { food: '=', open: false }, 'twenty-five');
-  assert.deepEqual(mealAt(log, T + 5 * HOUR + 49 * MIN), { food: '-', open: false }, 'fifty-nine');
-  assert.equal(mealAt(log, T + 5 * HOUR + 50 * MIN), null, 'an hour lived: eaten');
-  assert.equal(mealAt({ ...log, outages: [] }, T + 5 * HOUR), null, 'by the calendar it would be long gone');
+  // Fed, then the host was down from ten minutes later for 231 minutes, an odd number, so the
+  // meal's own minutes and the clock's disagree about its mouth. It has lived ten minutes of its
+  // meal when the host comes back, and the meal goes on from there.
+  const back = T + 5 * HOUR + MIN;
+  const log = { ...newLog(T), visits: [{ t: T + HOUR, acts: [['feed', 1]] }], outages: [{ start: T + HOUR + 10 * MIN, end: back, evidence: 'host-1' }] };
+  assert.deepEqual(mealAt(log, back), { food: '#', open: true }, 'ten minutes lived');
+  assert.deepEqual(mealAt(log, back + 15 * MIN), { food: '+', open: false }, 'twenty-five: shut, though 256 minutes have passed');
+  assert.deepEqual(mealAt(log, back + 49 * MIN), { food: '.', open: false }, 'fifty-nine');
+  assert.equal(mealAt(log, back + 50 * MIN), null, 'an hour lived: eaten');
+  assert.equal(mealAt({ ...log, outages: [] }, back), null, 'by the calendar it would be long gone');
 });
 
 // A rock born on a Tuesday, its day for facing the wall, cared for in full every 8 hours, fed in
@@ -100,7 +107,7 @@ test('the reply to a feed opens its mouth beside the food, and looks after it se
   const row = text => grid(text)[1 + EYES];
   assert.equal(row(r.text), eating(face('^'), { food: '#', open: true }), 'its reply');
   const after = { ...log, visits: [...log.visits, r.visit] };
-  for (const [ms, meal] of [[MIN, { food: '#', open: false }], [20 * MIN, { food: '=', open: true }], [40 * MIN, { food: '-', open: true }], [59 * MIN, { food: '-', open: false }]]) {
+  for (const [ms, meal] of [[MIN, { food: '#', open: false }], [20 * MIN, { food: '+', open: true }], [40 * MIN, { food: '.', open: true }], [59 * MIN, { food: '.', open: false }]]) {
     assert.equal(row(look(after, { now: WEDNESDAY + ms, host: 'h' }).text), eating(face('^'), meal), `${ms / MIN} minutes on`);
   }
   assert.equal(row(look(after, { now: WEDNESDAY + HOUR, host: 'h' }).text), face('^'), 'an hour on, it has eaten it all');
@@ -159,7 +166,7 @@ function boxed(s, now, pose, drawing, dx) {
 test('every drawing eats on its right where there is room, else its left: only the food and its mouth are drawn', () => {
   const marked = { ...born(T - 41 * DAY), t: T, lastCare: T - 2 * MIN, visits: 90, hunger: 2, happy: 6, closeCalls: 3, petted: 3000, fed: 1500 };
   const hungry = { ...marked, hunger: 7 }; // fed once from starving: still faint while it eats
-  const MEALS = [{ food: '#', open: true }, { food: '#', open: false }, { food: '=', open: true }, { food: '-', open: false }];
+  const MEALS = [{ food: '#', open: true }, { food: '#', open: false }, { food: '+', open: true }, { food: '.', open: false }];
   let lefts = 0, rights = 0;
   for (const [name, drawing] of Object.entries(DRAWINGS)) for (const pose of ['front', 'away']) for (const dx of [-1, 0, 1]) for (const s of [marked, hungry]) {
     const lines = faint(s) ? drawing.faint : drawing, rows = pose === 'away' ? lines.back : lines.front;
@@ -251,16 +258,25 @@ test('a rock petted but never fed shows happy eyes in every reply, drawn faint f
 
 test('every drawing has a faint front and back: the same cells and eyes, in lighter lines', () => {
   const footprint = rows => rows.map(row => [...row].map(ch => (ch === ' ' ? ' ' : '#')).join('').trimEnd());
-  for (const [name, drawing] of Object.entries(DRAWINGS)) for (const side of ['front', 'back']) {
-    const solid = drawing[side], light = drawing.faint[side];
-    assert.equal(light.length, solid.length, `${name} ${side}`);
-    assert.deepEqual(footprint(light), footprint(solid), `${name} ${side}: the same cells`);
-    light.forEach((row, r) => [...row].forEach((ch, c) => {
-      assert.equal(ch === 'E', solid[r][c] === 'E', `${name} ${side}: an eye at ${r},${c}`);
-      // Only dots, colons and ticks, and the rims of googly eyes, which are its eyes, not its outline.
-      const rim = (ch === '(' && row[c + 1] === 'E') || (ch === ')' && row[c - 1] === 'E');
-      assert.ok(ch === ' ' || ch === 'E' || rim || ".:'".includes(ch), `${name} ${side}: "${ch}" at ${r},${c} is not a light line`);
-    }));
+  for (const [name, drawing] of Object.entries(DRAWINGS)) {
+    const lighter = {}; // what each solid glyph becomes, row by row, on its front; its back must agree
+    for (const side of ['front', 'back']) {
+      const solid = drawing[side], light = drawing.faint[side];
+      assert.equal(light.length, solid.length, `${name} ${side}`);
+      assert.deepEqual(footprint(light), footprint(solid), `${name} ${side}: the same cells`);
+      light.forEach((row, r) => [...row].forEach((ch, c) => {
+        assert.equal(ch === 'E', solid[r][c] === 'E', `${name} ${side}: an eye at ${r},${c}`);
+        if (ch === ' ' || ch === 'E') return;
+        // Dots, colons and ticks, and the rims of googly eyes, which are its eyes, not its outline.
+        // The base (row 4) keeps its line between its ends, since sand is `.` on that row.
+        const rim = (ch === '(' && row[c + 1] === 'E') || (ch === ')' && row[c - 1] === 'E');
+        const end = c === row.search(/\S/) || c === row.trimEnd().length - 1;
+        assert.ok(rim || ".:'".includes(ch) || (r === 4 && !end && ch === solid[r][c] && '_-'.includes(ch)), `${name} ${side}: "${ch}" at ${r},${c} is not a light line`);
+        const key = `${r} ${solid[r][c]}`;
+        if (side === 'front' && !(key in lighter)) lighter[key] = ch;
+        else if (key in lighter && !rim) assert.equal(ch, lighter[key], `${name} ${side}: "${solid[r][c]}" on row ${r} goes faint as "${lighter[key]}" on its front`);
+      }));
+    }
   }
 });
 
