@@ -61,18 +61,28 @@ test('moss grows on a rock nobody comes to, and any visit brushes it off', () =>
   assert.equal(moss(grid(act(log, 'pet', opts(T + 40 * HOUR)).text).slice(1, 6)), 0, 'a visit brushes it off');
 });
 
-test('moss shows as many tufts wherever the rock has moved, at the edge of the grid too', () => {
-  // Alone 13, 25 and 49 hours: 2, 4 and 7 tufts, on every drawing at every spot of its room.
-  for (const [hours, tufts] of [[13, 2], [25, 4], [49, 7]]) {
-    const s = { ...born(T - 41 * DAY), t: T, lastCare: T - hours * HOUR, visits: 90 };
-    for (const [name, d] of Object.entries(DRAWINGS)) {
-      const { min, max } = roomOf(d);
-      for (let dx = min; dx <= max; dx++) {
-        const g = grid(render(s, { now: T, host: 'h', drawing: d, place: { dx, from: null, furrow: false } }));
-        assert.equal(moss(g.slice(1, 6)), tufts, `${name} at ${dx}, alone ${hours}h:\n${g.slice(1, 6).join('\n')}`);
+test('wherever it has moved, moss is its first tufts that the grid can show, and a grave greens over a stage at a time', () => {
+  // On every drawing at every spot of its room: alone 13, 25 and 49 hours, its first 2, 4 and 7
+  // tufts, less any past the grid's edge (only the pip at its far left loses one, its 7th); and a
+  // grave, at its death and a week, a month and a season later, greener at each stage than at the
+  // last, its last stage a second layer on its top.
+  const D0 = T - 41 * DAY, onGrid = (d, dx, n) => mossCells(d.front).slice(0, n).filter(([, c]) => c + dx >= 0 && c + dx < W).length;
+  const grave = { ...born(D0), t: T, lastCare: T - 50 * HOUR, visits: 90, happy: -10, sorrowSince: T - 48 * HOUR, dead: { t: T, cause: 'lonely' } };
+  let short = 0;
+  for (const [name, d] of Object.entries(DRAWINGS)) {
+    const { min, max } = roomOf(d);
+    for (let dx = min; dx <= max; dx++) {
+      const tufts = (s, now) => moss(grid(render(s, { now, host: 'h', drawing: d, place: { dx, from: null, furrow: false } })).slice(1, 6));
+      for (const [hours, level] of [[13, 1], [25, 2], [49, 3]]) {
+        const n = tufts({ ...born(D0), t: T, lastCare: T - hours * HOUR, visits: 90 }, T);
+        assert.equal(n, onGrid(d, dx, TUFTS[level]), `${name} at ${dx}, alone ${hours}h`);
+        if (n < TUFTS[level]) short++;
       }
+      const stages = [0, 7, 30, 90].map(days => tufts(grave, T + days * DAY));
+      for (let k = 1; k < stages.length; k++) assert.ok(stages[k] > stages[k - 1], `${name}'s grave at ${dx}: ${stages.join(', ')}`);
     }
   }
+  assert.equal(short, 1, 'one tuft short at 48h, on the pip at its far left, and nowhere else');
 });
 
 test('verified host downtime grows no moss: it pauses moss as it pauses everything else', () => {
@@ -106,10 +116,9 @@ test('a grave keeps the moss of its last days alone, and greens over: a week, a 
   assert.equal(fed.dead.cause, 'hungry');
   assert.deepEqual([0, 7 * DAY, 30 * DAY, 90 * DAY].map(d => at(fed, d)), [0, 4, 5, 6]);
   const drawn = d => grid(look(newLog(T), opts(lonely.dead.t + d)).text).slice(1, 6);
-  // Where it lies (it wandered before it died): moss grows on the cells the grid shows there, so
-  // past its edge it takes the next ones, up to all there are.
+  // Where it lies (it wandered before it died): a tuft past the grid's edge isn't drawn.
   const d = DRAWINGS[DRAWING], dx = whereAt(newLog(T), lonely.dead.t, d).dx;
-  const shown = n => Math.min(n, mossCells(d.front).filter(([, c]) => c + dx >= 0 && c + dx < W).length);
+  const shown = n => mossCells(d.front).slice(0, n).filter(([, c]) => c + dx >= 0 && c + dx < W).length;
   assert.deepEqual([0, 7 * DAY, 30 * DAY, 90 * DAY].map(day => moss(drawn(day))), [3, 4, 5, 6].map(l => shown(TUFTS[l])));
   for (const [r, row] of d.front.entries()) for (const [c, cell] of [...row].entries()) if (cell === 'E') assert.equal(drawn(0)[r][c + dx], 'x', 'crosses for eyes');
 });

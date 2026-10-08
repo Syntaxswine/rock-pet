@@ -244,15 +244,15 @@ its ground forms over two weeks: petted at 8 times its need, at 2, 7, 10 and 14 
 where it is: about once in four hours it moves along its ground, to its food if it has just
 been fed. A day of its moves, each five minutes after it made it, with the furrow it left
 
-07:05 to food   08:41 wander    14:13 wander    18:23 wander
-|0         10|  |1          9|  |3          5|  |1          9|
+07:05 to food   14:13 wander    18:23 wander    20:17 wander
+|0         10|  |3          5|  |1          9|  |2          8|
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
-|     .'---. |  |   .'---.   |  |      .'---.|  |    .'---.  |
-|     (^  ^)#|  |   (^  ^)   |  |      (^  ^)|  |    (^  ^)  |
-|  ~~~'*---' |  |   '*---'~~ |  |   ~~~'*---'|  |    '*---'~~|
+|   .'---.   |  |      .'---.|  |    .'---.  |  |   .'---.   |
+|   (^  ^)#  |  |      (^  ^)|  |    (^  ^)  |  |   (^  ^)   |
+|  ~'*---'   |  |   ~~~'*---'|  |    '*---'~~|  |   '*---'~  |
 |            |  |            |  |            |  |            |
-|            |  |            |  |        @   |  |            |
+|            |  |        @   |  |            |  |            |
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
@@ -278,7 +278,7 @@ the grave of a rock once saved, then left: at death, then more moss
 
 died            a week          a month         a season
 |died: lonely|  |died: lonely|  |died: lonely|  |died: lonely|
-|            |  |            |  |            |  |            |
+|            |  |            |  |            |  |   ,",,,"   |
 |   ,",,,"   |  |   ,",,,"   |  |   ,",,,"   |  |   ,",,,"   |
 |  ,.-/--.   |  |  ,.-/--.,  |  |  ,.-/--.,  |  |  ,.-/--.,  |
 |   (x  x)   |  |  "(x  x)   |  |  "(x  x),  |  |  "(x  x),  |
@@ -507,18 +507,19 @@ The owner's call (2026-10-08): "the pet should wander around the screen even wit
 
 | its chance | when | where to |
 |---|---|---|
-| its food | a feed | the spot its food fell on |
+| its food | a feed | the spot its food falls on in those four hours |
 | wandering | at a minute of its own, unless it is eating | a spot of its own |
 
-The spot may be where it already is, and then it stays put. Either way the chance is used: however often it is fed, it moves once in four hours at most. A feed that comes after that, or while it rests, drops its food beside it where it is.
+The spot may be where it already is, and then it stays put. Either way the chance is used: however often it is fed, it moves at most once in each four hours of UTC time, and never twice within an hour (a move late in one four hours and one early in the next can be an hour apart). A feed that comes after that, or while it rests, drops its food beside it where it is.
 
 - **Free** means not resting and not at an extreme. It rests for an hour of its life after it moves.
+- **Its food falls on one spot in each four hours,** whichever feed takes the chance, so nobody can steer it by timing their visit.
 - **It doesn't wander off from its food** while it eats ("Its meals"). Only a new feed can send it on, to its new food.
-- **About five moves a day, whatever its visitors do,** and still in between. On the pip that is 4.8 to 5.4 a day, measured for bots that feed every 10 to 90 minutes and for full care every 3 hours, every 8 or once a day. A bot that feeds all the time takes nearly every chance with a feed, while a rock kept every 8 hours goes to its food about one move in four. The lump, with three spots, moves about four times a day.
+- **About five moves a day, whatever its visitors do,** and still in between. On the pip that is about 4.5 to 5.5 a day, measured over a month for bots that feed every 10 to 90 minutes and for full care every 3 hours, every 8 or once a day. A bot that feeds all the time takes nearly every chance with a feed, while a rock kept every 8 hours goes to its food about one move in four. The lump, with three spots, moves about four times a day.
 - **The ice** is the exception: on a few winter mornings ("Its days") it slides it to another spot, whatever else, its food with it. It stays there for the rest of that UTC day.
 - **At the same moment,** the ice comes first, then a feed, then its own minute.
 - **Its furrow,** `~`, is the ground its base slid off, beside it. It shows for an hour of its life after a wander or a walk to its food, and for the rest of that day after the ice.
-- **At an extreme it holds still,** starving or in sorrow: it doesn't wander or go to its food. Only the ice may move it then. A rock that has stopped moving is in trouble.
+- **At an extreme it holds still,** starving or in sorrow: it doesn't wander or go to its food. Only the ice may move it then, and a feed met there uses up no chance. The feed that brings it back may send it to its food. A well rock seldom stays put more than a day, which happens when its chances keep picking the spot it is on, so one that has stopped moving for longer is in trouble.
 - **While the host is down nothing moves it,** no wandering and no ice, since its time doesn't pass. Its rest, its meal and its furrow count only the time it lives, so downtime ends none of them.
 - **A grave lies where it died.**
 - **The same for everyone:** it all follows from the log and the clock (`src/wander.mjs`). It follows the rock's moves from its birth, and the engine's state at each.
@@ -560,8 +561,8 @@ Each stays within columns 1–10. The pip is drawn because it is small: it has r
 
 | Mark | Means | Appears | Goes |
 |---|---|---|---|
-| moss `,` `"` on top of it | nobody has come | after 12h, 24h and 48h without care: 2, 4 and 7 tufts | any visit brushes it off |
-| more moss, down its sides | it is a grave | a week, a month and a season after death: 9, 11, then every tuft it has room for (compressed: bare stone takes months or years to green over) | never |
+| moss `,` `"` on top of it | nobody has come | after 12h, 24h and 48h without care: 2, 4 and 7 tufts (6 on the pip at its far left, where its seventh is past the grid's edge) | any visit brushes it off |
+| more moss, down its sides, then a second layer on top | it is a grave | a week, a month and a season after death: 9, 11, then every tuft it has room for, a second layer on its top among them (compressed: bare stone takes months or years to green over). Past the grid's edge a tuft isn't drawn, but wherever it lies each stage is greener than the last | never |
 | a vein `/` in it | a close call | care ends a stretch at an extreme with a day or more of it at one; it counts when the last extreme ends | never; three are drawn, and `/history` counts the rest |
 | polish `'` on it | it has been petted a lot | after 500 points of happiness given by petting, and again after 3,000 | never |
 | crystals `*` in it | it has been fed a lot | after 100 meals, and again after 500 | never |
@@ -781,7 +782,7 @@ The costs come from these places:
 - **The look line:** 38 bytes when there is one, on about a quarter of looks, so about 10 bytes a look overall.
 - **The ground:** nothing while its care is balanced, as it is when the act line's suggestion is followed every 3 to 10 hours. On the pip at home: 1 byte for sand at its foot (3 deeper); 9, 24 or 36 for one, two or three raked lines; 9, 13 or 22 for two, three or five footprints; up to 37 for two traces together. On any drawing, wherever it has wandered, 42 at most.
 - **A meal:** 1 byte, or none, for the hour after a feed.
-- **Wandering:** nothing, on average: from 0.2 bytes less to 0.4 more a look, since a rock moved left saves the spaces that one moved right adds. At most 9 bytes, or 21 with five footprints, on the pip three columns right. Its furrow shows on about a fifth of looks.
+- **Wandering:** nothing, on average: from 0.2 bytes less to 0.4 more a look, since a rock moved left saves the spaces that one moved right adds. At most 12 bytes with moss on it, or 27 with five footprints too, on the pip three columns right. Its furrow shows on about a fifth of looks.
 - **Hunger:** nothing. A faint rock fills the same cells as a solid one.
 
 The largest screen is 380 bytes: the hoodoo, wandered two columns right, with the longest name, ten messes (the most a living rock carries without host downtime), both danger lines, a top full of moss, a four-digit age, three raked lines and sand at its foot, drawn faint. The pip, drawn now, comes to 371 at most. Before the raked lines and the wandering it was 369.
@@ -796,9 +797,9 @@ A look or a reply adds lines that depend on the rock's life: a reaction, a day's
 - **The largest known**, with a 15-character host and every drawing, ground and spot forced on:
   - a reply of 427 bytes: a starving rock kept by a bot that only pets, then fed;
   - a look of 427: unnamed, three years old, on a morning it slid on the ice, with moss and messes on it;
-  - a look of 429 after 1,000 days of credited downtime ("last care 1001d ago"), the host back before 10:00 on an icy morning, since the ice doesn't slide it while the host is down. Downtime adds nothing to a reply, which always says "last care just now". Its eleventh mess comes only at an extreme, which has no naming line or remark.
-- **A test builds each of these from a real life** and holds them under 450 bytes (440 before the raked lines) with a host of up to 21 characters.
-- **More host:** a look or a reply prints the host up to three times, so each extra character adds up to 3 bytes. At 22 characters the look after downtime reaches 450.
+  - a look of 433 after 1,166 days of credited downtime ("last care 1166d ago"). It has four messes: two from skipped cleans, and two that fell on either side of the outage within its last 12 hours alive. It also has moss, and the morning's remark: the host was back before 10:00 on that icy morning, since the ice doesn't slide it while the host is down. Downtime adds nothing to a reply, which always says "last care just now". Its eleventh mess comes only at an extreme, which has no naming line or remark.
+- **A test builds each of these from a real life** and holds them under 450 bytes (440 before the raked lines) with a host of up to 20 characters.
+- **More host:** a look or a reply prints the host up to three times, so each extra character adds up to 3 bytes. At 21 characters the look after downtime reaches 451.
 - **`node tools/sizes.mjs <host length>`** samples real lives in the same way, to try other hosts. It samples, so it can miss the worst.
 - **An error reply** adds its one error line and goes to the sender alone, so it isn't held to the bound.
 
@@ -807,7 +808,7 @@ So a host of up to 20 characters keeps every screen within 390 bytes, and every 
 **Staying the same.** Once the rock is hosted, these formulas must not change, or a living rock's past would change under it:
 - its kind;
 - its weekday;
-- when it slides on the ice, and where it moves: its four-hour chances and their minutes, the order of a tie, its spots, how long it rests, and which drawing it is, since the drawing's room sets its spots;
+- when it slides on the ice, and where it moves: its four-hour chances and their minutes, the order of a tie, its spots and its food's in each four hours, how long it rests and how long its furrow shows, and which drawing it is, since the drawing's room sets its spots;
 - its visitors;
 - the thresholds for veins, polish and crystals;
 - how its care becomes its ground: the levels, how slowly worn ground fades, and the two weeks it takes to form (and the personality weights it reads, which are PERSONALITY.md's);

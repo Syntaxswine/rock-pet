@@ -7,7 +7,8 @@
 //
 //   its chance   one in each four hours of UTC time, taken by the first of these to find it free,
 //                however often it is fed; the spot it picks may be where it already is
-//     a feed       sends it to the spot its food fell on
+//     a feed       sends it to the spot its food falls on in those four hours, the same whichever
+//                  feed it is, so nobody can steer it by timing theirs
 //     wandering    at a minute of its own, to a spot of its own, unless it is eating (meal.mjs):
 //                  it doesn't wander off from its food
 //   free         not resting, for an hour of its life after it moves, and not at an extreme
@@ -65,7 +66,7 @@ export function movesOf(log, end, drawing) {
   if (!(spots >= 2)) throw new Error('a drawing must leave it room to move');
   const events = [
     ...iceTimes(log.born, end, log.outages ?? []).map(t => ({ t, why: 'ice', key: Math.floor(t / DAY) })),
-    ...log.visits.filter(v => v.t <= end && v.acts.some(([verb]) => verb === 'feed')).map(v => ({ t: v.t, why: 'food', key: v.t })),
+    ...log.visits.filter(v => v.t <= end && v.acts.some(([verb]) => verb === 'feed')).map(v => ({ t: v.t, why: 'food', key: Math.floor(v.t / (WANDER_H * HOUR)) })),
     ...wanderTimes(log, end),
   ].sort((a, z) => a.t - z.t || ORDER[a.why] - ORDER[z.why]);
   const stateAt = replayer(log), moves = [];

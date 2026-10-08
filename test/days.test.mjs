@@ -6,7 +6,7 @@ process.env.TZ = 'Pacific/Kiritimati'; // UTC+14
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { nature, occasion, iceTimes, slidToday, inDanger, hash } from '../src/character.mjs';
-import { whereAt } from '../src/wander.mjs';
+import { whereAt, movesOf } from '../src/wander.mjs';
 import { reaction, remark } from '../src/story.mjs';
 import { render, W } from '../src/screen.mjs';
 import { DRAWINGS, DRAWING } from '../src/drawings.mjs';
@@ -179,8 +179,8 @@ const PINNED_ICE = [ // the same rock kept every 8h: where each slide took it on
   '2026-12-01 -3>0', '2026-12-05 -1>-2', '2026-12-08 -1>-2', '2026-12-19 -1>-2', '2026-12-20 1>-1', '2027-01-17 2>-1', '2027-02-09 0>-1', '2027-02-17 1>0',
 ];
 const PINNED_WANDERS = [ // its ninth and tenth days, on the pip
-  '10:30 1>-2 food', '12:46 -2>1 wander', '16:42 1>-2 wander', '21:27 -2>-1 wander', '00:00 -1>3 wander', '06:24 3>-1 wander',
-  '10:11 -1>-2 wander', '12:39 -2>0 wander', '23:52 0>-1 wander', '02:04 -1>3 wander', '05:06 3>2 wander',
+  '10:30 1>-3 food', '12:46 -3>1 wander', '16:42 1>-2 wander', '21:27 -2>-1 wander', '00:00 -1>3 wander', '06:24 3>-1 wander',
+  '10:11 -1>-2 wander', '12:39 -2>0 wander', '18:30 0>1 food', '23:52 1>-1 wander', '02:04 -1>3 wander', '05:06 3>2 wander',
 ];
 
 test('its days are the same in every time zone', () => {
@@ -214,6 +214,18 @@ test('/history counts only the moves made before death (review round 3)', () => 
   while (iceTimes(b, graveOf(b).dead.t + 120 * DAY, []).length === iceTimes(b, graveOf(b).dead.t, []).length) b += 3 * HOUR;
   const slides = iceTimes(b, graveOf(b).dead.t, []).length;
   assert.match(history(newLog(b), { now: graveOf(b).dead.t + 120 * DAY }).text, new RegExp(`^slid on the ice: ${slides === 1 ? 'once' : `${slides} times`}$`, 'm'));
+  // A slide due at the very moment it died never came (PR #6, review round 2): born at 10:00 on a
+  // winter day, petted and never fed, it dies of hunger 72h later, at 10:00 on an icy morning.
+  let found = null;
+  for (let day = Date.UTC(2026, 11, 1); !found && day < Date.UTC(2027, 2, 1); day += DAY) {
+    const born10 = day + 10 * HOUR, log = { ...newLog(born10), visits: [6, 18, 30, 42, 54, 66].map(h => ({ t: born10 + h * HOUR, acts: [['clean', 1], ['pet', 10]] })) };
+    const dead = replay(log, Infinity).dead;
+    if (dead.t === born10 + 72 * HOUR && iceTimes(born10, dead.t, []).includes(dead.t)) found = [log, dead];
+  }
+  assert.ok(found, 'a rock that died at 10:00 on an icy morning');
+  const [log, dead] = found, before = iceTimes(log.born, dead.t, []).filter(t => t < dead.t).length;
+  assert.deepEqual(movesOf(log, dead.t, DRAWINGS.pip).filter(m => m.at === dead.t), [], 'it made no move as it died');
+  assert.match(history(log, { now: dead.t + DAY }).text, new RegExp(`^slid on the ice: ${before === 1 ? 'once' : `${before} times`}$`, 'm'));
 });
 
 test('choosing a line never writes to the rock it describes', () => {

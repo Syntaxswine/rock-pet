@@ -69,9 +69,9 @@ export function fullCare(s) {
 /**
  * The rock's box: 5 rows of W characters, drawn at screen rows 1-5, from a drawing in
  * drawings.mjs. On its front go its eyes and the marks of its life (marks.mjs); facing the wall
- * (pose 'away') it shows its back. Moss grows on whichever side shows, `,` with every third `"`,
- * on the cells the grid shows with the box `dx` columns over, so a rock that has moved to the edge
- * has as many tufts. While it is hungry, either side is drawn faint.
+ * (pose 'away') it shows its back. Moss grows on whichever side shows, `,` with every third `"`;
+ * a tuft past the grid's edge, with the box `dx` columns over, isn't drawn. While it is hungry,
+ * either side is drawn faint.
  */
 export function sprite(s, now, pose = 'front', drawing = DRAWINGS[DRAWING], outages = [], dx = 0) {
   const rows = rowsOf(s, pose, drawing);
@@ -82,8 +82,11 @@ export function sprite(s, now, pose = 'front', drawing = DRAWINGS[DRAWING], outa
     const m = marksOf(s);
     for (const [row, col, mark] of [...drawing.veins.slice(0, m.veins), ...drawing.polish.slice(0, m.polish), ...drawing.crystals.slice(0, m.crystals)]) b[row][col] = mark;
   }
-  const shown = mossCells(rows).filter(([, col]) => col + dx >= 0 && col + dx < W);
-  for (const [i, [row, col]] of shown.slice(0, MOSS_CELLS[mossAt(s, now, outages)]).entries()) b[row][col] = i % 3 === 2 ? '"' : ',';
+  // Its tufts in the order moss spreads, less any past the grid's edge. At the edge it can show a
+  // tuft fewer, but its grave still greens over a stage at a time.
+  for (const [i, [row, col]] of mossCells(rows).slice(0, MOSS_CELLS[mossAt(s, now, outages)]).entries()) {
+    if (col + dx >= 0 && col + dx < W) b[row][col] = i % 3 === 2 ? '"' : ',';
+  }
   return b.map(row => row.join(''));
 }
 

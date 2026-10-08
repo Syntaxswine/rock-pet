@@ -40,7 +40,8 @@ export const FADE = 0.02;
 export const STEPS = [0, 2, 3, 5];
 /**
  * Where footprints fall, nearest the rock first, moved as the rock has moved. The same cells
- * for every drawing; they keep off the first fourteen mess spots (screen.mjs), wherever it is.
+ * for every drawing. Where it sits at home they keep off the first fourteen mess spots
+ * (screen.mjs); once it has wandered, a mess may lie on one.
  */
 export const FOOTPRINTS = [[6, 3], [7, 4], [8, 3], [9, 4], [10, 3]];
 

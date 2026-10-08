@@ -65,7 +65,7 @@ test('replayer gives, in one pass, what replay gives at each moment', () => {
   assert.throws(() => at(T), /out of time order/);
 });
 
-test('it moves regularly, not nonstop, however often it is visited: about five times a day, never twice in four hours', () => {
+test('it moves regularly, not nonstop, however often it is visited: about five times a day, once a four-hour block at most', () => {
   // The owner: "not nonstop, just regularly." A bot that feeds every few minutes once froze it,
   // and one every hour made it hop twenty times a day (PR #6, review round 1).
   const paces = [
@@ -147,6 +147,30 @@ test('its rest, its meal and its furrow count the time it has lived: downtime en
     assert.ok(furrowShows(down, place, m.at + 3 * HOUR + 20 * MIN), 'its furrow shows 30 minutes of its life on');
     assert.ok(!furrowShows(down, place, m.at + 3 * HOUR + 50 * MIN), 'and not an hour on');
   }
+  // A walk to its food leaves its furrow for an hour of its life too.
+  let walks = 0;
+  for (let b = T; walks < 3 && b < T + 10 * DAY; b += 47 * MIN) {
+    const F = b + HOUR, fed = { ...newLog(b), visits: [{ t: F, acts: [['feed', 1]] }] }, m = movesOf(fed, F, PIP).at(-1);
+    if (!m || m.at !== F) continue; // it must have gone to its food
+    const down = { ...fed, outages: [{ start: F + 10 * MIN, end: F + 3 * HOUR, evidence: 'host-1' }] }, place = { dx: m.to, from: m.from, at: m.at, why: m.why };
+    assert.equal(m.why, 'food');
+    assert.ok(furrowShows(down, place, F + 3 * HOUR + 20 * MIN), `born ${iso(b)}: its furrow 30 minutes of its life after a walk to food`);
+    assert.ok(!furrowShows(down, place, F + 3 * HOUR + 50 * MIN), 'and not an hour on');
+    walks++;
+  }
+  assert.equal(walks, 3, 'walks to food with downtime after them');
+  // And on the screen: the host down from 10 minutes after a move for three hours; a look 20
+  // minutes after it is back shows the furrow, 30 minutes of its life on.
+  let shown = 0;
+  for (let b = T; shown < 3 && b < T + 10 * DAY; b += 53 * MIN) {
+    const m = movesOf(newLog(b), b + 20 * HOUR, D)[0];
+    if (!m) continue;
+    const down = { ...newLog(b), outages: [{ start: m.at + 10 * MIN, end: m.at + 3 * HOUR, evidence: 'host-1' }] }, t = m.at + 3 * HOUR + 20 * MIN;
+    if (whereAt(down, t, D).at !== m.at) continue; // no newer move by then
+    assert.ok(grid(look(down, { now: t, host: 'h' }).text)[5].includes('~'), `born ${iso(b)}: the screen's furrow, 30 minutes of its life on`);
+    shown++;
+  }
+  assert.equal(shown, 3, 'looks after downtime with the furrow still showing');
   // The review's case: fed, then the host down 15 minutes into the meal for two hours. Whatever
   // the rock, it doesn't move while its meal shows.
   for (let k = 0; k < 60; k++) {
@@ -187,6 +211,21 @@ test('at the same moment, the ice comes first, then a feed, then its own minute'
   assert.equal(tied, 5, 'feeds at 10:00 on an icy morning, when a feed a moment sooner would have sent it to its food');
 });
 
+test('its meal ends an hour of its life after its feed, to the millisecond: then it may wander', () => {
+  // Its own moves m and w in blocks one after the other, w in its block's first hour; fed at w - 1h,
+  // after m, so the feed takes no chance (m had its block's) and its meal ends just as w comes.
+  let found = 0;
+  for (let b = T; found < 3 && b < T + 30 * DAY; b += 31 * MIN) {
+    const ms = own(b), k = ms.findIndex((w, i) => i > 0 && Math.floor(w.at / BLOCK) === Math.floor(ms[i - 1].at / BLOCK) + 1 && w.at % BLOCK < HOUR && w.at - HOUR > ms[i - 1].at);
+    if (k < 0) continue;
+    const w = ms[k], fed = { ...newLog(b), visits: [{ t: w.at - HOUR, acts: [['feed', 1]] }] };
+    assert.equal(mealAt(fed, w.at - 1) !== null, true, 'a millisecond before, it is eating');
+    assert.deepEqual(movesOf(fed, w.at, PIP).at(-1), w, `born ${iso(b)}: its meal over, it wanders at its minute`);
+    found++;
+  }
+  assert.equal(found, 3);
+});
+
 test('its rest ends an hour of its life after it moves, to the millisecond', () => {
   let found = 0;
   for (let b = T; found < 3 && b < T + 30 * DAY; b += 23 * MIN) {
@@ -202,6 +241,25 @@ test('its rest ends an hour of its life after it moves, to the millisecond', () 
     found++;
   }
   assert.equal(found, 3, 'feeds exactly an hour after a move');
+});
+
+test('the feed that brings it back from an extreme may send it to its food; a feed met at the extreme spends no chance', () => {
+  // Never visited, at the sorrow floor: in four hours that begin an hour or more after it got
+  // there (so it has long stopped resting), fed once, which lifts no sorrow, then half an hour later
+  // given a full visit, which brings it back.
+  let found = 0;
+  for (let b = T; found < 3 && b < T + 20 * DAY; b += 37 * MIN) {
+    const floor = replay(newLog(b), Infinity).sorrowSince, k = Math.floor((floor + HOUR) / BLOCK) + 1;
+    const t1 = k * BLOCK + 10 * MIN, t2 = t1 + 30 * MIN;
+    const log = { ...newLog(b), visits: [{ t: t1, acts: [['feed', 1]] }, { t: t2, acts: FULL }] };
+    assert.ok(inDanger(replay(log, t1)) && !inDanger(replay(log, t2)), 'still at the floor after the feed, back after the full visit');
+    const p = whereAt(log, t2, PIP), before = whereAt(log, t1, PIP);
+    assert.ok(before.at === null || (before.at < floor && t1 - before.at >= HOUR), 'no move at the floor, and long rested by the feed');
+    if (p.at !== t2) continue; // its food must fall elsewhere
+    assert.equal(p.why, 'food', `born ${iso(b)}`);
+    found++;
+  }
+  assert.equal(found, 3, 'rescues that sent it to its food');
 });
 
 test('at an extreme it holds still, starving or in sorrow, and only the ice may move it; a grave lies where it died', () => {
@@ -264,6 +322,18 @@ test('the ice always takes it somewhere else; it rests there the rest of that da
     assert.ok(next && next.at >= end, `it moves again the next day (born ${iso(b)})`);
     seen++;
   }
+  // Its rest ends at midnight to the millisecond: its own minute at exactly 00:00 the next day
+  // moves it (about one icy morning in 280 is followed by one).
+  let midnight = 0;
+  for (let i = 0; midnight < 2 && i < 3000; i++) {
+    const b = Date.UTC(2026, 10, 1) + i * 7_919_311, log = kept(b, 120);
+    const moves = movesOf(log, b + 120 * DAY, PIP);
+    for (let k = 1; k < moves.length; k++) {
+      const m = moves[k], prev = moves[k - 1];
+      if (m.at % DAY === 0 && prev.why === 'ice' && Math.floor(prev.at / DAY) + 1 === m.at / DAY) { assert.equal(m.why, 'wander'); midnight++; }
+    }
+  }
+  assert.equal(midnight, 2, 'moves at the midnight after the ice');
 });
 
 test('its furrow shows for an hour after a wander or a walk to its food', () => {
@@ -323,7 +393,7 @@ test("while the host is down it neither wanders nor slides on the ice, when its 
   assert.equal(iced, 3);
 });
 
-test('never twice in four hours, nor within an hour of its life, nor off from its food, nor while down, nor at an extreme: random lives', () => {
+test('never twice in a four-hour block, nor within an hour of its life, nor off from its food, nor while down, nor at an extreme: random lives', () => {
   const rnd = mulberry(21);
   let moves = 0, slides = 0;
   for (let i = 0; i < 24; i++) {
@@ -359,6 +429,30 @@ test('never twice in four hours, nor within an hour of its life, nor off from it
     }
   }
   assert.ok(moves > 400 && slides > 0, `${moves} moves, ${slides} on the ice`);
+});
+
+test('its first chance comes in the four hours it was born in, after its birth', () => {
+  let first = 0;
+  for (let i = 0; i < 40; i++) {
+    const b = Math.ceil(T / BLOCK) * BLOCK + i * BLOCK + MIN + i * 997, m = own(b)[0]; // born a minute into a block
+    assert.ok(!m || m.at > b, 'nothing moves it at or before its birth');
+    if (m && Math.floor(m.at / BLOCK) === Math.floor(b / BLOCK)) first++;
+  }
+  assert.ok(first > 15, `${first} of 40 moved in the four hours they were born in`);
+});
+
+test('its food falls on the same spot whichever feed takes its chance, so nobody can steer it by timing theirs', () => {
+  let walks = 0;
+  for (let i = 0; i < 40; i++) {
+    const b = T + i * 5 * HOUR + i * 61_001, F = b + HOUR + 17 * MIN;
+    const spots = [0, 1, 7, 999].map(ms => {
+      const t = F + ms, p = whereAt({ ...newLog(b), visits: [{ t, acts: [['feed', 1]] }] }, t, PIP);
+      if (p.at === t) walks++;
+      return p.at === t ? p.dx : null;
+    });
+    assert.ok(spots.every(x => x === spots[0]), `born ${iso(b)}: the same spot for feeds a millisecond apart, ${spots}`);
+  }
+  assert.ok(walks >= 40, `${walks} walks to food`);
 });
 
 test('every drawing moves within its room, and a drawing with no room to move is refused', () => {

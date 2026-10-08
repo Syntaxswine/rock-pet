@@ -6,7 +6,7 @@
 // the longest) forced onto each rock, as the tests do.
 // Error replies add their one error line and go to the sender alone; they are not counted here.
 // It samples, so it can miss the worst. The largest known are built from real lives and held in
-// test/character.test.mjs: a reply of 427 bytes and a look of 427 (429 after downtime) with a
+// test/character.test.mjs: a reply of 427 bytes and a look of 427 (433 after downtime) with a
 // 15-character host.
 //
 //   node tools/sizes.mjs [host length, 15] [lives, 100] [seed, 1]
