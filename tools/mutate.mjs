@@ -248,8 +248,9 @@ const MUTANTS = [
   // Its meals and its hunger (meal.mjs, screen.mjs).
   ['a meal lasts two hours', 'src/meal.mjs', 'export const MEAL_MS = HOUR;', 'export const MEAL_MS = 2 * HOUR;'],
   ['a meal lasts half an hour', 'src/meal.mjs', 'export const MEAL_MS = HOUR;', 'export const MEAL_MS = HOUR / 2;'],
-  ['the food is never eaten down', 'src/meal.mjs', "export const FOOD = ['#', '+', '.'];", "export const FOOD = ['#', '#', '#'];"],
-  ['the food goes in halves', 'src/meal.mjs', 'Math.floor((ms * FOOD.length) / MEAL_MS)', 'Math.floor((ms * 2) / MEAL_MS)'],
+  ['the food is never eaten down', 'src/meal.mjs', "export const FOOD = ['#', '+'];", "export const FOOD = ['#', '#'];"],
+  ['the food goes in thirds', 'src/meal.mjs', 'Math.floor((ms * FOOD.length) / MEAL_MS)', 'Math.floor((ms * 3) / MEAL_MS)'],
+  ['a faint tick beside a polish slot', 'src/drawings.mjs', `faint: { front: ['', '    ...', '  .:   :..',`, `faint: { front: ['', '    ...', "  .'   '..",`],
   ['the mouth opens in odd minutes', 'src/meal.mjs', 'Math.floor(ms / MINUTE) % 2 === 0', 'Math.floor(ms / MINUTE) % 2 === 1'],
   ["the mouth keeps the clock's minutes, not the meal's", 'src/meal.mjs', 'Math.floor(ms / MINUTE) % 2 === 0', 'Math.floor(now / MINUTE) % 2 === 0'],
   ['a meal runs through host downtime', 'src/meal.mjs', 'const ms = activeElapsed(log, v.t, now);', 'const ms = now - v.t;'],

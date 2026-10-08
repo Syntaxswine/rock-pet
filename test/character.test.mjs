@@ -13,7 +13,8 @@ import { reaction, remark, LINES } from '../src/story.mjs';
 import { render, W } from '../src/screen.mjs';
 import { DRAWINGS, DRAWING } from '../src/drawings.mjs';
 import { replay, born, applyVisit, HOUR } from '../src/engine.mjs';
-import { look, act, history, newLog } from '../src/rock.mjs';
+import { look, act, history, newLog, creditOutage } from '../src/rock.mjs';
+import { parseActions } from '../src/parse.mjs';
 import { RULES } from '../src/rules.mjs';
 import { sheet } from '../tools/model-sheet.mjs';
 
@@ -291,6 +292,66 @@ test('a look or a visit stays small', () => {
     list.sort((a, b) => a - b);
     console.log(`  ${what} bytes: median ${list[list.length >> 1]}, largest ${list.at(-1)}`);
     assert.ok(list.at(-1) < 450, `${what}: ${list.at(-1)} bytes`);
+  }
+});
+
+// A look, or an accepted visit's reply, composed as rock.mjs composes them, for every drawing and
+// every mix of ground levels (rock.mjs draws only the owner's drawing and the rock's own ground).
+function sendings(log, now, body = null) {
+  const s = replay(log, now);
+  const visited = body && { ...log, visits: [...log.visits, { t: now, acts: parseActions(body).acts }] };
+  const seen = visited ? replay(visited, now) : s, o = visited ? null : occasion(s, now);
+  const tail = visited ? reaction(visited, s, seen) : remark(o);
+  return (host, drawing, ground) => render(seen, {
+    now, host, pose: o?.what === 'wall' ? 'away' : 'front', name: log.name?.name ?? null, drawing, outages: log.outages ?? [], ground, meal: mealAt(visited || log, now),
+  }) + tail + `history: ${host}/history\n`;
+}
+const largestOf = (send, host) => {
+  let all = 0, reached = 0;
+  for (const drawing of Object.values(DRAWINGS)) for (let f = 0; f < 4; f++) for (let c = 0; c < 4; c++) for (let p = 0; p < 4; p++) {
+    const n = Buffer.byteLength(send(host, drawing, { feed: f, clean: c, pet: p }));
+    const [b, a] = [f, c, p].sort((x, y) => x - y).slice(1);
+    all = Math.max(all, n);
+    if ([f, c, p].includes(0) && !(a === 3 && b >= 2)) reached = Math.max(reached, n); // the 28 mixes care can reach
+  }
+  return [all, reached];
+};
+
+test('the largest look and reply known, each from a real life, stay under 450 up to a 22-character host', () => {
+  const FULL_ = [['feed', 4], ['clean', 1], ['pet', 10]], HALF = 12 * HOUR;
+  // A reply: unnamed, kept in full every 8h for about 1,066 days, then left to a bot that only pets
+  // (pet x10 every 20 minutes). It starves from a day after, and its messes pile up to six. Then
+  // someone sends "feed": a close call ends (a 43-character line), it is faint at hunger 7 and
+  // eating, a column over, and its act line asks for "feed x3 clean pet x10".
+  const b1 = Date.UTC(2023, 0, 1, 0, 30), last1 = Math.floor((b1 + 1066 * DAY) / HALF) * HALF + HALF - MIN, now1 = last1 + 60 * HOUR + 30 * MIN;
+  const kept = newLog(b1);
+  for (let t = b1 + HOUR; t < last1 - 8 * HOUR; t += 8 * HOUR) kept.visits.push({ t, acts: FULL_ });
+  kept.visits.push({ t: last1, acts: FULL_ });
+  for (let t = last1 + HOUR; t <= now1 - 15 * MIN; t += 20 * MIN) kept.visits.push({ t, acts: [['pet', 10]] });
+  assert.equal(placeAt(b1, now1).col, 1);
+  // A look: unnamed, about three years old, on the morning it moved right (a 40-character line),
+  // 18 hours after a visit that fed it a little and petted it, its last cleans skipped, so two
+  // messes and moss are on it.
+  const b2 = 1671131460000, now2 = 1765484241974, last2 = 1765418373895, left = newLog(b2);
+  for (let t = b2 + HOUR; t < last2 - 8 * HOUR; t += 8 * HOUR) left.visits.push({ t, acts: t > last2 - HALF ? [['feed', 4], ['pet', 10]] : FULL_ });
+  left.visits.push({ t: last2, acts: [['feed', 2], ['pet', 10]] });
+  assert.deepEqual(occasion(replay(left, now2), now2), { what: 'sailed' });
+  // The same kind of look, 1,000 days of credited host downtime later: "last care 1001d ago".
+  const b3 = 1675651980000, now3 = 1767386806976, last3 = 1680835980000, gone = newLog(b3);
+  for (let t = b3 + HOUR; t < last3 - 8 * HOUR; t += 8 * HOUR) gone.visits.push({ t, acts: FULL_ });
+  gone.visits.push({ t: last3, acts: [['feed', 2], ['pet', 10]] });
+  const outage = creditOutage(gone, { start: 1680851811056, end: 1767356797978, evidence: 'host-1' }, { now: 1767356797978 });
+  const down = { ...gone, outages: [outage] };
+  const cases = [['a reply', sendings(kept, now1, 'feed'), [424, 421]], ['a look', sendings(left, now2), [423, 412]], ['a look after downtime', sendings(down, now3), [425, 414]]];
+  // What they compose is what the game sends.
+  const host = 'rockpet.example';
+  assert.equal(cases[0][1](host, DRAWINGS[DRAWING], groundAt({ ...kept, visits: [...kept.visits, { t: now1, acts: [['feed', 1]] }] }, now1)), act(kept, 'feed', { now: now1, host }).text);
+  assert.equal(cases[1][1](host, DRAWINGS[DRAWING], groundAt(left, now2)), look(left, { now: now2, host }).text);
+  assert.equal(cases[2][1](host, DRAWINGS[DRAWING], groundAt(down, now3)), look(down, { now: now3, host }).text);
+  for (const [what, send, sizes] of cases) {
+    assert.deepEqual(largestOf(send, host), sizes, `${what}, with a 15-character host: every ground, then the 28 care can reach`);
+    const [most] = largestOf(send, 'x'.repeat(22));
+    assert.ok(most < 450, `${what}: ${most} bytes with a 22-character host`);
   }
 });
 

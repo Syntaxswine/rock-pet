@@ -39,18 +39,16 @@ function mulberry(seed) {
   };
 }
 
-test('a meal lasts an hour of its life: whole, two thirds, a third, its mouth open in even minutes', () => {
+test('a meal lasts an hour of its life: whole, then half, its mouth open in even minutes', () => {
   const fed = { ...newLog(T), visits: [{ t: T + HOUR, acts: [['feed', 2]] }] };
   const at = ms => mealAt(fed, T + HOUR + ms);
   assert.deepEqual(at(0), { food: '#', open: true }, 'the moment of the feed, so its reply: whole, mouth open');
   assert.deepEqual(at(MIN - 1), { food: '#', open: true });
   assert.deepEqual(at(MIN), { food: '#', open: false }, 'a minute on, shut');
   assert.deepEqual(at(2 * MIN), { food: '#', open: true }, 'and open again');
-  assert.deepEqual(at(20 * MIN - 1), { food: '#', open: false });
-  assert.deepEqual(at(20 * MIN), { food: '+', open: true }, 'a third of the way, two thirds left');
-  assert.deepEqual(at(40 * MIN - 1), { food: '+', open: false });
-  assert.deepEqual(at(40 * MIN), { food: '.', open: true }, 'a third left');
-  assert.deepEqual(at(HOUR - 1), { food: '.', open: false });
+  assert.deepEqual(at(30 * MIN - 1), { food: '#', open: false });
+  assert.deepEqual(at(30 * MIN), { food: '+', open: true }, 'half eaten, half an hour on');
+  assert.deepEqual(at(HOUR - 1), { food: '+', open: false });
   assert.equal(at(HOUR), null, 'eaten, an hour on');
   // Its mouth keeps the meal's own minutes, not the clock's: fed half a minute into an odd minute
   // of the clock (T is a midnight, an even one), it is still open a quarter minute later.
@@ -67,7 +65,7 @@ test('every feed starts a meal, whatever else the visit does; other care neither
   assert.equal(mealAt({ ...log, visits: [pets] }, T + HOUR + 30 * MIN), null, 'and start none');
   const again = { ...log, visits: [...log.visits, { t: T + HOUR + 50 * MIN, acts: [['pet', 1], ['feed', 1]] }] };
   assert.deepEqual(mealAt(again, T + HOUR + 50 * MIN), { food: '#', open: true }, 'a feed among other care starts a new one');
-  assert.deepEqual(mealAt(again, T + 2 * HOUR + 30 * MIN), { food: '.', open: true }, 'an hour from the new feed, not the first');
+  assert.deepEqual(mealAt(again, T + 2 * HOUR + 30 * MIN), { food: '+', open: true }, 'timed from the new feed, not the first');
   assert.equal(mealAt(again, T + 2 * HOUR + 50 * MIN), null);
   // A feed it didn't need still starts one: fed at its birth, at hunger 0, it eats anyway.
   const full = { ...newLog(T), visits: [{ t: T, acts: [['feed', 1]] }] };
@@ -83,8 +81,9 @@ test('a meal counts only the time it lives: host downtime pauses it', () => {
   const back = T + 5 * HOUR + MIN;
   const log = { ...newLog(T), visits: [{ t: T + HOUR, acts: [['feed', 1]] }], outages: [{ start: T + HOUR + 10 * MIN, end: back, evidence: 'host-1' }] };
   assert.deepEqual(mealAt(log, back), { food: '#', open: true }, 'ten minutes lived');
-  assert.deepEqual(mealAt(log, back + 15 * MIN), { food: '+', open: false }, 'twenty-five: shut, though 256 minutes have passed');
-  assert.deepEqual(mealAt(log, back + 49 * MIN), { food: '.', open: false }, 'fifty-nine');
+  assert.deepEqual(mealAt(log, back + 15 * MIN), { food: '#', open: false }, 'twenty-five: shut, though 256 minutes have passed');
+  assert.deepEqual(mealAt(log, back + 20 * MIN), { food: '+', open: true }, 'thirty: half eaten');
+  assert.deepEqual(mealAt(log, back + 49 * MIN), { food: '+', open: false }, 'fifty-nine');
   assert.equal(mealAt(log, back + 50 * MIN), null, 'an hour lived: eaten');
   assert.equal(mealAt({ ...log, outages: [] }, back), null, 'by the calendar it would be long gone');
 });
@@ -107,7 +106,7 @@ test('the reply to a feed opens its mouth beside the food, and looks after it se
   const row = text => grid(text)[1 + EYES];
   assert.equal(row(r.text), eating(face('^'), { food: '#', open: true }), 'its reply');
   const after = { ...log, visits: [...log.visits, r.visit] };
-  for (const [ms, meal] of [[MIN, { food: '#', open: false }], [20 * MIN, { food: '+', open: true }], [40 * MIN, { food: '.', open: true }], [59 * MIN, { food: '.', open: false }]]) {
+  for (const [ms, meal] of [[MIN, { food: '#', open: false }], [29 * MIN, { food: '#', open: false }], [30 * MIN, { food: '+', open: true }], [59 * MIN, { food: '+', open: false }]]) {
     assert.equal(row(look(after, { now: WEDNESDAY + ms, host: 'h' }).text), eating(face('^'), meal), `${ms / MIN} minutes on`);
   }
   assert.equal(row(look(after, { now: WEDNESDAY + HOUR, host: 'h' }).text), face('^'), 'an hour on, it has eaten it all');
@@ -166,7 +165,7 @@ function boxed(s, now, pose, drawing, dx) {
 test('every drawing eats on its right where there is room, else its left: only the food and its mouth are drawn', () => {
   const marked = { ...born(T - 41 * DAY), t: T, lastCare: T - 2 * MIN, visits: 90, hunger: 2, happy: 6, closeCalls: 3, petted: 3000, fed: 1500 };
   const hungry = { ...marked, hunger: 7 }; // fed once from starving: still faint while it eats
-  const MEALS = [{ food: '#', open: true }, { food: '#', open: false }, { food: '+', open: true }, { food: '.', open: false }];
+  const MEALS = [{ food: '#', open: true }, { food: '#', open: false }, { food: '+', open: true }, { food: '+', open: false }];
   let lefts = 0, rights = 0;
   for (const [name, drawing] of Object.entries(DRAWINGS)) for (const pose of ['front', 'away']) for (const dx of [-1, 0, 1]) for (const s of [marked, hungry]) {
     const lines = faint(s) ? drawing.faint : drawing, rows = pose === 'away' ? lines.back : lines.front;
@@ -223,7 +222,7 @@ test('a meal never shares a screen with the hunger danger line, and costs a byte
   assert.ok(meals >= 40, `only ${meals} rocks met at a meal`);
 });
 
-test('from hunger 7 on the screen it is drawn faint, until it is fed; a grave is solid', () => {
+test('from hunger 7 on the screen it is drawn faint, until a feed brings it below 7; a grave is solid', () => {
   const s0 = { ...born(T), t: T, lastCare: T - HOUR, visits: 5, hunger: 2, happy: 6 };
   const at = o => sprite({ ...s0, ...o }, T)[EYES].trimEnd();
   assert.equal(at({ hunger: 6.49 }), face('^'), 'hunger 6 on the screen: solid');
@@ -272,6 +271,8 @@ test('every drawing has a faint front and back: the same cells and eyes, in ligh
         const rim = (ch === '(' && row[c + 1] === 'E') || (ch === ')' && row[c - 1] === 'E');
         const end = c === row.search(/\S/) || c === row.trimEnd().length - 1;
         assert.ok(rim || ".:'".includes(ch) || (r === 4 && !end && ch === solid[r][c] && '_-'.includes(ch)), `${name} ${side}: "${ch}" at ${r},${c} is not a light line`);
+        // No tick beside a polish slot, where a polish mark would run into it (`.''`).
+        if (side === 'front' && ch === "'") assert.ok(!drawing.polish.some(([pr, pc]) => pr === r && Math.abs(pc - c) === 1), `${name}: a tick at ${r},${c}, beside a polish slot`);
         const key = `${r} ${solid[r][c]}`;
         if (side === 'front' && !(key in lighter)) lighter[key] = ch;
         else if (key in lighter && !rim) assert.equal(ch, lighter[key], `${name} ${side}: "${solid[r][c]}" on row ${r} goes faint as "${lighter[key]}" on its front`);

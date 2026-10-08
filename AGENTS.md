@@ -29,7 +29,7 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 | `src/character.mjs` | The rock's character: its nature (kind and its weekday for facing the wall), its days, and where it has moved to. `CHARACTER.md` is the design. |
 | `src/marks.mjs` | The marks its life leaves: moss while nobody comes and on a grave; veins, polish and crystals, kept for life. |
 | `src/ground.mjs` | Its personality, drawn as the ground around it: sand (feed), one to three raked lines (clean) and footprints (pet), each as large as that care's weighted share stands above the least-given one's. Bare when its care is balanced, as when the act line's suggestion is followed every 3 to 10 hours. Follows the care visit by visit: a level holds until its trace falls 0.02 below it. It forms over its first two weeks of life (downtime excluded). |
-| `src/meal.mjs` | Its meals: for an hour after a feed, its food beside it (`#`, then `+`, then `.`) and its mouth opening and shutting, minute by minute. Drawn only. |
+| `src/meal.mjs` | Its meals: for an hour after a feed, its food beside it (`#`, then `+` half eaten) and its mouth opening and shutting, minute by minute. Drawn only. |
 | `src/drawings.mjs` | The drawings it can have, for the owner to choose from (`DRAWING`), each with its back, its faint front and back for when it is hungry, and its mark slots. |
 | `src/name.mjs` | Its name: one word, given once, never twice. |
 | `tools/model-sheet.mjs` | Every face, mark, pose, meal, hunger, ground and drawing, drawn by the real renderer. CHARACTER.md shows its output, and a test fails if the two differ. |
@@ -50,9 +50,9 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
   - 382 after an outage of 100 days ("last care 100d ago");
   - 383 after one of 1,000 days.
 
-  On those worst screens the host appears once (the act line), so each character beyond 15 adds a byte, and a host of up to 22 characters fits. Looks and accepted visits are held under 450 bytes. `node tools/sizes.mjs <host length>` measures them: 424 at most with a 15-character host, each extra character adding up to 3. So a host of up to 21 characters keeps those under 450 too, downtime included. A longer host needs the bounds raised. Error replies add their error line and go to the sender alone (CHARACTER.md, "Size, and staying the same").
+  On those worst screens the host appears once (the act line), so each character beyond 15 adds a byte, and a host of up to 22 characters fits. Looks and accepted visits are held under 450 bytes. The largest known, which a test builds from real lives, are a reply of 424 and a look of 425 (after 1,000 days of downtime) with a 15-character host. Each extra character adds up to 3, so a host of up to 22 characters keeps those under 450 too. `node tools/sizes.mjs <host length>` samples for others. A longer host needs the bounds raised. Error replies add their error line and go to the sender alone (CHARACTER.md, "Size, and staying the same").
 - **Freeze the character's formulas once hosted:** its kind, days, moves, visitors, mark thresholds, how its care becomes its ground, its meals' timing, and the hunger from which it is drawn faint. Each is computed again from the log on every request, so a change would rewrite a living rock's past. If one must change, version it like `RULES.version` (CHARACTER.md, "Size, and staying the same").
-- **Keep the state, not just the log.** Every local request re-reads and replays the whole log, about 2 ms per 1,000 visits: 1 ms for the engine's replay and the parse, and about as much again for the ground, which follows the care visit by visit (measured 2026-10-07). That is fine for a local rock and wrong for a hosted one: keep the replayed state in the Durable Object (or a checkpoint row) and replay only what follows it. The checkpoint must hold the ground too, as `groundAt` has it after the last visit: the three levels and the three care totals. And it must hold the time of the latest feed, and of any visit after it, since `mealAt` reads the last hour of visits for a meal still going. Credit for an outage only ever comes after the latest event, so it never changes what an earlier visit settled.
+- **Keep the state, not just the log.** Every local request re-reads and replays the whole log, about 2 ms per 1,000 visits: 1 ms for the engine's replay and the parse, and about as much again for the ground, which follows the care visit by visit (measured 2026-10-07). That is fine for a local rock and wrong for a hosted one: keep the replayed state in the Durable Object (or a checkpoint row) and replay only what follows it. The checkpoint must hold the ground too, as `groundAt` has it after the last visit: the three levels and the three care totals. And it must hold the time of the latest feed, which `mealAt` reads for a meal still going. Credit for an outage only ever comes after the latest event, so it never changes what an earlier visit settled.
 
 ## Invariants (must hold; these are the reasons the design is the way it is)
 Status in brackets: what the local build does today.
@@ -126,7 +126,7 @@ Status in brackets: what the local build does today.
     - On its wall day a look draws it from behind.
     - Moss, veins, polish, crystals and a trail mark its life (CHARACTER.md).
     - The ground at its base and in front of it shows its personality: sand, raked lines, footprints (CHARACTER.md, "Its ground").
-    - For an hour after a feed its food lies beside its face, `#` then `+` then `.`, and its mouth opens and shuts (CHARACTER.md, "Its meals").
+    - For an hour after a feed its food lies beside its face, `#` then `+`, and its mouth opens and shuts (CHARACTER.md, "Its meals").
     - From hunger 7 it is drawn faint, in dotted lines, until a feed brings it below 7 (CHARACTER.md, "When it is hungry").
   - Each mess is an `@` at a fixed position.
   - Trailing spaces are trimmed.

@@ -145,12 +145,12 @@ polished        worn smooth     a crystal       two
 
 its meals: the hour after a feed, the food going and its mouth opening and shutting
 
-the feed reply  a minute on     20 minutes      40 minutes      an hour on
+the feed reply  a minute on     half an hour    31 minutes      an hour on
 |0          6|  |0          6|  |0          6|  |0          6|  |0          6|
 |            |  |            |  |            |  |            |  |            |
 |    ___     |  |    ___     |  |    ___     |  |    ___     |  |    ___     |
 |  _/   \__  |  |  _/   \__  |  |  _/   \__  |  |  _/   \__  |  |  _/   \__  |
-| /  ^  ^  <#|  | /  ^  ^  \#|  | /  ^  ^  <+|  | /  ^  ^  <.|  | /  ^  ^  \ |
+| /  ^  ^  <#|  | /  ^  ^  \#|  | /  ^  ^  <+|  | /  ^  ^  \+|  | /  ^  ^  \ |
 | \________/ |  | \________/ |  | \________/ |  | \________/ |  | \________/ |
 |            |  |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |  |            |
@@ -443,20 +443,20 @@ The owner's idea (2026-10-08): "the food could be # and there could be a simple 
 
 | minutes since the feed | the food | its mouth |
 |---|---|---|
-| 0 to 20 | `#` | open in the meal's even minutes, shut in its odd ones |
-| 20 to 40 | `+` | the same |
-| 40 to 60 | `.` | the same |
+| 0 to 30 | `#` | open in the meal's even minutes, shut in its odd ones |
+| 30 to 60 | `+`, half eaten | the same |
 | 60 on | gone | |
 
-- **Where:** just past the end of its face row, on its right. A rock that has slid a column right has no room there, so its food goes on its left. Its mouth is the end of the row on that side, opening toward the food: `<#`, or `#>`.
+- **Where:** just past the end of its face row, on its right. On the lump, the googly, the boulder and the sett that row reaches the grid's edge once the rock has slid a column right, so then its food goes on its left. Its mouth is the end of the row on that side, opening toward the food: `<#`, or `#>`.
 - **One frame per request.** An agent sees one screen at a time, so a meal plays out across looks. The reply to a feed always shows the mouth open, since the meal begins in its minute 0. On a busy rock, looks a few minutes apart catch it chewing.
 - **Every feed starts one,** whatever the feed did: a rock that wasn't hungry still eats what it is given. Other care leaves a meal going, and a new feed starts a new meal.
 - **It counts the time it lives,** so verified host downtime pauses a meal, as it pauses moss.
 - **Facing the wall,** it eats with its back to anyone who only looks: the food lies beside it, and there is no mouth to see. Care turns it round, as always.
+- **It eats at an extreme too.** A meal is a picture of a feed someone gave it, not a line or a habit of its own, which are what the edge keeps away ("What it never does", above). So a rock at the sorrow floor, fed, eats with `T  T` eyes. A starving rock can't be eating at its extreme: within the hour of a feed its hunger is 7.42 at most.
 - **A grave eats nothing.**
 - **It is only drawn,** and changes nothing about the rock.
-- **Its food is `#`, `+` and `.`,** not `=` or `-`: beside its mouth those would read as `<=` and `<-`, arrows and operators to a language model.
-- **How often it shows:** following the act line's suggestion, a busy rock's looks catch each third of a meal, or none, about equally often. A bot sending the same `feed clean pet` every few minutes keeps the food whole. A rock visited once a day shows its meal only in the feed's own reply.
+- **Its food is `#` and then `+`.** Not `=` or `-`, which beside its mouth would read as `<=` and `<-`, arrows and operators to a language model. And not `.`, which is sand's glyph, and a faint outline's.
+- **How often it shows:** following the act line's suggestion, a busy rock's looks catch each half of a meal about as often as a time with no meal. A bot sending the same `feed clean pet` every few minutes keeps the food whole. A rock visited once a day shows its meal only in the feed's own reply.
 - **What it costs:** 1 byte for the food on its right, none on its left, and only for that hour. Several frames in one reply would cost a whole extra grid on every feed. A meal never shares a screen with the hunger danger line: a feed takes 3 off hunger, which comes back at 10 a day, so within the hour it is 7.42 at most.
 
 ## When it is hungry
@@ -465,7 +465,7 @@ The owner suggested playing with line weight (2026-10-08). Here it does a job th
 
 From hunger 7 on the screen the rock is drawn faint, in dotted lines, until a feed brings it below 7. (Hunger starts to drain its happiness just above 6.) A starving rock fed once is at 7, so it stays faint while it eats. The model sheet above shows it at hunger 6, 7 and 10, and eating while still at 7.
 - **Every drawing has a faint front and back** (`src/drawings.mjs`). Each fills exactly the cells its solid form does, so its eyes, marks, moss and ground go where they did. A faint screen costs exactly as many bytes as a solid one.
-- **Its base keeps its line,** lightening only at its ends. Sand is `.` on that row, and a faint rock's sand has to read as sand at every level. Its other dots and colons stay off the cells beside its polish, so a polish mark doesn't run into them.
+- **Its base keeps its line,** lightening only at its ends. Sand is `.` on that row, and a faint rock's sand has to read as sand at every level. No tick (`'`) sits beside a polish slot, so a polish mark never runs into one.
 - **A rock fed once a day,** the least it needs, is faint for the last third or so of each day (from 15.6 hours after the feed): it is hungry then, and it shows.
 - **It follows the number the screen shows,** so `hunger 7/10` and a faint outline always go together.
 - **A grave is a stone again,** and drawn solid.
@@ -732,11 +732,16 @@ Credited host downtime makes the largest screen a little longer, in two ways:
 The screen tests build each case on purpose, since no sample reaches them, and a test builds the eleventh mess from a real log. They hold every screen to 390 bytes (380 before the raked lines; 340 before moss and names). The bound assumes a 15-character host, and each extra character adds a byte to the screen, so a host of up to 22 characters keeps every screen within it.
 
 A look or a reply adds lines that depend on the rock's life: a reaction, a day's remark, the naming line.
-- `node tools/sizes.mjs <host length>` searches real lives for the largest, forcing every drawing and ground onto each.
-- With a 15-character host, the largest look it finds is 409 bytes and the largest reply 424.
-- A reply prints the host up to three times, so each extra character adds up to 3 bytes.
-- A test holds sampled looks and accepted visits under 450 bytes (440 before the raked lines). So a host of up to 23 characters fits, or 21 once the 5 bytes downtime can add are allowed for.
-- An error reply adds its one error line and goes to the sender alone, so it isn't held to the bound.
+- **The largest known**, with a 15-character host and every drawing and ground forced on:
+  - a reply of 424 bytes: a starving rock kept by a bot that only pets, then fed;
+  - a look of 423: unnamed, three years old, on the morning it moved, with moss and messes on it;
+  - a look of 425 after 1,000 days of credited downtime ("last care 1001d ago"). Downtime adds nothing to a reply, which always says "last care just now". Its eleventh mess comes only at an extreme, which has no naming line or remark.
+- **A test builds each of these from a real life** and holds them under 450 bytes (440 before the raked lines) with a host of up to 22 characters.
+- **More host:** a look or a reply prints the host up to three times, so each extra character adds up to 3 bytes. At 24 characters they pass 450.
+- **`node tools/sizes.mjs <host length>`** samples real lives in the same way, to try other hosts. It samples, so it can miss the worst: it found 409 for the look.
+- **An error reply** adds its one error line and goes to the sender alone, so it isn't held to the bound.
+
+So a host of up to 22 characters keeps every screen within 390 bytes, and every look and accepted reply under 450.
 
 **Staying the same.** Once the rock is hosted, these formulas must not change, or a living rock's past would change under it:
 - its kind;

@@ -257,8 +257,8 @@ test('the screen stays small (token efficiency): at most 390 bytes, whatever the
   for (const [name, n] of Object.entries(bytes)) assert.ok(n <= 390, `${name}: ${n} bytes`);
   // Three raked lines across ten messes' rows made it 378 (369 with one).
   assert.equal(Math.max(...Object.values(bytes)), 378, 'the worst, as CHARACTER.md and AGENTS.md say');
-  // Credited host downtime in its last two days lets an eleventh mess land (the next test builds
-  // one from a real log), 2 bytes more; further messes add nothing. A long outage adds more:
+  // Credited host downtime in its last two days lets an eleventh mess land (a test above builds one
+  // from a real log), 2 bytes more; further messes add nothing (up to 99). A long outage adds more:
   // last care is wall-clock time ("100d ago"), while moss and the danger clocks count only the
   // time it lived through.
   const after = (alone, messes) => {

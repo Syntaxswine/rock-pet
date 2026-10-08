@@ -2,7 +2,7 @@
 // it and it eats, its mouth opening and shutting. The owner's idea (2026-10-08). It is only drawn:
 // nothing here changes the rock.
 //
-//   the food    #, then +, then ., a third of the hour each, then gone
+//   the food    #, then + for the second half hour, then gone
 //   its mouth   the end of its face row, open toward the food in the meal's even minutes and shut
 //               in its odd ones, so the reply to a feed always shows it open
 //
@@ -18,10 +18,11 @@ const MINUTE = 60_000;
 /** How long a meal lasts, in time the rock has lived. */
 export const MEAL_MS = HOUR;
 /**
- * The food as the meal goes: whole, two thirds, a third. Not `=` or `-`, which beside its mouth
- * would read as `<=` and `<-`, arrows and operators to a language model.
+ * The food as the meal goes: whole, then half. Not `=` or `-`, which beside its mouth would read
+ * as `<=` and `<-`, arrows and operators to a language model; and not `.`, which is sand's, and a
+ * faint outline's.
  */
-export const FOOD = ['#', '+', '.'];
+export const FOOD = ['#', '+'];
 
 /**
  * The meal it is eating at `now`, from its log: `food`, the food as it is by then, and `open`,

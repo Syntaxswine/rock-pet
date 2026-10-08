@@ -95,8 +95,8 @@ export function sheet() {
     ]),
     'its meals: the hour after a feed, the food going and its mouth opening and shutting',
     row([
-      ['the feed reply', grid(...eating(0))], ['a minute on', grid(...eating(MIN))], ['20 minutes', grid(...eating(20 * MIN))],
-      ['40 minutes', grid(...eating(40 * MIN))], ['an hour on', grid(...eating(HOUR))],
+      ['the feed reply', grid(...eating(0))], ['a minute on', grid(...eating(MIN))], ['half an hour', grid(...eating(30 * MIN))],
+      ['31 minutes', grid(...eating(31 * MIN))], ['an hour on', grid(...eating(HOUR))],
     ]),
     'when it is hungry: from 7 on the screen it is drawn faint, whatever its mood, until a feed\n' +
       'brings it below 7',
