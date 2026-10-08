@@ -13,6 +13,7 @@ import { render, W } from '../src/screen.mjs';
 import { DRAWINGS, DRAWING } from '../src/drawings.mjs';
 import { placeAt } from '../src/character.mjs';
 import { CARE_AXES, DAILY_CARE } from '../src/personality.mjs';
+import { groundOf } from '../src/ground.mjs';
 
 const DAY = 24 * HOUR;
 const T = Date.UTC(2026, 10, 16, 14, 5); // a Monday afternoon in November
@@ -44,11 +45,12 @@ function sailingDay(b) {
 // Lifetime care totals for a rock `days` old, given each care at its daily need (personality.mjs)
 // times `x` (1 if not given): every need met, and more of the cares it is given more of.
 const given = (x = {}, days = 41) => Object.fromEntries(CARE_AXES.map(k => [k, Math.round(days * DAILY_CARE[k] * (x[k] ?? 1))]));
-// A rock of `days` old, cared for in full, drawn with the ground that care gives it.
-const kept = (x, days = 41) => [rock({ born: T - days * DAY }), { care: given(x, days) }];
+// A rock of `days` old, cared for in full and always in the same proportions, drawn with the
+// ground that care gives it.
+const kept = (x, days = 41) => [rock({ born: T - days * DAY }), { ground: groundOf(given(x, days), days * DAY) }];
 
-function grid(s, { now = T, pose, drawing, care } = {}) {
-  return render(s, { now, host: 'rock', pose, name: 'Pebble', drawing, care }).split('\n').slice(0, W).map(row => row.padEnd(W));
+function grid(s, { now = T, pose, drawing, ground } = {}) {
+  return render(s, { now, host: 'rock', pose, name: 'Pebble', drawing, ground }).split('\n').slice(0, W).map(row => row.padEnd(W));
 }
 function row(frames) {
   const out = [frames.map(([label]) => label.padEnd(W + 2)).join('  ').trimEnd()];
@@ -57,6 +59,10 @@ function row(frames) {
 }
 // The drawings' frames show only the rock's rows, not the ground.
 const short = frames => row(frames).split('\n').slice(0, 7).join('\n');
+// Frames of the rock and the ground in front of it: screen rows 1-10.
+const standing = frames => row(frames).split('\n').filter((_, i) => i === 0 || (i >= 2 && i <= 11)).join('\n');
+// Two grounds that between them show every trace (the levels of a side's middle).
+const SOCIABLE = { feed: 2, clean: 0, pet: 2 }, GENTLE = { feed: 0, clean: 2, pet: 2 };
 
 /** The sheet, as text. */
 export function sheet() {
@@ -111,6 +117,11 @@ export function sheet() {
       ['the wall', grid(rock(), { pose: 'away', drawing })],
       ['dead a month', grid(LONELY, { now: LONELY.dead.t + 30 * DAY, drawing })],
     ])),
+    'its ground on each drawing: sociable (sand over its corners, a path), then gentle (a raked\n' +
+      'floor, a stepping stone, a path)',
+    ...[0, 2, 4, 6].map(i => standing(Object.entries(DRAWINGS).slice(i, i + 2).flatMap(([name, drawing]) => [
+      [name, grid(rock(), { drawing, ground: SOCIABLE })], ['', grid(rock(), { drawing, ground: GENTLE })],
+    ]))),
   ].join('\n\n') + '\n';
 }
 

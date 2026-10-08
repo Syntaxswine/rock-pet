@@ -11,8 +11,9 @@
 //   pet    footprints worn up to its front: 2, 3 or 5. Where they cross the raked floor they step
 //          on a stone, the way a garden's stepping stones keep feet off its raking.
 
-import { personality } from './personality.mjs';
+import { personality, addCare, CARE_AXES } from './personality.mjs';
 import { HOUR } from './engine.mjs';
+import { activeElapsed } from './outages.mjs';
 
 const DAY = 24 * HOUR;
 
@@ -20,11 +21,16 @@ const DAY = 24 * HOUR;
 export const FORMING_DAYS = 14;
 /**
  * How far a care's share must stand above the least-given care's for levels 1, 2 and 3. The
- * first sits above what the act line's own suggestion leaves when it is followed every few hours
- * (the pets that make up for messes and hunger lift petting's share a little), so a dutifully
- * kept rock reads as even-tempered (CHARACTER.md, "Its ground").
+ * first sits above what the act line's own suggestion leaves when it is followed every 3 to 10
+ * hours (the pets that make up for messes and hunger lift petting's share a little), so a rock
+ * kept that way reads as even-tempered (CHARACTER.md, "Its ground").
  */
 export const LEVELS_AT = [0.3, 0.45, 0.6];
+/**
+ * Worn ground fades slowly: a level, once reached, holds until its trace falls this far below
+ * it. Care that settles right on a level would otherwise flicker its trace on and off.
+ */
+export const FADE = 0.05;
 /** Footprints at each level of petting. */
 export const STEPS = [0, 2, 3, 5];
 /**
@@ -35,6 +41,8 @@ export const FOOTPRINTS = [[6, 3], [7, 4], [8, 3], [9, 4], [10, 3]];
 
 // The grid row of the rock's base: screen.mjs draws the rock's box at rows 1-5.
 const BASE = 5;
+// How far the ground has grown after `lived` ms of life: to full at FORMING_DAYS.
+const grownBy = lived => Math.min(1, lived / (FORMING_DAYS * DAY));
 
 /**
  * How strongly each care shows, 0-1, from lifetime care totals (careTotals in personality.mjs):
@@ -50,15 +58,42 @@ export function tracesOf(care) {
 }
 
 /**
- * Its ground as three levels, 0-3, from its lifetime care totals after `lived` ms of life (the
- * time it has lived through, so verified downtime doesn't count, as for moss; a grave's stops at
- * its death). No totals, or no care yet, is bare ground.
+ * The ground's three levels, 0-3, for care totals given always in the same proportions, after
+ * `lived` ms of life. (A real rock's care changes as it goes; groundAt follows it.)
  */
 export function groundOf(care, lived) {
-  const traces = tracesOf(care);
-  const grown = Math.min(1, lived / (FORMING_DAYS * DAY));
+  const traces = tracesOf(care), grown = grownBy(lived);
   const level = trace => LEVELS_AT.filter(at => trace * grown >= at).length;
   return { feed: level(traces.feed), clean: level(traces.clean), pet: level(traces.pet) };
+}
+
+/**
+ * The ground of the rock with this log at `end` (now, or its death), following its care visit
+ * by visit: a level comes when its trace reaches it, and goes when the trace falls FADE below
+ * it. The traces grow with the time it has lived, verified downtime excluded, as moss does.
+ */
+export function groundAt(log, end) {
+  const ground = { feed: 0, clean: 0, pet: 0 };
+  let care = { feed: 0, clean: 0, pet: 0 }, traces = tracesOf(care);
+  const settle = t => {
+    const grown = grownBy(activeElapsed(log, log.born, t));
+    for (const k of CARE_AXES) {
+      const trace = traces[k] * grown;
+      while (ground[k] < 3 && trace >= LEVELS_AT[ground[k]]) ground[k]++;
+      while (ground[k] > 0 && trace < LEVELS_AT[ground[k] - 1] - FADE) ground[k]--;
+    }
+  };
+  for (const visit of log.visits) {
+    if (visit.t > end) break;
+    // Between visits a trace only grows (with the time lived), so it is at its highest just
+    // before the next one: settle there, then after the visit's care.
+    settle(visit.t);
+    care = addCare(care, visit.acts);
+    traces = tracesOf(care);
+    settle(visit.t);
+  }
+  settle(end);
+  return ground;
 }
 
 /**

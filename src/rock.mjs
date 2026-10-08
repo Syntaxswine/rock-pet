@@ -11,7 +11,7 @@ import { isTime, validateOutages } from './outages.mjs';
 import { biography, reaction, remark } from './story.mjs';
 import { occasion, inDanger } from './character.mjs';
 import { parseName, isTaken, NAMED } from './name.mjs';
-import { careTotals } from './personality.mjs';
+import { groundAt } from './ground.mjs';
 
 /** The log of a rock born at `now`. */
 export const newLog = now => ({ born: now, rules: RULES.version, visits: [], died: null });
@@ -24,9 +24,9 @@ function moment(log, now) {
   return Math.max(now, log.born, log.visits.at(-1)?.t ?? -Infinity, log.died?.t ?? -Infinity, log.outages?.at(-1)?.end ?? -Infinity, log.name?.t ?? -Infinity);
 }
 
-// What a screen of this log shows besides the rock itself: its name, the verified downtime its
-// moss does not count, and the care its ground shows.
-const seen = log => ({ name: log.name?.name ?? null, outages: log.outages ?? [], care: careTotals(log) });
+// What a screen of rock `s` at `t` shows besides the rock itself: its name, the verified downtime
+// its moss does not count, and its ground (a grave's, as it was when it died).
+const seen = (log, s, t) => ({ name: log.name?.name ?? null, outages: log.outages ?? [], ground: groundAt(log, s.dead ? s.dead.t : t) });
 
 // The rock at t. A recorded death must be the one the visits produce.
 function rockAt(log, t) {
@@ -64,7 +64,7 @@ export function look(log, { now, host }) {
   const s = rockAt(log, t);
   const o = occasion(s, t);
   const pose = o?.what === 'wall' ? 'away' : 'front';
-  return { status: 200, text: render(s, { now: t, host, pose, ...seen(log) }) + remark(o) + `history: ${host}/history\n`, ...firstSight(log, s) };
+  return { status: 200, text: render(s, { now: t, host, pose, ...seen(log, s, t) }) + remark(o) + `history: ${host}/history\n`, ...firstSight(log, s) };
 }
 
 export function history(log, { now }) {
@@ -76,13 +76,13 @@ export function history(log, { now }) {
 export function act(log, body, { now, host }) {
   const t = moment(log, now);
   const s = rockAt(log, t);
-  if (s.dead) return { status: 410, text: render(s, { now: t, host, ...seen(log) }) + `history: ${host}/history\n`, ...firstSight(log, s) };
+  if (s.dead) return { status: 410, text: render(s, { now: t, host, ...seen(log, s, t) }) + `history: ${host}/history\n`, ...firstSight(log, s) };
   const parsed = parseActions(body);
-  if (parsed.error) return { status: 400, text: `error: ${parsed.error}. nothing was done.\n${render(s, { now: t, host, ...seen(log) })}` };
+  if (parsed.error) return { status: 400, text: `error: ${parsed.error}. nothing was done.\n${render(s, { now: t, host, ...seen(log, s, t) })}` };
   const visit = { t, acts: parsed.acts };
   const afterLog = { ...log, visits: [...log.visits, visit] };
   const after = replay(afterLog, t);
-  return { status: 200, text: render(after, { now: t, host, ...seen(afterLog) }) + reaction(afterLog, s, after) + `history: ${host}/history\n`, visit };
+  return { status: 200, text: render(after, { now: t, host, ...seen(afterLog, after, t) }) + reaction(afterLog, s, after) + `history: ${host}/history\n`, visit };
 }
 
 /**
@@ -94,7 +94,7 @@ export function act(log, body, { now, host }) {
 export function name(log, body, { now, host, taken = [] }) {
   const t = moment(log, now);
   const s = rockAt(log, t);
-  const screen = () => render(s, { now: t, host, ...seen(log) }) + `history: ${host}/history\n`;
+  const screen = () => render(s, { now: t, host, ...seen(log, s, t) }) + `history: ${host}/history\n`;
   if (s.dead) return { ...firstSight(log, s), status: 410, text: screen() };
   if (log.name) return { status: 409, text: `error: it already has a name, for life. nothing was done.\n${screen()}` };
   const parsed = parseName(body);
@@ -102,5 +102,5 @@ export function name(log, body, { now, host, taken = [] }) {
   if (isTaken(parsed.name, taken)) return { status: 409, text: `error: a rock before it had that name, and a name is never given twice. nothing was done.\n${screen()}` };
   const named = { name: parsed.name, t };
   const said = inDanger(s) ? '' : `quirk: ${NAMED}\n`;
-  return { status: 200, text: render(s, { now: t, host, ...seen(log), name: named.name }) + said + `history: ${host}/history\n`, named };
+  return { status: 200, text: render(s, { now: t, host, ...seen(log, s, t), name: named.name }) + said + `history: ${host}/history\n`, named };
 }

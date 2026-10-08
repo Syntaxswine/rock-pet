@@ -6,8 +6,7 @@ import { placeAt } from '../src/character.mjs';
 import { replay, applyVisit, born, HOUR } from '../src/engine.mjs';
 import { parseActions } from '../src/parse.mjs';
 import { RULES } from '../src/rules.mjs';
-import { careTotals, DAILY_CARE } from '../src/personality.mjs';
-import { groundOf } from '../src/ground.mjs';
+import { groundOf, groundAt } from '../src/ground.mjs';
 
 const MIN = 60_000, DAY = 24 * HOUR;
 const T0 = Date.UTC(2026, 0, 1);
@@ -57,7 +56,7 @@ test('the alive screen is the DESIGN-NOTES mock', () => {
   const now = Date.UTC(2026, 10, 16, 14, 5);
   const s = state({ born: now - 41 * DAY - 20 * HOUR, t: now, hunger: 3.2, happy: -2.2, messes: 1, lastCare: now - 6 * HOUR - 40 * MIN, visits: 9 });
   // Even-tempered: each care given in proportion to its need (PERSONALITY.md), so its ground is bare.
-  assert.equal(render(s, { now, host: 'rockpet.example', name: 'Pebble', care: { feed: 25, clean: 15, pet: 36 } }), [
+  assert.equal(render(s, { now, host: 'rockpet.example', name: 'Pebble', ground: groundOf({ feed: 25, clean: 15, pet: 36 }, 41 * DAY) }), [
     '3         -2', '', '    ___', '  _/   \\__', ' /  -  -  \\', ' \\________/', '', '        @', '', '', '', '',
     'hunger 3/10 (10=starving)  happy -2 (max 7)  mess 1 (@)',
     'Pebble  age 41d  now 14:05Z  last care 6h ago',
@@ -73,7 +72,7 @@ test('the dead screen is the DESIGN-NOTES mock: crosses for eyes, and the moss o
   for (let t = b + HOUR; t < b + 41 * DAY; t += 8 * HOUR) visits.push({ t, acts: [['feed', 4], ['clean', 1], ['pet', 10]] });
   const log = { born: b, rules: RULES.version, visits };
   const s = replay(log, Infinity);
-  assert.equal(render(s, { now: s.dead.t + 9 * HOUR, host: 'rockpet.example', name: 'Pebble', care: careTotals(log) }), [
+  assert.equal(render(s, { now: s.dead.t + 9 * HOUR, host: 'rockpet.example', name: 'Pebble', ground: groundAt(log, s.dead.t) }), [
     'died: lonely', '    ",,', '  ,,___,"', '  _/   \\__', ' /  x  x  \\', ' \\______*_/', '   :', '  @ :   @', '     @', '         @', ' @', '',
     'here lies Pebble  age 43d  died 2026-11-17 23:36Z',
     'last care 3d ago  it does not stir',
@@ -225,18 +224,16 @@ test('the screen stays small (token efficiency): at most 380 bytes, whatever the
   while (placeAt(b, b + age).col !== 1) b += HOUR;
   const now = b + age;
   const worst = { ...born(b), t: now, hunger: 10, starvingSince: now - 30 * HOUR, happy: -10, sorrowSince: now - 45 * HOUR, messes: 10, lastCare: now - 50 * HOUR, closeCalls: 3, petted: 3000, fed: 1500, visits: 4000 };
-  // Every ground: care at exact shares, on a fine grid over the triangle, one for each mix of
-  // levels it reaches. There are 28: the least-given care never shows, and two traces can't
-  // reach levels 3 and 3, or 3 and 2 (they would need more than the whole).
-  const grounds = new Map();
-  for (let i = 0; i <= 60; i++) for (let j = 0; i + j <= 60; j++) {
-    const care = { feed: i / 60 * DAILY_CARE.feed, clean: j / 60 * DAILY_CARE.clean, pet: (60 - i - j) / 60 * DAILY_CARE.pet };
-    const g = groundOf(care, age);
-    if (!grounds.has(`${g.feed}${g.clean}${g.pet}`)) grounds.set(`${g.feed}${g.clean}${g.pet}`, care);
+  // Every ground: each of the 28 mixes of levels care can reach (test/ground.test.mjs finds them):
+  // the least-given care never shows, and two traces can't reach levels 3 and 3, or 3 and 2.
+  const grounds = [];
+  for (let f = 0; f < 4; f++) for (let c = 0; c < 4; c++) for (let p = 0; p < 4; p++) {
+    const [b2, a] = [f, c, p].sort((x, y) => x - y).slice(1);
+    if ([f, c, p].includes(0) && !(a === 3 && b2 >= 2)) grounds.push({ feed: f, clean: c, pet: p });
   }
-  assert.equal(grounds.size, 28, [...grounds.keys()].join(' '));
+  assert.equal(grounds.length, 28);
   const largest = (s, outages = []) => Object.fromEntries(Object.entries(DRAWINGS).map(([name, drawing]) => [name,
-    Math.max(...[...grounds.values()].map(care => Buffer.byteLength(render(s, { now, host: 'rockpet.example', name: 'Abcdefghijkl', drawing, outages, care }))))]));
+    Math.max(...grounds.map(ground => Buffer.byteLength(render(s, { now, host: 'rockpet.example', name: 'Abcdefghijkl', drawing, outages, ground }))))]));
   const bytes = largest(worst);
   console.log(`  the worst screen, by drawing: ${JSON.stringify(bytes)}`);
   for (const [name, n] of Object.entries(bytes)) assert.ok(n <= 380, `${name}: ${n} bytes`);

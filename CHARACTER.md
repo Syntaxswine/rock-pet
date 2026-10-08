@@ -298,6 +298,57 @@ happy           48h alone       a long life     the wall        dead a month
 |   .----.   |  |  ,.----.   |  |   .-/-'.   |  |   .----.   |  |  ,.-/--.,  |
 |  ( ^  ^ )  |  |  ( T  T )  |  |  ( ^  ^ )  |  |  (      )  |  | "( x  x ), |
 |   '----'   |  |   '----'   |  |   '*---'   |  |   '----'   |  |  ,'----'   |
+
+its ground on each drawing: sociable (sand over its corners, a path), then gentle (a raked
+floor, a stepping stone, a path)
+
+lump                            googly
+|            |  |            |  |            |  |            |
+|    ___     |  |    ___     |  |    ____    |  |    ____    |
+|  _/   \__  |  |  _/   \__  |  |  .'    '.  |  |  .'    '.  |
+| /  ^  ^  \ |  | /  ^  ^  \ |  | / (^)(^) \ |  | / (^)(^) \ |
+|..________..|  | \________/ |  |..________..|  | \________/ |
+|   :        |  |---o--------|  |   :        |  |---o--------|
+|    :       |  |    :       |  |    :       |  |    :       |
+|   :        |  |   :        |  |   :        |  |   :        |
+|            |  |            |  |            |  |            |
+|            |  |            |  |            |  |            |
+
+boulder                         cairn
+|            |  |            |  |            |  |            |
+|   .----.   |  |   .----.   |  |    .--.    |  |    .--.    |
+|  /      \  |  |  /      \  |  |   (^  ^)   |  |   (^  ^)   |
+| |  ^  ^  | |  | |  ^  ^  | |  |  .------.  |  |  .------.  |
+|...______...|  |  \______/  |  |..________..|  | (________) |
+|   :        |  |---o--------|  |   :        |  |---o--------|
+|    :       |  |    :       |  |    :       |  |    :       |
+|   :        |  |   :        |  |   :        |  |   :        |
+|            |  |            |  |            |  |            |
+|            |  |            |  |            |  |            |
+
+sett                            hoodoo
+|            |  |            |  |            |  |            |
+|            |  |            |  |   ______   |  |   ______   |
+|  ._______. |  |  ._______. |  |  (______)  |  |  (______)  |
+|  | ^   ^ | |  |  | ^   ^ | |  |   | ^^ |   |  |   | ^^ |   |
+|..._______..|  |  |_______| |  |....____....|  |   |____|   |
+|   :        |  |---o--------|  |   :        |  |---o--------|
+|    :       |  |    :       |  |    :       |  |    :       |
+|   :        |  |   :        |  |   :        |  |   :        |
+|            |  |            |  |            |  |            |
+|            |  |            |  |            |  |            |
+
+pebble
+|            |  |            |
+|            |  |            |
+|   .----.   |  |   .----.   |
+|  ( ^  ^ )  |  |  ( ^  ^ )  |
+|....----....|  |   '----'   |
+|   :        |  |---o--------|
+|    :       |  |    :       |
+|   :        |  |   :        |
+|            |  |            |
+|            |  |            |
 ```
 
 ## Its face
@@ -317,7 +368,7 @@ Each drawing puts the same eyes in its own way: `(x)(x)` on the googly one.
 
 ## The drawings
 
-The owner asked to see new drawings. They are all in the model sheet above, in the same five states, and `src/drawings.mjs` holds them. `DRAWING` names the one the screen uses. Choosing one takes four steps:
+The owner asked to see new drawings. They are all in the model sheet above, in the same five states and with the ground on each, and `src/drawings.mjs` holds them. `DRAWING` names the one the screen uses. Choosing one takes five steps:
 1. set `DRAWING`;
 2. paste `node tools/model-sheet.mjs` over the sheet above;
 3. redraw the two mocks in `test/screen.test.mjs` and DESIGN-NOTES (the screen tests print what they now are);
@@ -388,9 +439,23 @@ Each care wears its own trace into the ground. A trace is as large as that care'
 | pet | footprints `:` worn up to it | two | three | five |
 
 - **The levels** come at 0.3, 0.45 and 0.6 above the least-given share.
-- **A dutifully kept rock stays bare.** Followed every 8 hours, or at random every 4 to 14, the act line's own suggestion keeps every trace under the first level, so such a rock reads as even-tempered. The pets that make up for messes and hunger lift petting's share a little (PERSONALITY.md leaves them out of its daily need). Once a day the suggestion is mostly petting, and wears two footprints; twice a day it sometimes does, depending on where the visits fall against the mess clock. A test holds the bare cases and the once-a-day one.
+- **Worn ground fades slowly.** A level, once reached, holds until its trace falls 0.05 below it. Care that settles right on a level, as a busy rock's can, would otherwise flicker its trace on and off from one look to the next. So the ground follows the rock's care visit by visit, not only its totals.
 - **Where footprints cross the raked floor,** they step on a stone, `o`, the way a garden's stepping stones keep feet off its raking. A gentle rock's visitors tread carefully.
 - **The footprints keep to the same cells on every drawing,** moving with the rock. They miss the first fourteen mess spots, so a light path keeps both its prints when a mess or two is about.
+
+**How often it is visited shapes it.** Personality counts every care as given, whatever it did (PERSONALITY.md), so the act line's own suggestion leaves a different ground at each pace:
+
+| visits, each sending the act line's suggestion | what that gives it more of | its ground |
+|---|---|---|
+| every 3 to 10 hours | almost nothing: the pets that make up for messes and hunger lift petting's share a little | bare: even-tempered |
+| every hour or two | feeds: a small one each time, each counted whole | sand at its foot |
+| every few minutes, as a busy shared rock is | feeds and pets | sand, and often two footprints |
+| twice a day | sometimes petting, depending on where the visits fall against the mess clock | bare, or two footprints |
+| once a day | petting: most of a daily visit is pets | two footprints |
+
+A test holds the first, second and last rows; review round 2 measured the others.
+
+**The ground is coarser than the blend,** and errs toward bare. It shows a care only from a trace of 0.3, while `/history` names a blend down to a few percent. So a rock counted mostly sociable there (its pair weighs most) can show one trace on its ground, or none.
 
 So the seven personalities draw themselves, and every rock between them follows the same rule:
 - **even-tempered:** bare ground, because no care stands above the rest;
@@ -541,9 +606,9 @@ The costs come from five places:
 - **The name:** its length plus 2 (8 bytes for Pebble).
 - **The naming line:** about 55 bytes, until someone names it.
 - **The look line:** 38 bytes when there is one, on about a quarter of looks, so about 10 bytes a look overall.
-- **The ground:** nothing while its care is balanced, which includes a rock kept as the act line suggests. On the lump where it began: 1 byte for sand; 11 or 12 for a raked floor; 9, 13 or 22 for two, three or five footprints; up to 29 for two traces together. On any drawing, wherever it has moved, 34 at most.
+- **The ground:** nothing while its care is balanced, as it is when the act line's suggestion is followed every 3 to 10 hours. On the lump where it began: 1 byte for sand; 11 or 12 for a raked floor; 9, 13 or 22 for two, three or five footprints; up to 29 for two traces together. On any drawing, wherever it has moved, 34 at most.
 
-The largest screen is 369 bytes. It has the longest name, ten messes (the most a living rock carries), both danger lines, a top full of moss, a four-digit age, the rock a column over, and its base sunk in sand. A credited outage of 100 days or more adds 2 more, because "last care 100d ago" counts wall-clock time while moss and the danger clocks count lived time (each further digit adds another, from 1,000 days). The screen tests build both cases on purpose, since no sample reaches them. They hold every screen to 380 (340 before moss and names), and every look and visit to under 440. Both bounds assume a 15-character host. A longer one adds a byte for each extra character, so 24 characters is the most that fits (23 after an outage of 1,000 days or more).
+The largest screen is 369 bytes. It has the longest name, ten messes (the most a living rock carries), both danger lines, a top full of moss, a four-digit age, the rock a column over, and sand at its foot. A credited outage of 100 days or more adds 2 more, because "last care 100d ago" counts wall-clock time while moss and the danger clocks count lived time (each further digit adds another, from 1,000 days). The screen tests build both cases on purpose, since no sample reaches them. They hold every screen to 380 (340 before moss and names), and every look and visit to under 440. Both bounds assume a 15-character host. A longer one adds a byte to the screen for each extra character, so 24 characters is the most that fits (23 after an outage of 1,000 days or more). A look can print the host three times, and still stays under 440 at 24 (review round 2 found 433 at most).
 
 **Staying the same.** Once the rock is hosted, these formulas must not change, or a living rock's past would change under it:
 - its kind;
@@ -551,6 +616,6 @@ The largest screen is 369 bytes. It has the longest name, ten messes (the most a
 - when it moves;
 - its visitors;
 - the thresholds for veins, polish and crystals;
-- how its care becomes its ground: the levels, and the two weeks it takes to form (and the personality weights it reads, which are PERSONALITY.md's).
+- how its care becomes its ground: the levels, how slowly worn ground fades, and the two weeks it takes to form (and the personality weights it reads, which are PERSONALITY.md's).
 
 Every one is computed again from the log on every request. If one has to change, it needs a version, the way `RULES.version` guards the rules. `test/days.test.mjs` pins one rock's winter of moves, so a change can't happen by accident.
