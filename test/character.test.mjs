@@ -317,7 +317,7 @@ const largestOf = (send, host) => {
   return [all, reached];
 };
 
-test('the largest look and reply known, each from a real life, stay under 450 up to a 22-character host', () => {
+test('the largest look and reply known, each from a real life, stay under 450 up to a 21-character host', () => {
   const FULL_ = [['feed', 4], ['clean', 1], ['pet', 10]], HALF = 12 * HOUR;
   // A reply: unnamed, kept in full every 8h for about 1,066 days, then left to a bot that only pets
   // (pet x10 every 20 minutes). It starves from a day after, and its messes pile up to six. Then
@@ -336,13 +336,18 @@ test('the largest look and reply known, each from a real life, stay under 450 up
   for (let t = b2 + HOUR; t < last2 - 8 * HOUR; t += 8 * HOUR) left.visits.push({ t, acts: t > last2 - HALF ? [['feed', 4], ['pet', 10]] : FULL_ });
   left.visits.push({ t: last2, acts: [['feed', 2], ['pet', 10]] });
   assert.deepEqual(occasion(replay(left, now2), now2), { what: 'sailed' });
-  // The same kind of look, 1,000 days of credited host downtime later: "last care 1001d ago".
-  const b3 = 1675651980000, now3 = 1767386806976, last3 = 1680835980000, gone = newLog(b3);
-  for (let t = b3 + HOUR; t < last3 - 8 * HOUR; t += 8 * HOUR) gone.visits.push({ t, acts: FULL_ });
-  gone.visits.push({ t: last3, acts: [['feed', 2], ['pet', 10]] });
-  const outage = creditOutage(gone, { start: 1680851811056, end: 1767356797978, evidence: 'host-1' }, { now: 1767356797978 });
+  // The same kind of look after 1,166 days of credited host downtime ("last care 1166d ago"),
+  // found in review: kept for 340 days, its last cleans skipped (two messes), last fed and petted
+  // at 16:49. The host goes down at 01:38, after the 00:00 mess, and comes back at 09:25 on an
+  // icy morning; the look comes at 12:36, after the 12:00 mess. So four messes, moss after 12
+  // hours of its life alone, and the morning's remark.
+  const b3 = 1667812192732, now3 = 1798029390112, last3 = 1697215750479, gone = newLog(b3);
+  for (let t = b3 + HOUR; t < b3 + 340 * DAY; t += 8 * HOUR) gone.visits.push({ t, acts: t > b3 + 340 * DAY - HALF ? [['feed', 4], ['pet', 10]] : FULL_ });
+  gone.visits.push({ t: last3, acts: [['feed', 4], ['pet', 10]] });
+  const outage = creditOutage(gone, { start: 1697247502683, end: 1798017935409, evidence: 'host-1' }, { now: 1798017935409 });
   const down = { ...gone, outages: [outage] };
-  const cases = [['a reply', sendings(kept, now1, 'feed'), [424, 421]], ['a look', sendings(left, now2), [423, 412]], ['a look after downtime', sendings(down, now3), [425, 414]]];
+  assert.deepEqual([replay(down, now3).messes, occasion(replay(down, now3), now3)], [4, { what: 'sailed' }]);
+  const cases = [['a reply', sendings(kept, now1, 'feed'), [424, 421]], ['a look', sendings(left, now2), [423, 412]], ['a look after downtime', sendings(down, now3), [430, 425]]];
   // What they compose is what the game sends.
   const host = 'rockpet.example';
   assert.equal(cases[0][1](host, DRAWINGS[DRAWING], groundAt({ ...kept, visits: [...kept.visits, { t: now1, acts: [['feed', 1]] }] }, now1)), act(kept, 'feed', { now: now1, host }).text);
@@ -350,8 +355,8 @@ test('the largest look and reply known, each from a real life, stay under 450 up
   assert.equal(cases[2][1](host, DRAWINGS[DRAWING], groundAt(down, now3)), look(down, { now: now3, host }).text);
   for (const [what, send, sizes] of cases) {
     assert.deepEqual(largestOf(send, host), sizes, `${what}, with a 15-character host: every ground, then the 28 care can reach`);
-    const [most] = largestOf(send, 'x'.repeat(22));
-    assert.ok(most < 450, `${what}: ${most} bytes with a 22-character host`);
+    const [most] = largestOf(send, 'x'.repeat(21));
+    assert.ok(most < 450, `${what}: ${most} bytes with a 21-character host`);
   }
 });
 

@@ -5,7 +5,7 @@
 // every drawing and all 64 mixes of ground levels forced onto each rock, as the screen test does.
 // Error replies add their one error line and go to the sender alone; they are not counted here.
 // It samples, so it can miss the worst. The largest known are built from real lives and held in
-// test/character.test.mjs: a reply of 424 bytes and a look of 423 (425 after downtime) with a
+// test/character.test.mjs: a reply of 424 bytes and a look of 423 (430 after downtime) with a
 // 15-character host, against the 409 for a look that this finds.
 //
 //   node tools/sizes.mjs [host length, 15] [lives, 100] [seed, 1]

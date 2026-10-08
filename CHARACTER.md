@@ -735,13 +735,13 @@ A look or a reply adds lines that depend on the rock's life: a reaction, a day's
 - **The largest known**, with a 15-character host and every drawing and ground forced on:
   - a reply of 424 bytes: a starving rock kept by a bot that only pets, then fed;
   - a look of 423: unnamed, three years old, on the morning it moved, with moss and messes on it;
-  - a look of 425 after 1,000 days of credited downtime ("last care 1001d ago"). Downtime adds nothing to a reply, which always says "last care just now". Its eleventh mess comes only at an extreme, which has no naming line or remark.
-- **A test builds each of these from a real life** and holds them under 450 bytes (440 before the raked lines) with a host of up to 22 characters.
-- **More host:** a look or a reply prints the host up to three times, so each extra character adds up to 3 bytes. At 24 characters they pass 450.
+  - a look of 430 after 1,166 days of credited downtime ("last care 1166d ago"). It has four messes: two from skipped cleans, and two that fell on either side of the outage within its last 12 hours alive. It also has moss, and the morning's remark. Downtime adds nothing to a reply, which always says "last care just now". Its eleventh mess comes only at an extreme, which has no naming line or remark.
+- **A test builds each of these from a real life** and holds them under 450 bytes (440 before the raked lines) with a host of up to 21 characters.
+- **More host:** a look or a reply prints the host up to three times, so each extra character adds up to 3 bytes. At 22 characters the look after downtime reaches 451.
 - **`node tools/sizes.mjs <host length>`** samples real lives in the same way, to try other hosts. It samples, so it can miss the worst: it found 409 for the look.
 - **An error reply** adds its one error line and goes to the sender alone, so it isn't held to the bound.
 
-So a host of up to 22 characters keeps every screen within 390 bytes, and every look and accepted reply under 450.
+So a host of up to 22 characters keeps every screen within 390 bytes, and one of up to 21 keeps every look and accepted reply under 450.
 
 **Staying the same.** Once the rock is hosted, these formulas must not change, or a living rock's past would change under it:
 - its kind;
