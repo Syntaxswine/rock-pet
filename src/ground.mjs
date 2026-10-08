@@ -55,7 +55,7 @@ const grownBy = lived => Math.min(1, lived / (FORMING_DAYS * DAY));
  * pair weight, the least-given care's is 0, and the center weight is bare ground. The shares are
  * personality()'s, worked the same way step for step but without the rest of its profile, since
  * groundAt needs them after every visit (test/ground.test.mjs holds them bit for bit). Like
- * personality(), it refuses totals that are not counts.
+ * personality(), it refuses totals that are not finite and non-negative.
  */
 export function tracesOf(care) {
   const zero = { feed: 0, clean: 0, pet: 0 };

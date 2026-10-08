@@ -1,7 +1,7 @@
-// The rock's model sheet: every face, mark and pose, drawn by the game's own renderer
+// The rock's model sheet: every face, mark, pose and ground, drawn by the game's own renderer
 // (src/screen.mjs) from states the engine could reach, side by side; then every drawing it could
-// have, for the owner to choose from (src/drawings.mjs). CHARACTER.md shows this output, and
-// test/character.test.mjs fails if the two ever differ.
+// have, for the owner to choose from (src/drawings.mjs), and the ground on each. CHARACTER.md
+// shows this output, and test/character.test.mjs fails if the two ever differ.
 //
 //   node tools/model-sheet.mjs
 

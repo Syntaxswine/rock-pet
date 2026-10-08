@@ -89,7 +89,7 @@ test('each trace is the personality blend: corner plus half the pair, then half 
   }
 });
 
-test("the traces are personality()'s shares to the last bit, and refuse what is not a count", () => {
+test("the traces are personality()'s shares to the last bit, and refuse totals that are not finite and non-negative", () => {
   const rnd = mulberry(13), cases = [{ feed: 0, clean: 0, pet: 0 }, { feed: 2 ** 53 - 1, clean: 1, pet: 0 }, { feed: 0, clean: 0, pet: 7 }];
   for (let i = 0; i < 3000; i++) {
     const n = () => Math.floor(rnd() * 10 ** (1 + Math.floor(rnd() * 9)));
@@ -188,6 +188,17 @@ test('worn ground fades slowly: a level holds until its trace falls 0.02 below i
   const fell2 = tracesOf({ feed: 2763, clean: 1670, pet: 13000 }).pet;
   assert.ok(fell2 > 0.4295 && fell2 < 0.4300, `${fell2}`);
   assert.deepEqual(groundAt(two, at(17)), { ...BARE, pet: 1 });
+  // And at the third: five footprints at 0.6646, kept at 0.5805, three at 0.5800.
+  const three = { ...newLog(b), visits: [{ t: at(15), acts: acts({ feed: 2500, clean: 1500, pet: 25000 }) }] };
+  assert.deepEqual(groundAt(three, at(15)), { ...BARE, pet: 3 });
+  three.visits.push({ t: at(16), acts: acts({ feed: 869, clean: 525 }) });
+  const kept3 = tracesOf({ feed: 3369, clean: 2025, pet: 25000 }).pet;
+  assert.ok(kept3 > 0.5800 && kept3 < 0.5805, `${kept3}`);
+  assert.deepEqual(groundAt(three, at(16)), { ...BARE, pet: 3 });
+  three.visits.push({ t: at(17), acts: acts({ clean: 12 }) });
+  const fell3 = tracesOf({ feed: 3369, clean: 2037, pet: 25000 }).pet;
+  assert.ok(fell3 > 0.5795 && fell3 < 0.5800, `${fell3}`);
+  assert.deepEqual(groundAt(three, at(17)), { ...BARE, pet: 2 });
 });
 
 test('a fall through the levels lands where the trace is, all at once', () => {
@@ -210,7 +221,8 @@ test('a fall through the levels lands where the trace is, all at once', () => {
     const body = fullCare(replay(life, t)), sent = t < at(20) ? `${body} pet x20`.trim() : body;
     if (sent) life.visits.push({ t, acts: parseActions(sent).acts });
   }
-  assert.deepEqual([60, 100, 200].map(d => groundAt(life, at(d)).pet), [3, 2, 1]);
+  // (Its five footprints go at day 60.04, three at 121.04 and two at 296.7: well clear of these.)
+  assert.deepEqual([50, 100, 200].map(d => groundAt(life, at(d)).pet), [3, 2, 1]);
 });
 
 test('the ground keeps a level reached between visits, as a look saw it, and loses it to a visit', () => {
@@ -246,7 +258,8 @@ test('the ground keeps a level reached between visits, as a look saw it, and los
 
 test('an early habit does not stamp the ground before it has grown', () => {
   // Petted hard in its first hour, then kept with a little more petting than it needs: its trace
-  // settles just under the first level, and it never wore a path, however hard that first visit.
+  // settles just under the first level, and it never wore a path. A hard first visit doesn't
+  // stamp a ground that hasn't grown (a far harder one would lift the trace itself, and show).
   const b = Date.UTC(2026, 9, 6, 2), log = newLog(b);
   log.visits.push({ t: b + HOUR, acts: [['pet', 20], ['pet', 20]] });
   for (let t = b + 9 * HOUR; t < b + 20 * DAY; t += 8 * HOUR) log.visits.push({ t, acts: [['feed', 5], ['clean', 3], ['pet', 15]] });
