@@ -181,7 +181,10 @@ async function withServer(fn, { seed } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rockpet-name-'));
   const file = path.join(dir, 'rock.jsonl');
   if (seed === undefined) ensureRock(file, T); else fs.writeFileSync(file, seed);
-  const server = createRockServer({ file, host: 'rock.test', now: () => T + HOUR, onError: e => { throw e; } });
+  // The server's errors must be none, and are collected to say so. Thrown inside the server, one
+  // left its request unanswered: the test waited for ever, never cleaned up, and kept the run open.
+  const errors = [];
+  const server = createRockServer({ file, host: 'rock.test', now: () => T + HOUR, onError: e => errors.push(e) });
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   const port = server.address().port;
   const req = (method, url, body) => new Promise((resolve, reject) => {
@@ -194,7 +197,10 @@ async function withServer(fn, { seed } = {}) {
     r.on('error', reject);
     r.end(body);
   });
-  try { await fn({ req, file, dir }); } finally {
+  try {
+    await fn({ req, file, dir });
+    assert.deepEqual(errors.map(e => e.message), [], 'the server met no error');
+  } finally {
     server.closeAllConnections();
     await new Promise(r => server.close(r));
     fs.rmSync(dir, { recursive: true, force: true });
