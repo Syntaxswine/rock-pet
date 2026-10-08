@@ -244,15 +244,15 @@ its ground forms over two weeks: petted at 8 times its need, at 2, 7, 10 and 14 
 where it is: about once in four hours it moves along its ground, to its food if it has just
 been fed. A day of its moves, each five minutes after it made it, with the furrow it left
 
-07:05 to food   14:13 wander    18:23 wander    20:17 wander
-|0         10|  |3          5|  |1          9|  |2          8|
+07:05 to food   08:41 wander    14:13 wander    18:23 wander
+|0         10|  |1          9|  |3          5|  |1          9|
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
-|   .'---.   |  |      .'---.|  |    .'---.  |  |   .'---.   |
-|   (^  ^)#  |  |      (^  ^)|  |    (^  ^)  |  |   (^  ^)   |
-|  ~'*---'   |  |   ~~~'*---'|  |    '*---'~~|  |   '*---'~  |
+|      .'---.|  |   .'---.   |  |      .'---.|  |    .'---.  |
+|     #(^  ^)|  |   (^  ^)   |  |      (^  ^)|  |    (^  ^)  |
+|  ~~~~'*---'|  |   '*---'~~~|  |   ~~~'*---'|  |    '*---'~~|
 |            |  |            |  |            |  |            |
-|            |  |        @   |  |            |  |            |
+|            |  |            |  |        @   |  |            |
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
@@ -476,7 +476,7 @@ The owner's idea (2026-10-08): "the food could be # and there could be a simple 
 | 60 on | gone | |
 
 - **Where:** just past the end of its face row, on its right, or on its left when it has wandered to where that row reaches the grid's right edge. Its mouth is the end of the row on that side, opening toward the food: `<#`, or `#>`.
-- **It stays by its food** while it eats: for the hour after a feed it doesn't wander off ("Where it is"). Only a new feed can send it on, to its new food, or the ice slide it, food and all.
+- **It stays by its food** while it eats: for the hour after a feed it doesn't wander off ("Where it is"). Only a new feed can send it on, or the ice slide it, food and all.
 - **One frame per request.** An agent sees one screen at a time, so a meal plays out across looks. The reply to a feed always shows the mouth open, since the meal begins in its minute 0. On a busy rock, looks a few minutes apart catch it chewing.
 - **Every feed starts one,** whatever the feed did: a rock that wasn't hungry still eats what it is given. Other care leaves a meal going, and a new feed starts a new meal.
 - **It counts the time it lives,** so verified host downtime pauses a meal, as it pauses moss.
@@ -503,24 +503,24 @@ From hunger 7 on the screen the rock is drawn faint, in dotted lines, until a fe
 
 The owner's call (2026-10-08): "the pet should wander around the screen even without food. not nonstop, just regularly." It moves along its ground, left and right. It doesn't go up and down the screen, because below it lie its personality's traces and its messes.
 
-**One move in four hours.** Each four hours of UTC time, counted from 00:00, gives it one chance to move. The first of these to find it free takes it:
+**One move in four hours.** Each four hours of UTC time, counted from 00:00, has a spot of its own, and the first of these to find it free takes it there:
 
-| its chance | when | where to |
-|---|---|---|
-| its food | a feed | the spot its food falls on in those four hours |
-| wandering | at a minute of its own, unless it is eating | a spot of its own |
+| what takes it there | when |
+|---|---|
+| a feed, its food falling there | whenever in those four hours it comes |
+| wandering | at a minute of its own, unless it is eating |
 
-The spot may be where it already is, and then it stays put. Either way the chance is used: however often it is fed, it moves at most once in each four hours of UTC time, and never twice within an hour (a move late in one four hours and one early in the next can be an hour apart). A feed that comes after that, or while it rests, drops its food beside it where it is.
+The spot may be where it already is, and then it stays put. So however often it is fed, it moves at most once in each four hours of UTC time, and never twice within an hour (a move late in one four hours and one early in the next can be an hour apart). A feed that comes while it rests, or once it is there, drops its food beside it.
 
 - **Free** means not resting and not at an extreme. It rests for an hour of its life after it moves.
-- **Its food falls on one spot in each four hours,** whichever feed takes the chance, so nobody can steer it by timing their visit.
-- **It doesn't wander off from its food** while it eats ("Its meals"). Only a new feed can send it on, to its new food.
-- **About five moves a day, whatever its visitors do,** and still in between. On the pip that is about 4.5 to 5.5 a day, measured over a month for bots that feed every 10 to 90 minutes and for full care every 3 hours, every 8 or once a day. A bot that feeds all the time takes nearly every chance with a feed, while a rock kept every 8 hours goes to its food about one move in four. The lump, with three spots, moves about four times a day.
+- **Nobody can send it anywhere else.** Whoever feeds it, and whenever, it goes to its four hours' spot. A visitor who knows when it was born can still choose when it goes in those hours. By feeding it while it rests, so that it is still eating at its own minute, they can also stop it going at all. Against the cleverest such visitor built in review, it still moved about four times a day and was never still for much more than a day. It spent a quarter of its time on the spot that visitor chose, against about a seventh by chance.
+- **It doesn't wander off from its food** while it eats ("Its meals"). Only a new feed can send it on, to the spot of the four hours it comes in.
+- **About five moves a day, whatever its care,** and still in between. On the pip that is about 4.5 to 5.5 a day, measured over a month for bots that feed every 10 to 90 minutes and for full care every 3 hours, every 8 or once a day. A bot that feeds all the time takes nearly every chance with a feed, while a rock kept every 8 hours goes to its food about one move in four. The lump, with three spots, moves about four times a day.
 - **The ice** is the exception: on a few winter mornings ("Its days") it slides it to another spot, whatever else, its food with it. It stays there for the rest of that UTC day.
 - **At the same moment,** the ice comes first, then a feed, then its own minute.
 - **Its furrow,** `~`, is the ground its base slid off, beside it. It shows for an hour of its life after a wander or a walk to its food, and for the rest of that day after the ice.
 - **At an extreme it holds still,** starving or in sorrow: it doesn't wander or go to its food. Only the ice may move it then, and a feed met there uses up no chance. The feed that brings it back may send it to its food. A well rock seldom stays put more than a day, which happens when its chances keep picking the spot it is on, so one that has stopped moving for longer is in trouble.
-- **While the host is down nothing moves it,** no wandering and no ice, since its time doesn't pass. Its rest, its meal and its furrow count only the time it lives, so downtime ends none of them.
+- **While the host is down nothing moves it,** no wandering and no ice, since its time doesn't pass. Its rest, its meal and its furrow count only the time it lives, so downtime ends none of them. Only the ice's day ends at UTC midnight, however long the host was down.
 - **A grave lies where it died.**
 - **The same for everyone:** it all follows from the log and the clock (`src/wander.mjs`). It follows the rock's moves from its birth, and the engine's state at each.
 - **Its room:** the pip has seven spots, three columns either way of the middle. Wider drawings have less: the hoodoo and the pebble two each way, the sett two to its left and one to its right, the others one.
@@ -803,16 +803,16 @@ A look or a reply adds lines that depend on the rock's life: a reaction, a day's
 - **`node tools/sizes.mjs <host length>`** samples real lives in the same way, to try other hosts. It samples, so it can miss the worst.
 - **An error reply** adds its one error line and goes to the sender alone, so it isn't held to the bound.
 
-So a host of up to 20 characters keeps every screen within 390 bytes, and every look and accepted reply under 450.
+So a host of up to 20 characters keeps every screen within 390 bytes, and every look and accepted reply under 450. That holds while credited downtime stays under 10,000 days (27 years): beyond that its age and "last care" have five digits, a byte more each.
 
 **Staying the same.** Once the rock is hosted, these formulas must not change, or a living rock's past would change under it:
 - its kind;
 - its weekday;
-- when it slides on the ice, and where it moves: its four-hour chances and their minutes, the order of a tie, its spots and its food's in each four hours, how long it rests and how long its furrow shows, and which drawing it is, since the drawing's room sets its spots;
+- when it slides on the ice, and where it moves: its four hours, their minutes and their spots, the order of a tie, how long it rests and how long its furrow shows, and which drawing it is, since the drawing's room sets its spots;
 - its visitors;
 - the thresholds for veins, polish and crystals;
 - how its care becomes its ground: the levels, how slowly worn ground fades, and the two weeks it takes to form (and the personality weights it reads, which are PERSONALITY.md's);
 - its meals: their hour, its halves and its minutes;
 - the hunger from which it is drawn faint.
 
-Every one is computed again from the log on every request. If one has to change, it needs a version, the way `RULES.version` guards the rules. `test/days.test.mjs` pins one rock's winter of slides and where each took it, and two days of its moves with a walk to its food among them, so a change can't happen by accident.
+Every one is computed again from the log on every request. If one has to change, it needs a version, the way `RULES.version` guards the rules. `test/days.test.mjs` pins one rock's winter of slides and where each took it, two days of its moves with a walk to its food among them, and a year of moves for three rocks at three paces, so a change can't happen by accident.

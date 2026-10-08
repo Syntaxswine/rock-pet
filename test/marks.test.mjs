@@ -77,6 +77,14 @@ test('wherever it has moved, moss is its first tufts that the grid can show, and
         const n = tufts({ ...born(D0), t: T, lastCare: T - hours * HOUR, visits: 90 }, T);
         assert.equal(n, onGrid(d, dx, TUFTS[level]), `${name} at ${dx}, alone ${hours}h`);
         if (n < TUFTS[level]) short++;
+        // On its front and on its back (its wall day): the very cells, from the side that shows.
+        for (const [pose, rows] of [['front', d.front], ['away', d.back]]) {
+          const draw = lastCare => grid(render({ ...born(D0), t: T, lastCare, visits: 90 }, { now: T, host: 'h', drawing: d, pose, place: { dx, from: null, furrow: false } })).slice(1, 6).map(r => r.padEnd(W));
+          const bare = draw(T), mossy = draw(T - hours * HOUR), got = [];
+          for (let r = 0; r < 5; r++) for (let c = 0; c < W; c++) if (bare[r][c] !== mossy[r][c]) got.push(`${r},${c - dx}`);
+          const want = mossCells(rows).slice(0, TUFTS[level]).filter(([, c]) => c + dx >= 0 && c + dx < W).map(([r, c]) => `${r},${c}`);
+          assert.deepEqual(got.sort(), want.sort(), `${name} ${pose} at ${dx}, alone ${hours}h`);
+        }
       }
       const stages = [0, 7, 30, 90].map(days => tufts(grave, T + days * DAY));
       for (let k = 1; k < stages.length; k++) assert.ok(stages[k] > stages[k - 1], `${name}'s grave at ${dx}: ${stages.join(', ')}`);

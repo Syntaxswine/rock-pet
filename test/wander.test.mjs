@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { whereAt, movesOf, furrowShows, roomOf } from '../src/wander.mjs';
 import { replay, replayer, HOUR } from '../src/engine.mjs';
 import { activeElapsed } from '../src/outages.mjs';
-import { iceTimes, inDanger, occasion } from '../src/character.mjs';
+import { iceTimes, inDanger, occasion, hash } from '../src/character.mjs';
 import { mealAt } from '../src/meal.mjs';
 import { fullCare, W } from '../src/screen.mjs';
 import { parseActions } from '../src/parse.mjs';
@@ -337,8 +337,8 @@ test('the ice always takes it somewhere else; it rests there the rest of that da
 });
 
 test('its furrow shows for an hour after a wander or a walk to its food', () => {
-  const log = kept(T, 6), moves = movesIn(log, T + 2 * DAY, T + 4 * DAY);
-  assert.ok(moves.length > 6);
+  const log = kept(T, 7), moves = movesIn(log, T + 2 * DAY, T + 6 * DAY);
+  assert.ok(moves.length > 12, `${moves.length} moves`);
   for (const m of moves) {
     const p = whereAt(log, m.at, PIP);
     assert.deepEqual(p, { dx: m.to, from: m.from, at: m.at, why: m.why });
@@ -431,28 +431,58 @@ test('never twice in a four-hour block, nor within an hour of its life, nor off 
   assert.ok(moves > 400 && slides > 0, `${moves} moves, ${slides} on the ice`);
 });
 
-test('its first chance comes in the four hours it was born in, after its birth', () => {
-  let first = 0;
+test('its first chance comes in the four hours it was born in, after its birth, without waiting', () => {
+  let first = 0, soon = 0;
   for (let i = 0; i < 40; i++) {
     const b = Math.ceil(T / BLOCK) * BLOCK + i * BLOCK + MIN + i * 997, m = own(b)[0]; // born a minute into a block
     assert.ok(!m || m.at > b, 'nothing moves it at or before its birth');
     if (m && Math.floor(m.at / BLOCK) === Math.floor(b / BLOCK)) first++;
+    if (m && m.at - b < HOUR) soon++;
   }
   assert.ok(first > 15, `${first} of 40 moved in the four hours they were born in`);
+  assert.ok(soon > 3, `${soon} of 40 moved within the hour after their birth`);
 });
 
-test('its food falls on the same spot whichever feed takes its chance, so nobody can steer it by timing theirs', () => {
-  let walks = 0;
-  for (let i = 0; i < 40; i++) {
-    const b = T + i * 5 * HOUR + i * 61_001, F = b + HOUR + 17 * MIN;
-    const spots = [0, 1, 7, 999].map(ms => {
-      const t = F + ms, p = whereAt({ ...newLog(b), visits: [{ t, acts: [['feed', 1]] }] }, t, PIP);
-      if (p.at === t) walks++;
-      return p.at === t ? p.dx : null;
-    });
-    assert.ok(spots.every(x => x === spots[0]), `born ${iso(b)}: the same spot for feeds a millisecond apart, ${spots}`);
+test('a chance that leaves it where it is starts no rest: the next four hours may move it at once', () => {
+  // Never fed, it is free at its own minute in the last 45 minutes of a block, and doesn't move:
+  // that block's spot is where it is. A feed 45 minutes on, in the next four hours, takes it to
+  // their spot. (Its minutes are found with their formula, spelled out here; where it goes is the
+  // game's own.)
+  const ownMinute = (b, k) => k * BLOCK + (hash(b, 12, k) % 240) * MIN;
+  let found = 0;
+  for (let b = T; found < 3 && b < T + 60 * DAY; b += 41 * MIN) {
+    const ms = own(b);
+    for (let k = Math.floor(b / BLOCK) + 1; (k + 1) * BLOCK < b + 16 * HOUR; k++) {
+      const w = ownMinute(b, k), before = ms.filter(m => m.at < w).at(-1);
+      if (w % BLOCK < 3 * HOUR + 15 * MIN || ms.some(m => Math.floor(m.at / BLOCK) === k) || (before && w - before.at < HOUR)) continue;
+      const F = w + 45 * MIN, p = whereAt({ ...newLog(b), visits: [{ t: F, acts: [['feed', 1]] }] }, F, PIP);
+      if (p.at !== F) continue; // the next four hours' spot must be elsewhere
+      assert.equal(p.why, 'food');
+      found++;
+      break;
+    }
   }
-  assert.ok(walks >= 40, `${walks} walks to food`);
+  assert.equal(found, 3, 'feeds 45 minutes after a chance that left it where it was');
+});
+
+test('each four hours has one spot: a feed anywhere in them takes it where its own minute would, so nobody can steer it', () => {
+  // Never fed, it wanders at its own minute late in a block, free from the block's start; fed
+  // instead at the start, a minute and a millisecond in, or an hour or two in, it goes there too.
+  let found = 0;
+  for (let b = T; found < 6 && b < T + 60 * DAY; b += 43 * MIN) {
+    const ms = own(b);
+    for (const w of ms) {
+      const B = Math.floor(w.at / BLOCK) * BLOCK, before = ms.filter(m => m.at < w.at).at(-1);
+      if (B <= b || w.at - B < 3 * HOUR || (before && B - before.at < HOUR)) continue;
+      for (const F of [B, B + MIN + 1, B + MIN + 999, B + HOUR + 7 * MIN, B + 2 * HOUR + 31 * MIN]) {
+        const p = whereAt({ ...newLog(b), visits: [{ t: F, acts: [['feed', 1]] }] }, F, PIP);
+        assert.deepEqual([p.at, p.why, p.dx], [F, 'food', w.to], `born ${iso(b)}: fed at ${iso(F)}, where its minute took it`);
+      }
+      found++;
+      break;
+    }
+  }
+  assert.equal(found, 6, 'blocks fed at five different moments');
 });
 
 test('every drawing moves within its room, and a drawing with no room to move is refused', () => {

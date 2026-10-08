@@ -157,6 +157,18 @@ test('these formulas are frozen: the same births slide and wander the same (CHAR
   });
   assert.deepEqual(slides, PINNED_ICE);
 });
+
+test('a year of its moves is frozen too: three rocks at three paces', () => {
+  const fnv = s => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); };
+  const got = {};
+  for (const b of [Date.UTC(2026, 10, 1, 9, 30), Date.UTC(2027, 2, 14, 17, 3), Date.UTC(2026, 6, 4, 0, 1)]) for (const [what, every] of [['8h', 8 * HOUR], ['3h', 3 * HOUR], ['1d', DAY]]) {
+    const log = newLog(b);
+    for (let t = b + HOUR; t < b + 365 * DAY; t += every) log.visits.push({ t, acts: FULL });
+    const moves = movesOf(log, b + 365 * DAY, DRAWINGS.pip);
+    got[`${new Date(b).toISOString().slice(0, 10)} ${what}`] = `${moves.length} ${fnv(moves.map(m => `${m.at}:${m.from}>${m.to}:${m.why}`).join(';'))}`;
+  }
+  assert.deepEqual(got, PINNED_YEAR);
+});
 test('the visitors are frozen too: the same birth has the same visitors on the same days', () => {
   const b = Date.UTC(2026, 10, 1, 9, 30), seen = [];
   for (let d = 1; d <= 60; d++) {
@@ -179,9 +191,16 @@ const PINNED_ICE = [ // the same rock kept every 8h: where each slide took it on
   '2026-12-01 -3>0', '2026-12-05 -1>-2', '2026-12-08 -1>-2', '2026-12-19 -1>-2', '2026-12-20 1>-1', '2027-01-17 2>-1', '2027-02-09 0>-1', '2027-02-17 1>0',
 ];
 const PINNED_WANDERS = [ // its ninth and tenth days, on the pip
-  '10:30 1>-3 food', '12:46 -3>1 wander', '16:42 1>-2 wander', '21:27 -2>-1 wander', '00:00 -1>3 wander', '06:24 3>-1 wander',
+  '16:42 1>-2 wander', '21:27 -2>-1 wander', '00:00 -1>3 wander', '06:24 3>-1 wander',
   '10:11 -1>-2 wander', '12:39 -2>0 wander', '18:30 0>1 food', '23:52 1>-1 wander', '02:04 -1>3 wander', '05:06 3>2 wander',
 ];
+// A year of moves on the pip, for three rocks at three paces of full care: how many, and an FNV-1a
+// digest of every one (when, from, to, why). Two days alone let the rule change unnoticed.
+const PINNED_YEAR = {
+  '2026-11-01 8h': '1840 6ebdd576', '2026-11-01 3h': '1839 cbedd745', '2026-11-01 1d': '1670 cb156637',
+  '2027-03-14 8h': '1867 7d26c21e', '2027-03-14 3h': '1867 78ffcdbf', '2027-03-14 1d': '1835 4f76ce57',
+  '2026-07-04 8h': '1855 9ba08daa', '2026-07-04 3h': '1854 1da58496', '2026-07-04 1d': '1820 09517215',
+};
 
 test('its days are the same in every time zone', () => {
   // The same probes, run by four processes in four zones: a local-time slip anywhere differs.

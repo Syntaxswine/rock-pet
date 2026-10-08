@@ -5,12 +5,12 @@
 // clock, so everyone sees it in the same place at the same moment. It is only drawn: nothing here
 // changes the rock.
 //
-//   its chance   one in each four hours of UTC time, taken by the first of these to find it free,
-//                however often it is fed; the spot it picks may be where it already is
-//     a feed       sends it to the spot its food falls on in those four hours, the same whichever
-//                  feed it is, so nobody can steer it by timing theirs
-//     wandering    at a minute of its own, to a spot of its own, unless it is eating (meal.mjs):
-//                  it doesn't wander off from its food
+//   its spot     each four hours of UTC time has one, sometimes where it already is, and the
+//                first of these to find it free takes it there, so it moves once in them at most
+//     a feed       and its food falls there: however often it is fed, and whenever, that is
+//                  where it goes
+//     wandering    at a minute of its own, unless it is eating (meal.mjs): it doesn't wander off
+//                  from its food
 //   free         not resting, for an hour of its life after it moves, and not at an extreme
 //   the ice      a winter morning's slide takes it to another spot, whatever else, its food with
 //                it, and it rests there for the rest of that UTC day, its furrow beside it
@@ -71,24 +71,20 @@ export function movesOf(log, end, drawing) {
   ].sort((a, z) => a.t - z.t || ORDER[a.why] - ORDER[z.why]);
   const stateAt = replayer(log), moves = [];
   let spot = -min, at = null;
-  let iced = -Infinity, spent = null, fed = null; // resting until this midnight; the block whose chance it has had; its latest feed
+  let iced = -Infinity, fed = null; // resting until this midnight; its latest feed
   for (const e of events) {
     if (e.why === 'food') fed = e.t;
-    const block = Math.floor(e.t / (WANDER_H * HOUR));
-    if (e.why !== 'ice') { // the ice moves it whatever else; the rest needs its chance, and to find it free
-      if (block === spent || e.t < iced || (at !== null && activeElapsed(log, at, e.t) < REST_MS)) continue;
+    if (e.why !== 'ice') { // the ice moves it whatever else; anything else has to find it free
+      if (e.t < iced || (at !== null && activeElapsed(log, at, e.t) < REST_MS)) continue;
       if (e.why === 'wander' && fed !== null && activeElapsed(log, fed, e.t) < MEAL_MS) continue; // it is eating
     }
+    // Where it would go: on the ice anywhere else; otherwise its four hours' spot, whichever takes it
+    // there. Once it is there, nothing more in those hours can move it.
+    const to = e.why === 'ice' ? (spot + 1 + (hash(log.born, 5, e.key) % (spots - 1))) % spots : hash(log.born, 10, e.key) % spots;
+    if (to === spot) continue;
     const s = stateAt(e.t);
     if (s.dead) break;
-    let to;
-    if (e.why === 'ice') to = (spot + 1 + (hash(log.born, 5, e.key) % (spots - 1))) % spots;
-    else {
-      if (inDanger(s)) continue;
-      spent = block;
-      to = hash(log.born, e.why === 'food' ? 11 : 10, e.key) % spots;
-    }
-    if (to === spot) continue;
+    if (e.why !== 'ice' && inDanger(s)) continue;
     moves.push({ at: e.t, from: min + spot, to: min + to, why: e.why });
     [spot, at] = [to, e.t];
     if (e.why === 'ice') iced = (Math.floor(e.t / DAY) + 1) * DAY;

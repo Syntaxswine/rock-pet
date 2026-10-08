@@ -161,6 +161,12 @@ test('on a few winter mornings the ice slides it to another spot, and its furrow
     }
   }
   assert.ok(slides > 150 && slides < 450, `${slides} slides over 60 winters (about 270 expected)`);
+  // Never on the day it was born, though that day may be an icy one for it: births through a
+  // winter at every hour of the day, before 10:00 and after.
+  for (let i = 0; i < 400; i++) {
+    const b = Date.UTC(2026, 11, 1) + i * 5 * HOUR + i * 7_001, day = Math.floor(b / DAY);
+    assert.ok(!iceTimes(b, (day + 1) * DAY, []).some(t => Math.floor(t / DAY) === day), `born ${new Date(b).toISOString()}: no slide that day`);
+  }
   // On the screen: a rock kept every 8h, on a morning it slid.
   const b = Date.UTC(2026, 10, 1);
   const care = until => { const v = []; for (let at = b + HOUR; at < until; at += 8 * HOUR) v.push({ t: at, acts: FULL }); return v; };
