@@ -61,8 +61,8 @@ function row(frames) {
 const short = frames => row(frames).split('\n').slice(0, 7).join('\n');
 // Frames of the rock and the ground in front of it: screen rows 1-10.
 const standing = frames => row(frames).split('\n').filter((_, i) => i === 0 || (i >= 2 && i <= 11)).join('\n');
-// Two grounds that between them show every trace (the levels of a side's middle).
-const SOCIABLE = { feed: 2, clean: 0, pet: 2 }, GENTLE = { feed: 0, clean: 2, pet: 2 };
+// Two grounds that between them show every trace: the levels at the middle of two sides.
+const FEED_PET = { feed: 2, clean: 0, pet: 2 }, CLEAN_PET = { feed: 0, clean: 2, pet: 2 };
 
 /** The sheet, as text. */
 export function sheet() {
@@ -117,10 +117,10 @@ export function sheet() {
       ['the wall', grid(rock(), { pose: 'away', drawing })],
       ['dead a month', grid(LONELY, { now: LONELY.dead.t + 30 * DAY, drawing })],
     ])),
-    'its ground on each drawing: sociable (sand over its corners, a path), then gentle (a raked\n' +
-      'floor, a stepping stone, a path)',
+    'its ground on each drawing, at a side\'s middle: feed and pet (sand over its corners, a path),\n' +
+      'then clean and pet (a raked floor, a stepping stone, a path)',
     ...[0, 2, 4, 6].map(i => standing(Object.entries(DRAWINGS).slice(i, i + 2).flatMap(([name, drawing]) => [
-      [name, grid(rock(), { drawing, ground: SOCIABLE })], ['', grid(rock(), { drawing, ground: GENTLE })],
+      [name, grid(rock(), { drawing, ground: FEED_PET })], ['', grid(rock(), { drawing, ground: CLEAN_PET })],
     ]))),
   ].join('\n\n') + '\n';
 }

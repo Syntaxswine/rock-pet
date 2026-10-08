@@ -224,14 +224,10 @@ test('the screen stays small (token efficiency): at most 380 bytes, whatever the
   while (placeAt(b, b + age).col !== 1) b += HOUR;
   const now = b + age;
   const worst = { ...born(b), t: now, hunger: 10, starvingSince: now - 30 * HOUR, happy: -10, sorrowSince: now - 45 * HOUR, messes: 10, lastCare: now - 50 * HOUR, closeCalls: 3, petted: 3000, fed: 1500, visits: 4000 };
-  // Every ground: each of the 28 mixes of levels care can reach (test/ground.test.mjs finds them):
-  // the least-given care never shows, and two traces can't reach levels 3 and 3, or 3 and 2.
+  // Every ground: all 64 mixes of levels, the 28 that care in fixed proportions reaches
+  // (test/ground.test.mjs) and the rest, so no argument about which can happen is needed.
   const grounds = [];
-  for (let f = 0; f < 4; f++) for (let c = 0; c < 4; c++) for (let p = 0; p < 4; p++) {
-    const [b2, a] = [f, c, p].sort((x, y) => x - y).slice(1);
-    if ([f, c, p].includes(0) && !(a === 3 && b2 >= 2)) grounds.push({ feed: f, clean: c, pet: p });
-  }
-  assert.equal(grounds.length, 28);
+  for (let f = 0; f < 4; f++) for (let c = 0; c < 4; c++) for (let p = 0; p < 4; p++) grounds.push({ feed: f, clean: c, pet: p });
   const largest = (s, outages = []) => Object.fromEntries(Object.entries(DRAWINGS).map(([name, drawing]) => [name,
     Math.max(...grounds.map(ground => Buffer.byteLength(render(s, { now, host: 'rockpet.example', name: 'Abcdefghijkl', drawing, outages, ground }))))]));
   const bytes = largest(worst);

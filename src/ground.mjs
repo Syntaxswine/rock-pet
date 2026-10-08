@@ -11,7 +11,7 @@
 //   pet    footprints worn up to its front: 2, 3 or 5. Where they cross the raked floor they step
 //          on a stone, the way a garden's stepping stones keep feet off its raking.
 
-import { personality, addCare, CARE_AXES } from './personality.mjs';
+import { addCare, CARE_AXES, DAILY_CARE } from './personality.mjs';
 import { HOUR } from './engine.mjs';
 import { activeElapsed } from './outages.mjs';
 
@@ -28,9 +28,12 @@ export const FORMING_DAYS = 14;
 export const LEVELS_AT = [0.3, 0.45, 0.6];
 /**
  * Worn ground fades slowly: a level, once reached, holds until its trace falls this far below
- * it. Care that settles right on a level would otherwise flicker its trace on and off.
+ * it. Care that settles right on a level would otherwise flicker its trace on and off. Visit by
+ * visit, a trace that has reached a level dips under it by 0.0074 at most (review round 3, ten
+ * routines from every 2.5 hours to busy minutes); 0.02 covers that with room, and lets a past
+ * habit fade within weeks of where it would without it.
  */
-export const FADE = 0.05;
+export const FADE = 0.02;
 /** Footprints at each level of petting. */
 export const STEPS = [0, 2, 3, 5];
 /**
@@ -48,13 +51,19 @@ const grownBy = lived => Math.min(1, lived / (FORMING_DAYS * DAY));
  * How strongly each care shows, 0-1, from lifetime care totals (careTotals in personality.mjs):
  * its weighted share above the least-given care's. That is the personality blend again: the
  * favourite care's is its corner weight plus half its pair weight, the next one's is half the
- * pair weight, the least-given care's is 0, and the center weight is bare ground.
+ * pair weight, the least-given care's is 0, and the center weight is bare ground. The shares are
+ * personality()'s, worked the same way step for step but without the rest of its profile, since
+ * groundAt needs them after every visit (test/ground.test.mjs holds the two together).
  */
 export function tracesOf(care) {
-  const p = care ? personality(care) : null;
-  if (!p?.formed) return { feed: 0, clean: 0, pet: 0 };
-  const least = Math.min(p.shares.feed, p.shares.clean, p.shares.pet);
-  return { feed: p.shares.feed - least, clean: p.shares.clean - least, pet: p.shares.pet - least };
+  const bare = { feed: 0, clean: 0, pet: 0 };
+  if (!care) return bare;
+  const equivalents = CARE_AXES.map(key => care[key] / DAILY_CARE[key]);
+  const scale = Math.max(...equivalents);
+  if (!scale) return bare;
+  const sum = equivalents.reduce((n, e) => n + e / scale, 0);
+  const shares = equivalents.map(e => e / scale / sum), least = Math.min(...shares);
+  return Object.fromEntries(CARE_AXES.map((key, i) => [key, shares[i] - least]));
 }
 
 /**
@@ -79,7 +88,7 @@ export function groundAt(log, end) {
     const grown = grownBy(activeElapsed(log, log.born, t));
     for (const k of CARE_AXES) {
       const trace = traces[k] * grown;
-      while (ground[k] < 3 && trace >= LEVELS_AT[ground[k]]) ground[k]++;
+      while (ground[k] < LEVELS_AT.length && trace >= LEVELS_AT[ground[k]]) ground[k]++;
       while (ground[k] > 0 && trace < LEVELS_AT[ground[k] - 1] - FADE) ground[k]--;
     }
   };

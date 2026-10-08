@@ -96,7 +96,7 @@ test('a year birthday can fall in a different calendar year than the one before 
   assert.notEqual(at(Date.UTC(2028, 0, 1, 12))?.what, 'birthday');
 });
 
-test('it moves in each of December, January and February, about one day in twenty, and leaves two dots', () => {
+test('it moves in each of December, January and February, about one day in twenty, and leaves its trail', () => {
   const months = new Set();
   let winterDays = 0, moves = 0;
   for (let i = 0; i < 300; i++) {

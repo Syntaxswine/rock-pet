@@ -2,7 +2,7 @@
 
 The rock's personality grows from three lifetime counters: accepted **feed**, **clean** and **pet** actions. `pet x5` contributes five pets. Extra care counts even when a need is already satisfied. Invalid requests, rejected visits after death, reads, time passing and host downtime contribute nothing. Counts are the accepted counts already in the event log, including its existing per-word cap of 20.
 
-These counters summarize personality; the event log is still needed for survival, outage auditing and biography dates. No new log format or migration is needed. A future hosted checkpoint can keep just `{ feed, clean, pet }` for this feature and call `addCare` for each newly accepted visit.
+These counters summarize personality; the event log is still needed for survival, outage auditing and biography dates. No new log format or migration is needed. A future hosted checkpoint can keep just `{ feed, clean, pet }` for this feature and call `addCare` for each newly accepted visit. (The screen's ground, which draws these shares, also keeps its three levels; see AGENTS.md, "Keep the state".)
 
 ## Weights
 

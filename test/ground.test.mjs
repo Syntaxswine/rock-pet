@@ -2,9 +2,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { groundOf, groundAt, tracesOf, drawGround } from '../src/ground.mjs';
-import { personality, PERSONALITIES } from '../src/personality.mjs';
+import { personality, careTotals, PERSONALITIES } from '../src/personality.mjs';
 import { render, sprite, fullCare, W, MESS_SPOTS } from '../src/screen.mjs';
-import { DRAWINGS } from '../src/drawings.mjs';
+import { DRAWINGS, DRAWING } from '../src/drawings.mjs';
 import { born, replay, HOUR } from '../src/engine.mjs';
 import { placeAt } from '../src/character.mjs';
 import { parseActions } from '../src/parse.mjs';
@@ -54,8 +54,10 @@ test('the ground reads the triangle: bare at its center, one trace at a corner, 
   assert.deepEqual(groundOf(tenfold, grownUp), groundOf(times({ pet: 4 }), grownUp), 'only the balance counts, not the amount');
   assert.deepEqual(groundOf(BARE, grownUp), BARE, 'no care yet: still forming, so bare');
   assert.deepEqual(groundOf(null, grownUp), BARE, 'no totals given: bare');
-  // There are 28 mixes of levels: the least-given care never shows, and two traces can't reach
-  // levels 3 and 3, or 3 and 2 (they would need more than the whole). Exact shares find them all.
+  // Care given in fixed proportions reaches 28 mixes of levels: the least-given care never shows,
+  // and two traces can't reach levels 3 and 3, or 3 and 2 (they would need more than the whole).
+  // Exact shares find them all. (A level held while its trace fades could in principle make a
+  // 29th, but only for a care never given at all, which no living rock lacks for long.)
   const mixes = new Set();
   for (let i = 0; i <= 60; i++) for (let j = 0; i + j <= 60; j++) {
     const g = groundOf({ feed: i / 60 * 10 / 3, clean: j / 60 * 2, pet: (60 - i - j) / 60 * 4.8 }, grownUp);
@@ -104,8 +106,8 @@ test('the ground forms over the time it has lived, with levels at 0.3, 0.45 and 
     assert.deepEqual(groundOf(side, age), { ...BARE, feed: 2, clean: 2 }, `${age / DAY} days: it is full grown at two weeks`);
   }
   for (const k of ['feed', 'clean', 'pet']) assert.deepEqual(groundOf(only(k), 4 * DAY), BARE, 'four days old: one habit does not stamp it yet');
-  // The game follows the same clock: petted hard once and left alone, it wears its first two
-  // footprints at 4.2 days of life (and, never fed, dies soon after).
+  // groundAt keeps the same clock: a log of nothing but petting reaches its first level at 4.2
+  // days of life, to the millisecond. (Such a rock would have died by then; the clock is the point.)
   const b = Date.UTC(2026, 9, 6), once = { ...newLog(b), visits: [{ t: b + HOUR, acts: [['pet', 20], ['pet', 20]] }] };
   assert.deepEqual(groundAt(once, b + 362_880_000), { ...BARE, pet: 1 });
   assert.deepEqual(groundAt(once, b + 362_879_999), BARE);
@@ -130,7 +132,7 @@ function suggested(gap, rnd) {
   return groundAt(log, b + 30 * DAY);
 }
 
-test("the act line's own suggestion: bare every 3 to 10 hours, sand when busy, a path once a day", () => {
+test("the act line's own suggestion: bare every 3 to 10 hours, sand every hour, a path once a day", () => {
   // The pets that make up for messes and hunger lift petting's share a little, which the first
   // level stays above when someone comes every few hours. Once a day, the suggestion is mostly
   // petting. Every hour, it is a small feed each time, each counted as a feed.
@@ -143,19 +145,76 @@ test("the act line's own suggestion: bare every 3 to 10 hours, sand when busy, a
   assert.deepEqual(suggested(() => HOUR, rnd), { ...BARE, feed: 1 }, 'every hour: sand at its foot');
 });
 
-test('worn ground fades slowly: a level holds until its trace falls 0.05 below it', () => {
+test('worn ground fades slowly: a level holds until its trace falls 0.02 below it', () => {
   const b = Date.UTC(2026, 9, 6), at = d => b + d * DAY;
-  // Past two weeks old, petted three times its need: a trace of 0.4, two footprints...
-  const log = { ...newLog(b), visits: [{ t: at(15), acts: acts({ feed: 25, clean: 15, pet: 108 }) }] };
+  // Past two weeks old, petted more than anything: a trace of 1/3, two footprints...
+  const log = { ...newLog(b), visits: [{ t: at(15), acts: acts({ feed: 2500, clean: 1500, pet: 9000 }) }] };
   assert.deepEqual(groundAt(log, at(15)), { ...BARE, pet: 1 });
-  // ...then more meals and cleaning bring it to 0.274, under the level but within 0.05 of it,
-  log.visits.push({ t: at(16), acts: acts({ feed: 11, clean: 6 }) });
-  assert.ok(Math.abs(tracesOf({ feed: 36, clean: 21, pet: 108 }).pet - 0.274) < 0.001);
+  // ...then meals and cleaning bring it to 0.2804, under the level by less than 0.02...
+  log.visits.push({ t: at(16), acts: acts({ feed: 382, clean: 229 }) });
+  const held = tracesOf({ feed: 2882, clean: 1729, pet: 9000 }).pet;
+  assert.ok(held > 0.2800 && held < 0.2805, `${held}`);
   assert.deepEqual(groundAt(log, at(16)), { ...BARE, pet: 1 }, 'so the path stays');
-  assert.deepEqual(groundOf({ feed: 36, clean: 21, pet: 108 }, 30 * DAY), BARE, 'though the same care, reached from below, wears none');
-  // ...and to 0.226, more than 0.05 under it: the path is gone.
+  assert.deepEqual(groundOf({ feed: 2882, clean: 1729, pet: 9000 }, 30 * DAY), BARE, 'though the same care, reached from below, wears none');
+  // ...and a little more to 0.2798, under it by more than 0.02: the path is gone.
   log.visits.push({ t: at(17), acts: acts({ feed: 4, clean: 3 }) });
+  const gone = tracesOf({ feed: 2886, clean: 1732, pet: 9000 }).pet;
+  assert.ok(gone > 0.2795 && gone < 0.2800, `${gone}`);
   assert.deepEqual(groundAt(log, at(17)), BARE);
+});
+
+test('a fall through the levels lands where the trace is, all at once', () => {
+  const b = Date.UTC(2026, 9, 6), at = d => b + d * DAY;
+  // From five footprints to none in one visit: balanced care so plentiful the lean is gone.
+  const deep = { ...newLog(b), visits: [{ t: at(15), acts: acts({ feed: 25, clean: 15, pet: 3600 }) }] };
+  assert.deepEqual(groundAt(deep, at(15)), { ...BARE, pet: 3 });
+  deep.visits.push({ t: at(15) + 60_000, acts: acts({ feed: 2500, clean: 1500 }) });
+  assert.deepEqual(groundAt(deep, at(15) + 60_000), BARE, 'not stopping a level or two on the way');
+  // From three footprints to just under the first level, where the fall stops: two footprints.
+  const half = { ...newLog(b), visits: [{ t: at(15), acts: acts({ feed: 25, clean: 15, pet: 144 }) }] };
+  assert.deepEqual(groundAt(half, at(15)), { ...BARE, pet: 2 });
+  half.visits.push({ t: at(15) + 60_000, acts: acts({ feed: 20, clean: 12 }) });
+  assert.ok(Math.abs(tracesOf({ feed: 45, clean: 27, pet: 144 }).pet - 0.2895) < 0.0001);
+  assert.deepEqual(groundAt(half, at(15) + 60_000), { ...BARE, pet: 1 }, 'within 0.02 of the first level, it keeps that one');
+  // A living rock: extra petting for its first twenty days, then just what the act line asks.
+  // Its path wears down a level at a time as the rest of its care catches up.
+  const life = newLog(b);
+  for (let t = b + HOUR; t < at(201); t += 8 * HOUR) {
+    const body = fullCare(replay(life, t)), sent = t < at(20) ? `${body} pet x20`.trim() : body;
+    if (sent) life.visits.push({ t, acts: parseActions(sent).acts });
+  }
+  assert.deepEqual([60, 100, 200].map(d => groundAt(life, at(d)).pet), [3, 2, 1]);
+});
+
+test('the ground keeps a level reached between visits, as a look saw it', () => {
+  // Fed and petted hard every 8h for five days, then left a while: as it grows, its petting
+  // trace reaches the first level between visits, and a look shows two footprints. A visit of
+  // meals an hour later lowers the trace a little, not by 0.02: its own reply still shows them.
+  const b = Date.UTC(2026, 9, 6, 2), log = newLog(b);
+  for (let t = b + HOUR; t < b + 5 * DAY; t += 8 * HOUR) log.visits.push({ t, acts: [['feed', 4], ['clean', 1], ['pet', 20], ['pet', 20]] });
+  let first = b + 5 * DAY;
+  while (groundAt(log, first).pet === 0) first += 10 * 60_000;
+  assert.ok(first > log.visits.at(-1).t, 'reached between visits');
+  const prints = text => grid(text).slice(6, 8).map(row => row.padEnd(W)).map((row, i) => row[[3, 4][i]]);
+  assert.deepEqual(prints(look(log, { now: first + HOUR - 60_000, host: 'h' }).text), [':', ':']);
+  const r = act(log, 'feed x20 feed x10', { now: first + HOUR, host: 'h' });
+  assert.equal(r.status, 200);
+  const after = tracesOf(careTotals({ visits: [...log.visits, r.visit] })).pet * (first + HOUR - b) / (14 * DAY);
+  assert.ok(after > 0.28 && after < 0.3, `the trace after the meal: ${after}`);
+  assert.deepEqual(prints(r.text), [':', ':'], 'the reply keeps the path the look showed');
+});
+
+test('an early habit does not stamp the ground before it has grown', () => {
+  // Petted hard in its first hour, then kept with a little more petting than it needs: its trace
+  // settles just under the first level, and it never wore a path, however hard that first visit.
+  const b = Date.UTC(2026, 9, 6, 2), log = newLog(b);
+  log.visits.push({ t: b + HOUR, acts: [['pet', 20], ['pet', 20]] });
+  for (let t = b + 9 * HOUR; t < b + 20 * DAY; t += 8 * HOUR) log.visits.push({ t, acts: [['feed', 5], ['clean', 3], ['pet', 15]] });
+  const trace = tracesOf(careTotals(log)).pet;
+  assert.ok(trace > 0.28 && trace < 0.3, `${trace}`);
+  assert.ok(!replay(log, b + 20 * DAY).dead);
+  assert.deepEqual(groundAt(log, b + 20 * DAY), BARE);
+  assert.ok(!grid(look(log, { now: b + 20 * DAY, host: 'h' }).text).slice(6, 11).join('').includes(':'));
 });
 
 test('care that settles right on a level does not flicker its trace', () => {
@@ -326,7 +385,7 @@ test('a grave keeps the ground it had when it died', () => {
   assert.ok(end.t - b < 9 * DAY, 'it died young');
   // (Its base row greens over with moss as the months go by; the ground in front stays as it was.)
   const rows = ['   :       @', '  @ :   @', '     @', '         @', ' @'];
-  assert.equal(grid(look(log, { now: end.t + HOUR, host: 'h' }).text)[5], ' \\________/');
+  assert.equal(grid(look(log, { now: end.t + HOUR, host: 'h' }).text)[5], DRAWINGS[DRAWING].front[4]);
   for (const later of [HOUR, 30 * DAY, 400 * DAY]) {
     assert.deepEqual(grid(look(log, { now: end.t + later, host: 'h' }).text).slice(6, 11), rows, `${later / DAY} days on`);
   }
