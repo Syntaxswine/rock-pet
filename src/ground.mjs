@@ -28,10 +28,11 @@ export const FORMING_DAYS = 14;
 export const LEVELS_AT = [0.3, 0.45, 0.6];
 /**
  * Worn ground fades slowly: a level, once reached, holds until its trace falls this far below
- * it. Care that settles right on a level would otherwise flicker its trace on and off. Visit by
- * visit, a trace that has reached a level dips under it by 0.0074 at most (review round 3, ten
- * routines from every 2.5 hours to busy minutes); 0.02 covers that with room, and lets a past
- * habit fade within weeks of where it would without it.
+ * it. Care that settles right on a level would otherwise flicker its trace on and off. When every
+ * visit sends what the act line suggests, a trace that has reached a level dips under it by
+ * 0.0074 at most (review round 3: ten routines, from busy minutes to once a day); 0.02 covers
+ * that with room, and lets a past habit fade within weeks of where it would without it. Mixed
+ * care can drift further, but slowly, over weeks, and the ground follows it.
  */
 export const FADE = 0.02;
 /** Footprints at each level of petting. */
@@ -53,14 +54,16 @@ const grownBy = lived => Math.min(1, lived / (FORMING_DAYS * DAY));
  * favourite care's is its corner weight plus half its pair weight, the next one's is half the
  * pair weight, the least-given care's is 0, and the center weight is bare ground. The shares are
  * personality()'s, worked the same way step for step but without the rest of its profile, since
- * groundAt needs them after every visit (test/ground.test.mjs holds the two together).
+ * groundAt needs them after every visit (test/ground.test.mjs holds them bit for bit). Like
+ * personality(), it refuses totals that are not counts.
  */
 export function tracesOf(care) {
-  const bare = { feed: 0, clean: 0, pet: 0 };
-  if (!care) return bare;
+  const zero = { feed: 0, clean: 0, pet: 0 };
+  if (!care) return zero;
+  for (const key of CARE_AXES) if (!Number.isFinite(care[key]) || care[key] < 0) throw new Error(`invalid ${key} care total`);
   const equivalents = CARE_AXES.map(key => care[key] / DAILY_CARE[key]);
   const scale = Math.max(...equivalents);
-  if (!scale) return bare;
+  if (!scale) return zero;
   const sum = equivalents.reduce((n, e) => n + e / scale, 0);
   const shares = equivalents.map(e => e / scale / sum), least = Math.min(...shares);
   return Object.fromEntries(CARE_AXES.map((key, i) => [key, shares[i] - least]));

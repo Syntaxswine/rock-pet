@@ -375,7 +375,7 @@ The owner asked to see new drawings. They are all in the model sheet above, in t
 4. redraw README's mock;
 5. in this page, move "(drawn now)" in the table below, update the drawing's bytes under "What it costs", and close the open call.
 
-No other test depends on which drawing it is.
+No other test depends on which drawing it is, except for the hoodoo: its eyes sit side by side, so its screens print `tt` and `xx`. The test that every word the screen prints is reserved (`test/name.test.mjs`) then asks for those two to join the reserved words in `src/name.mjs`.
 
 | drawing | what it is | bytes |
 |---|---|---|
@@ -439,7 +439,7 @@ Each care wears its own trace into the ground. A trace is as large as that care'
 | pet | footprints `:` worn up to it | two | three | five |
 
 - **The levels** come at 0.3, 0.45 and 0.6 above the least-given share.
-- **Worn ground fades slowly.** A level, once reached, holds until its trace falls 0.02 below it. Care that settles right on a level, as a busy rock's can, would otherwise flicker its trace on and off from one look to the next. Visit by visit, a trace dips under a level it has reached by 0.0074 at most (review round 3, ten routines); 0.02 covers that with room. It also lets a past habit linger a little: a rock petted extra for its first twenty days kept five footprints until day 67 rather than 60, and three until day 151 rather than 134. So the ground follows the rock's care visit by visit, not only its totals.
+- **Worn ground fades slowly.** A level, once reached, holds until its trace falls 0.02 below it. Care that settles right on a level, as a busy rock's can, would otherwise flicker its trace on and off from one look to the next. When every visit sends what the act line suggests, a trace dips under a level it has reached by 0.0074 at most (review round 3, ten routines from busy minutes to once a day); 0.02 covers that with room. Mixed care can drift further (review round 4 saw 0.028), but slowly, over weeks, and the ground follows it. It also lets a past habit linger a little: a rock petted extra for its first twenty days kept five footprints until day 67 rather than 60, and three until day 151 rather than 134. So the ground follows the rock's care visit by visit, not only its totals.
 - **Where footprints cross the raked floor,** they step on a stone, `o`, the way a garden's stepping stones keep feet off its raking. A gentle rock's visitors tread carefully.
 - **The footprints keep to the same cells on every drawing,** moving with the rock. They miss the first fourteen mess spots, so a light path keeps both its prints when a mess or two is about.
 
@@ -453,7 +453,7 @@ Each care wears its own trace into the ground. A trace is as large as that care'
 | twice a day | sometimes petting, depending on where the visits fall against the mess clock | bare, or two footprints |
 | once a day | petting: most of a daily visit is pets | two footprints |
 
-A test holds the first, second and last rows; review rounds 2 and 3 measured the others. Busy rocks visited every 10 minutes on average show footprints in about 85 to 90 lives in 100, because their petting trace settles right at the first level and, once there, holds.
+A test holds the first, second and last rows; review rounds 2 and 3 measured the others. Busy rocks visited every 10 minutes on average show footprints in about 77 lives in 100 at 30 days old and 84 at 90 days (76 to 90 across samples), because their petting trace settles right at the first level and, once there, holds.
 
 **The ground is coarser than the blend,** and mostly errs toward bare. It shows a care only from a trace of 0.3, while `/history` names a blend down to a few percent. So a rock counted mostly sociable there (its pair weighs most) can show one trace on its ground, or none. The exception is near a level: a level once reached holds while the trace stays within 0.02 of it.
 

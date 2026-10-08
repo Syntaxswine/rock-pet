@@ -54,10 +54,9 @@ test('the ground reads the triangle: bare at its center, one trace at a corner, 
   assert.deepEqual(groundOf(tenfold, grownUp), groundOf(times({ pet: 4 }), grownUp), 'only the balance counts, not the amount');
   assert.deepEqual(groundOf(BARE, grownUp), BARE, 'no care yet: still forming, so bare');
   assert.deepEqual(groundOf(null, grownUp), BARE, 'no totals given: bare');
-  // Care given in fixed proportions reaches 28 mixes of levels: the least-given care never shows,
-  // and two traces can't reach levels 3 and 3, or 3 and 2 (they would need more than the whole).
-  // Exact shares find them all. (A level held while its trace fades could in principle make a
-  // 29th, but only for a care never given at all, which no living rock lacks for long.)
+  // Care reaches 28 mixes of levels: the least-given care never shows, and two traces can't reach
+  // levels 3 and 3, or 3 and 2 (they would need more than the whole). Exact shares find them all.
+  // Held levels add none: holding 3 and 2 takes traces of 0.58 and 0.43, still more than the whole.
   const mixes = new Set();
   for (let i = 0; i <= 60; i++) for (let j = 0; i + j <= 60; j++) {
     const g = groundOf({ feed: i / 60 * 10 / 3, clean: j / 60 * 2, pet: (60 - i - j) / 60 * 4.8 }, grownUp);
@@ -87,6 +86,23 @@ test('each trace is the personality blend: corner plus half the pair, then half 
     assert.ok(Math.abs(traces[mid] - pair / 2) < 1e-12, JSON.stringify(care));
     assert.equal(traces[low], 0, 'the least-given care never shows, so at most two traces do');
     assert.ok(Math.abs(traces.feed + traces.clean + traces.pet - (1 - p.blend.balanced)) < 1e-12, 'the center weight is bare ground');
+  }
+});
+
+test("the traces are personality()'s shares to the last bit, and refuse what is not a count", () => {
+  const rnd = mulberry(13), cases = [{ feed: 0, clean: 0, pet: 0 }, { feed: 2 ** 53 - 1, clean: 1, pet: 0 }, { feed: 0, clean: 0, pet: 7 }];
+  for (let i = 0; i < 3000; i++) {
+    const n = () => Math.floor(rnd() * 10 ** (1 + Math.floor(rnd() * 9)));
+    const care = { feed: n(), clean: n(), pet: n() };
+    if (i % 7 === 0) care[['feed', 'clean', 'pet'][i % 3]] = 0;
+    cases.push(care);
+  }
+  for (const care of cases) {
+    const shares = personality(care).shares, least = Math.min(shares.feed, shares.clean, shares.pet), traces = tracesOf(care);
+    for (const k of ['feed', 'clean', 'pet']) assert.ok(Object.is(traces[k], shares[k] - least), `${k} of ${JSON.stringify(care)}: ${traces[k]} and ${shares[k] - least}`);
+  }
+  for (const care of [{ feed: -5, clean: 2, pet: 3 }, { feed: 1, clean: 2 }, { feed: NaN, clean: 2, pet: 3 }, { feed: Infinity, clean: 2, pet: 3 }, { feed: '7', clean: 2, pet: 3 }]) {
+    assert.throws(() => tracesOf(care), /invalid (feed|pet) care total/, JSON.stringify(care));
   }
 });
 
@@ -161,6 +177,17 @@ test('worn ground fades slowly: a level holds until its trace falls 0.02 below i
   const gone = tracesOf({ feed: 2886, clean: 1732, pet: 9000 }).pet;
   assert.ok(gone > 0.2795 && gone < 0.2800, `${gone}`);
   assert.deepEqual(groundAt(log, at(17)), BARE);
+  // The same 0.02 at the second level: three footprints at 0.4653, kept at 0.4304, two at 0.4299.
+  const two = { ...newLog(b), visits: [{ t: at(15), acts: acts({ feed: 2500, clean: 1500, pet: 13000 }) }] };
+  assert.deepEqual(groundAt(two, at(15)), { ...BARE, pet: 2 });
+  two.visits.push({ t: at(16), acts: acts({ feed: 263, clean: 158 }) });
+  const kept2 = tracesOf({ feed: 2763, clean: 1658, pet: 13000 }).pet;
+  assert.ok(kept2 > 0.4300 && kept2 < 0.4305, `${kept2}`);
+  assert.deepEqual(groundAt(two, at(16)), { ...BARE, pet: 2 });
+  two.visits.push({ t: at(17), acts: acts({ clean: 12 }) });
+  const fell2 = tracesOf({ feed: 2763, clean: 1670, pet: 13000 }).pet;
+  assert.ok(fell2 > 0.4295 && fell2 < 0.4300, `${fell2}`);
+  assert.deepEqual(groundAt(two, at(17)), { ...BARE, pet: 1 });
 });
 
 test('a fall through the levels lands where the trace is, all at once', () => {
@@ -186,22 +213,35 @@ test('a fall through the levels lands where the trace is, all at once', () => {
   assert.deepEqual([60, 100, 200].map(d => groundAt(life, at(d)).pet), [3, 2, 1]);
 });
 
-test('the ground keeps a level reached between visits, as a look saw it', () => {
+test('the ground keeps a level reached between visits, as a look saw it, and loses it to a visit', () => {
   // Fed and petted hard every 8h for five days, then left a while: as it grows, its petting
   // trace reaches the first level between visits, and a look shows two footprints. A visit of
   // meals an hour later lowers the trace a little, not by 0.02: its own reply still shows them.
   const b = Date.UTC(2026, 9, 6, 2), log = newLog(b);
   for (let t = b + HOUR; t < b + 5 * DAY; t += 8 * HOUR) log.visits.push({ t, acts: [['feed', 4], ['clean', 1], ['pet', 20], ['pet', 20]] });
   let first = b + 5 * DAY;
-  while (groundAt(log, first).pet === 0) first += 10 * 60_000;
+  while (first < b + 14 * DAY && groundAt(log, first).pet === 0) first += 10 * 60_000;
+  assert.ok(first < b + 14 * DAY, 'the path shows while the ground is still growing');
   assert.ok(first > log.visits.at(-1).t, 'reached between visits');
   const prints = text => grid(text).slice(6, 8).map(row => row.padEnd(W)).map((row, i) => row[[3, 4][i]]);
+  const scaled = (visit, t) => tracesOf(careTotals({ visits: [...log.visits, visit] })).pet * (t - b) / (14 * DAY);
   assert.deepEqual(prints(look(log, { now: first + HOUR - 60_000, host: 'h' }).text), [':', ':']);
   const r = act(log, 'feed x20 feed x10', { now: first + HOUR, host: 'h' });
   assert.equal(r.status, 200);
-  const after = tracesOf(careTotals({ visits: [...log.visits, r.visit] })).pet * (first + HOUR - b) / (14 * DAY);
+  const after = scaled(r.visit, first + HOUR);
   assert.ok(after > 0.28 && after < 0.3, `the trace after the meal: ${after}`);
   assert.deepEqual(prints(r.text), [':', ':'], 'the reply keeps the path the look showed');
+  // A heavier meal lowers it by more than 0.02: the path goes with that visit, and does not come
+  // back until the growing trace reaches the level again, more than half a day later.
+  const heavy = act(log, 'feed x20 clean x10', { now: first + HOUR, host: 'h' });
+  const low = scaled(heavy.visit, first + HOUR);
+  assert.ok(low < 0.28, `the trace after the heavier meal: ${low}`);
+  assert.deepEqual(prints(heavy.text), [' ', ' '], 'the reply has lost the path');
+  const later = { ...log, visits: [...log.visits, heavy.visit] };
+  for (const hours of [3, 7, 12]) {
+    assert.ok(scaled(heavy.visit, first + (1 + hours) * HOUR) < 0.3);
+    assert.deepEqual(prints(look(later, { now: first + (1 + hours) * HOUR, host: 'h' }).text), [' ', ' '], `${hours}h on: not back before its trace is`);
+  }
 });
 
 test('an early habit does not stamp the ground before it has grown', () => {
