@@ -7,14 +7,15 @@
   - `src/marks.mjs`: the moss, veins, polish and crystals its life leaves.
   - `src/ground.mjs`: the ground around it, which shows its personality.
   - `src/meal.mjs`: its meals.
+  - `src/wander.mjs`: where it is.
   - `src/name.mjs`: its name.
   - `src/story.mjs`: its lines.
   - `src/screen.mjs` draws it, from one of the drawings in `src/drawings.mjs`.
-- **The checks:** `test/character.test.mjs`, `test/marks.test.mjs`, `test/ground.test.mjs`, `test/meal.test.mjs`, `test/days.test.mjs` and `test/name.test.mjs` hold all of it to this page. `node tools/model-sheet.mjs` draws the model sheet below with the game's own renderer.
+- **The checks:** `test/character.test.mjs`, `test/marks.test.mjs`, `test/ground.test.mjs`, `test/meal.test.mjs`, `test/wander.test.mjs`, `test/days.test.mjs` and `test/name.test.mjs` hold all of it to this page. `node tools/model-sheet.mjs` draws the model sheet below with the game's own renderer.
 
 ## Who it is
 
-It is a pebble with a face, sitting on a floor, looked after by visitors who mostly won't remember it.
+It is a pebble with a face, sitting on a floor, looked after by visitors who mostly won't remember it. Every few hours it wanders a little along its ground.
 
 **It keeps a record.** Rocks are records of what happened to them:
 - a cracked rock heals with a vein of quartz;
@@ -48,7 +49,7 @@ This one needs feeding, cleaning and attention, and it can die. The owner made t
 | moods | its face |
 | preferences | its weighted lifetime care shapes seven blended personalities (PERSONALITY.md), which the ground around it shows |
 | odd habits | one day a week it faces the wall |
-| "occasional surprises that I don't fully control" | small visitors, and a few winter mornings when it moves by itself |
+| "occasional surprises that I don't fully control" | small visitors, its wandering, and a few winter mornings when the ice slides it |
 | "let the pet miss me or get scruffy" | moss grows on it while nobody comes, and a visit brushes it off |
 | "a little memory" | veins for close calls, polish from petting, crystals from meals, birthdays, round numbers of visits, its name, the history page |
 
@@ -64,6 +65,7 @@ This one needs feeding, cleaning and attention, and it can die. The owner made t
 3. **It never pleads or blames.** Absence shows as moss, and as having missed *someone*.
 4. **One line at most, and none at the edge.**
    - There is no line while it is at an extreme: the danger lines need the room, and whimsy at the brink would be wrong.
+   - At an extreme it holds still, too: it doesn't wander or go to its food. Only the ice may move it then.
    - There is none in death.
 5. **It is the same for everyone.** Two visitors at the same moment see the same rock, and anyone can work out why:
    - its nature follows from its birth time;
@@ -78,15 +80,15 @@ This one needs feeding, cleaning and attention, and it can die. The owner made t
 The game draws this itself (`node tools/model-sheet.mjs`). The numbers in the corners are hunger and happiness, as in play.
 
 ```text
-the rock, as drawn now (lump): faces, by happiness
+the rock, as drawn now (pip): faces, by happiness
 
 5 and up        0 to 5          -5 to 0         below -5        at -10
 |2          9|  |2          2|  |2         -2|  |2         -7|  |2        -10|
 |            |  |            |  |            |  |            |  |            |
-|    ___     |  |    ___     |  |    ___     |  |    ___     |  |    ___     |
-|  _/   \__  |  |  _/   \__  |  |  _/   \__  |  |  _/   \__  |  |  _/   \__  |
-| /  ^  ^  \ |  | /  o  o  \ |  | /  -  -  \ |  | /  ;  ;  \ |  | /  T  T  \ |
-| \________/ |  | \________/ |  | \________/ |  | \________/ |  | \________/ |
+|            |  |            |  |            |  |            |  |            |
+|   .----.   |  |   .----.   |  |   .----.   |  |   .----.   |  |   .----.   |
+|   (^  ^)   |  |   (o  o)   |  |   (-  -)   |  |   (;  ;)   |  |   (T  T)   |
+|   '----'   |  |   '----'   |  |   '----'   |  |   '----'   |  |   '----'   |
 |            |  |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |  |            |
@@ -99,11 +101,11 @@ drawn faint
 
 6               12              24              48
 |3          6|  |5          5|  |10       -10|  |10       -10|
-|            |  |     ,,     |  |    ",,     |  |    ",,     |
-|    ___     |  |    ___     |  |    ...,    |  |  ,,...,"   |
-|  _/   \__  |  |  _/   \__  |  |  .:   :..  |  |  .:   :..  |
-| /  ^  ^  \ |  | /  o  o  \ |  | :  T  T  : |  | :  T  T  : |
-| \________/ |  | \________/ |  | '________' |  | '________' |
+|            |  |            |  |            |  |            |
+|            |  |     ,,     |  |    ",,,    |  |   ,",,,"   |
+|   .----.   |  |   .----.   |  |   ......   |  |  ,......   |
+|   (^  ^)   |  |   (o  o)   |  |   :T  T:   |  |   :T  T:   |
+|   '----'   |  |   '----'   |  |   '----'   |  |   '----'   |
 |            |  |            |  |            |  |            |
 |        @   |  |        @   |  |  @     @   |  |  @     @   |
 |            |  |            |  |            |  |     @      |
@@ -116,10 +118,10 @@ marks of a long life: veins (close calls)
 one             two             three or more
 |2          6|  |2          6|  |2          6|
 |            |  |            |  |            |
-|    ___     |  |    ___     |  |    ___     |
-|  _/ / \__  |  |  _/ / \__  |  |  _/ / \/_  |
-| /  ^  ^  \ |  | /  ^  ^  \ |  | /  ^  ^  \ |
-| \________/ |  | \_____/__/ |  | \_____/__/ |
+|            |  |            |  |            |
+|   .-/--.   |  |   .-/--.   |  |   .-/-/.   |
+|   (^  ^)   |  |   (^  ^)   |  |   (^  ^)   |
+|   '----'   |  |   '--/-'   |  |   '--/-'   |
 |            |  |            |  |            |
 |            |  |            |  |            |
 |            |  |            |  |            |
@@ -132,10 +134,10 @@ marks of a long life: polish (petting) and crystals (meals)
 polished        worn smooth     a crystal       two
 |2          6|  |2          6|  |2          6|  |2          6|
 |            |  |            |  |            |  |            |
-|    ___     |  |    ___     |  |    ___     |  |    ___     |
-|  _/   \__  |  |  _/'  \__  |  |  _/   \__  |  |  _/   \__  |
-| /' ^  ^  \ |  | /' ^  ^  \ |  | /  ^  ^  \ |  | /  ^  ^  \ |
-| \________/ |  | \________/ |  | \______*_/ |  | \_*____*_/ |
+|            |  |            |  |            |  |            |
+|   .'---.   |  |   .'-'-.   |  |   .----.   |  |   .----.   |
+|   (^  ^)   |  |   (^  ^)   |  |   (^  ^)   |  |   (^  ^)   |
+|   '----'   |  |   '----'   |  |   '*---'   |  |   '*--*'   |
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
@@ -148,10 +150,10 @@ its meals: the hour after a feed, the food going and its mouth opening and shutt
 the feed reply  a minute on     half an hour    31 minutes      an hour on
 |0          6|  |0          6|  |0          6|  |0          6|  |0          6|
 |            |  |            |  |            |  |            |  |            |
-|    ___     |  |    ___     |  |    ___     |  |    ___     |  |    ___     |
-|  _/   \__  |  |  _/   \__  |  |  _/   \__  |  |  _/   \__  |  |  _/   \__  |
-| /  ^  ^  <#|  | /  ^  ^  \#|  | /  ^  ^  <+|  | /  ^  ^  \+|  | /  ^  ^  \ |
-| \________/ |  | \________/ |  | \________/ |  | \________/ |  | \________/ |
+|            |  |            |  |            |  |            |  |            |
+|   .----.   |  |   .----.   |  |   .----.   |  |   .----.   |  |   .----.   |
+|   (^  ^<#  |  |   (^  ^)#  |  |   (^  ^<+  |  |   (^  ^)+  |  |   (^  ^)   |
+|   '----'   |  |   '----'   |  |   '----'   |  |   '----'   |  |   '----'   |
 |            |  |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |  |            |
@@ -165,10 +167,10 @@ brings it below 7
 hunger 6        hunger 7        starving        fed once, at 7
 |6          6|  |7          6|  |10         6|  |7          6|
 |            |  |            |  |            |  |            |
-|    ___     |  |    ...     |  |    ...     |  |    ...     |
-|  _/   \__  |  |  .:   :..  |  |  .:   :..  |  |  .:   :..  |
-| /  ^  ^  \ |  | :  ^  ^  : |  | :  ^  ^  : |  | :  ^  ^  <#|
-| \________/ |  | '________' |  | '________' |  | '________' |
+|            |  |            |  |            |  |            |
+|   .----.   |  |   ......   |  |   ......   |  |   ......   |
+|   (^  ^)   |  |   :^  ^:   |  |   :^  ^:   |  |   :^  ^<#  |
+|   '----'   |  |   '----'   |  |   '----'   |  |   '----'   |
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
@@ -182,10 +184,10 @@ times the need of one care, or five times the need of two
 even-tempered   comfort-loving  orderly         affectionate
 |2          6|  |2          6|  |2          6|  |2          6|
 |            |  |            |  |            |  |            |
-|    ___     |  |    ___     |  |    ___     |  |    ___     |
-|  _/   \__  |  |  _/   \__  |  |  _/   \__  |  |  _/   \__  |
-| /  ^  ^  \ |  | /  ^  ^  \ |  | /  ^  ^  \ |  | /  ^  ^  \ |
-| \________/ |  |............|  | \________/ |  | \________/ |
+|            |  |            |  |            |  |            |
+|   .----.   |  |   .----.   |  |   .----.   |  |   .----.   |
+|   (^  ^)   |  |   (^  ^)   |  |   (^  ^)   |  |   (^  ^)   |
+|   '----'   |  |............|  |   '----'   |  |   '----'   |
 |            |  |            |  |------------|  |   :        |
 |            |  |            |  |------------|  |    :       |
 |            |  |            |  |------------|  |   :        |
@@ -196,11 +198,11 @@ even-tempered   comfort-loving  orderly         affectionate
 settled         sociable        gentle
 |2          6|  |2          6|  |2          6|
 |            |  |            |  |            |
-|    ___     |  |    ___     |  |    ___     |
-|  _/   \__  |  |  _/   \__  |  |  _/   \__  |
-| /  ^  ^  \ |  | /  ^  ^  \ |  | /  ^  ^  \ |
-|.\________/.|  |.\________/.|  | \________/ |
-| ---------- |  |   :        |  | --o------- |
+|            |  |            |  |            |
+|   .----.   |  |   .----.   |  |   .----.   |
+|   (^  ^)   |  |   (^  ^)   |  |   (^  ^)   |
+|  .'----'.  |  |  .'----'.  |  |   '----'   |
+|   ------   |  |   :        |  |   o-----   |
 |            |  |    :       |  |    :       |
 |            |  |            |  |            |
 |            |  |            |  |            |
@@ -212,10 +214,10 @@ its ground, the shades between: petted at 2, 3, 4 and 8 times its need
 2 times         3 times         4 times         8 times
 |2          6|  |2          6|  |2          6|  |2          6|
 |            |  |            |  |            |  |            |
-|    ___     |  |    ___     |  |    ___     |  |    ___     |
-|  _/   \__  |  |  _/   \__  |  |  _/   \__  |  |  _/   \__  |
-| /  ^  ^  \ |  | /  ^  ^  \ |  | /  ^  ^  \ |  | /  ^  ^  \ |
-| \________/ |  | \________/ |  | \________/ |  | \________/ |
+|            |  |            |  |            |  |            |
+|   .----.   |  |   .----.   |  |   .----.   |  |   .----.   |
+|   (^  ^)   |  |   (^  ^)   |  |   (^  ^)   |  |   (^  ^)   |
+|   '----'   |  |   '----'   |  |   '----'   |  |   '----'   |
 |            |  |   :        |  |   :        |  |   :        |
 |            |  |    :       |  |    :       |  |    :       |
 |            |  |            |  |   :        |  |   :        |
@@ -228,10 +230,10 @@ its ground forms over two weeks: petted at 8 times its need, at 2, 7, 10 and 14 
 2 days          7 days          10 days         14 days
 |2          6|  |2          6|  |2          6|  |2          6|
 |            |  |            |  |            |  |            |
-|    ___     |  |    ___     |  |    ___     |  |    ___     |
-|  _/   \__  |  |  _/   \__  |  |  _/   \__  |  |  _/   \__  |
-| /  ^  ^  \ |  | /  ^  ^  \ |  | /  ^  ^  \ |  | /  ^  ^  \ |
-| \________/ |  | \________/ |  | \________/ |  | \________/ |
+|            |  |            |  |            |  |            |
+|   .----.   |  |   .----.   |  |   .----.   |  |   .----.   |
+|   (^  ^)   |  |   (^  ^)   |  |   (^  ^)   |  |   (^  ^)   |
+|   '----'   |  |   '----'   |  |   '----'   |  |   '----'   |
 |            |  |   :        |  |   :        |  |   :        |
 |            |  |    :       |  |    :       |  |    :       |
 |            |  |            |  |   :        |  |   :        |
@@ -239,15 +241,32 @@ its ground forms over two weeks: petted at 8 times its need, at 2, 7, 10 and 14 
 |            |  |            |  |            |  |   :        |
 |            |  |            |  |            |  |            |
 
-its days: the wall, a morning it moved
+where it is: it wanders along its ground every few hours, and goes to its food. A day of its
+moves, each five minutes after it made it, with the furrow it left
 
-facing the wall  moved left
-|2          6|  |2          6|
+01:32 wander    05:50 wander    07:05 to food   10:02 wander
+|1          6|  |3          3|  |0         10|  |1          9|
+|            |  |            |  |            |  |            |
+|            |  |            |  |            |  |            |
+| .'---.     |  |     .'---. |  |   .'---.   |  |.'---.      |
+| (^  ^)     |  |     (o  o) |  |   (^  ^)#  |  |(^  ^)      |
+| '*---'~    |  | ~~~~'*---' |  |   '*---'~~ |  |'*---'~~~   |
+|            |  |            |  |            |  |            |
+|        @   |  |        @   |  |            |  |            |
+|            |  |            |  |            |  |            |
+|            |  |            |  |            |  |            |
+|            |  |            |  |            |  |            |
+|            |  |            |  |            |  |            |
+
+its days: the wall, and an evening after it slid on the ice
+
+facing the wall  slid on the ice
+|2          6|  |2          8|
 |            |  |            |
-|     ___    |  |   ___      |
-|  __/   \_  |  | _/   \__   |
-| /        \ |  |/  ^  ^  \  |
-| \________/ |  |\________/~~|
+|            |  |            |
+|   .----.   |  | .'---.     |
+|   (    )   |  | (^  ^)     |
+|   '----'   |  |~'*---'     |
 |            |  |            |
 |            |  |            |
 |            |  |            |
@@ -259,11 +278,11 @@ the grave of a rock once saved, then left: at death, then more moss
 
 died            a week          a month         a season
 |died: lonely|  |died: lonely|  |died: lonely|  |died: lonely|
-|    ",,     |  |    ",,     |  |    ",,     |  |    ",,     |
-|  ,,___,"   |  |  ,,___,",  |  |  ,,___,",  |  |  ,,___,",  |
-|  _/ / \__  |  | "_/ / \__  |  | "_/ / \__, |  | "_/ / \__, |
-| /  x  x  \ |  | /  x  x  \ |  |,/  x  x  \ |  |,/  x  x  \"|
-| \________/ |  | \________/ |  | \________/ |  |,\________/,|
+|            |  |            |  |            |  |            |
+|   ,",,,"   |  |   ,",,,"   |  |   ,",,,"   |  |   ,",,,"   |
+|  ,.-/--.   |  |  ,.-/--.,  |  |  ,.-/--.,  |  |  ,.-/--.,  |
+|   (x  x)   |  |  "(x  x)   |  |  "(x  x),  |  |  "(x  x),  |
+|   '----'   |  |   '----'   |  |  ,'----'   |  |  ,'----'"  |
 |           @|  |           @|  |           @|  |           @|
 |  @     @   |  |  @     @   |  |  @     @   |  |  @     @   |
 |     @      |  |     @      |  |     @      |  |     @      |
@@ -273,7 +292,16 @@ died            a week          a month         a season
 
 the drawings to choose from (src/drawings.mjs)
 
-lump: a lump with a flat base (drawn now)
+pip: a small round stone, with room to wander (drawn now)
+happy           48h alone       a long life     the wall        dead a month
+|2          9|  |10       -10|  |2          6|  |2          6|  |died: lonely|
+|            |  |            |  |            |  |            |  |            |
+|            |  |   ,",,,"   |  |            |  |            |  |   ,",,,"   |
+|   .----.   |  |  ,......   |  |   .'/--.   |  |   .----.   |  |  ,.-/--.,  |
+|   (^  ^)   |  |   :T  T:   |  |   (^  ^)   |  |   (    )   |  |  "(x  x),  |
+|   '----'   |  |   '----'   |  |   '*---'   |  |   '----'   |  |  ,'----'   |
+
+lump: a lump with a flat base
 happy           48h alone       a long life     the wall        dead a month
 |2          9|  |10       -10|  |2          6|  |2          6|  |died: lonely|
 |            |  |    ",,     |  |            |  |            |  |    ",,     |
@@ -339,87 +367,87 @@ happy           48h alone       a long life     the wall        dead a month
 its ground on each drawing, at a side's middle: feed and pet (sand over its corners, a path),
 then clean and pet (two raked lines, stepping stones, a path)
 
-lump                            googly
+pip                             lump
 |            |  |            |  |            |  |            |
-|    ___     |  |    ___     |  |    ____    |  |    ____    |
-|  _/   \__  |  |  _/   \__  |  |  .'    '.  |  |  .'    '.  |
-| /  ^  ^  \ |  | /  ^  ^  \ |  | / (^)(^) \ |  | / (^)(^) \ |
-|..________..|  | \________/ |  |..________..|  | \________/ |
+|            |  |            |  |    ___     |  |    ___     |
+|   .----.   |  |   .----.   |  |  _/   \__  |  |  _/   \__  |
+|   (^  ^)   |  |   (^  ^)   |  | /  ^  ^  \ |  | /  ^  ^  \ |
+|....----....|  |   '----'   |  |..________..|  | \________/ |
 |   :        |  |---o--------|  |   :        |  |---o--------|
 |    :       |  |----o-------|  |    :       |  |----o-------|
 |   :        |  |   :        |  |   :        |  |   :        |
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
 
-boulder                         cairn
+googly                          boulder
 |            |  |            |  |            |  |            |
-|   .----.   |  |   .----.   |  |    .--.    |  |    .--.    |
-|  /      \  |  |  /      \  |  |   (^  ^)   |  |   (^  ^)   |
-| |  ^  ^  | |  | |  ^  ^  | |  |  .------.  |  |  .------.  |
-|...______...|  |  \______/  |  |..________..|  | (________) |
+|    ____    |  |    ____    |  |   .----.   |  |   .----.   |
+|  .'    '.  |  |  .'    '.  |  |  /      \  |  |  /      \  |
+| / (^)(^) \ |  | / (^)(^) \ |  | |  ^  ^  | |  | |  ^  ^  | |
+|..________..|  | \________/ |  |...______...|  |  \______/  |
 |   :        |  |---o--------|  |   :        |  |---o--------|
 |    :       |  |----o-------|  |    :       |  |----o-------|
 |   :        |  |   :        |  |   :        |  |   :        |
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
 
-sett                            hoodoo
+cairn                           sett
 |            |  |            |  |            |  |            |
-|            |  |            |  |   ______   |  |   ______   |
-|  ._______. |  |  ._______. |  |  (______)  |  |  (______)  |
-|  | ^   ^ | |  |  | ^   ^ | |  |   | ^^ |   |  |   | ^^ |   |
-|..._______..|  |  |_______| |  |....____....|  |   |____|   |
+|    .--.    |  |    .--.    |  |            |  |            |
+|   (^  ^)   |  |   (^  ^)   |  |  ._______. |  |  ._______. |
+|  .------.  |  |  .------.  |  |  | ^   ^ | |  |  | ^   ^ | |
+|..________..|  | (________) |  |..._______..|  |  |_______| |
 |   :        |  |---o--------|  |   :        |  |---o--------|
 |    :       |  |----o-------|  |    :       |  |----o-------|
 |   :        |  |   :        |  |   :        |  |   :        |
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
 
-pebble
-|            |  |            |
-|            |  |            |
-|   .----.   |  |   .----.   |
-|  ( ^  ^ )  |  |  ( ^  ^ )  |
-|....----....|  |   '----'   |
-|   :        |  |---o--------|
-|    :       |  |----o-------|
-|   :        |  |   :        |
-|            |  |            |
-|            |  |            |
+hoodoo                          pebble
+|            |  |            |  |            |  |            |
+|   ______   |  |   ______   |  |            |  |            |
+|  (______)  |  |  (______)  |  |   .----.   |  |   .----.   |
+|   | ^^ |   |  |   | ^^ |   |  |  ( ^  ^ )  |  |  ( ^  ^ )  |
+|....____....|  |   |____|   |  |....----....|  |   '----'   |
+|   :        |  |---o--------|  |   :        |  |---o--------|
+|    :       |  |----o-------|  |    :       |  |----o-------|
+|   :        |  |   :        |  |   :        |  |   :        |
+|            |  |            |  |            |  |            |
+|            |  |            |  |            |  |            |
 
 a meal and hunger on each drawing: just fed, then hungry
 
-lump                            googly
+pip                             lump
 |0          6|  |7          6|  |0          6|  |7          6|
 |            |  |            |  |            |  |            |
-|    ___     |  |    ...     |  |    ____    |  |    ....    |
-|  _/   \__  |  |  .:   :..  |  |  .'    '.  |  |  .'    '.  |
-| /  ^  ^  <#|  | :  ^  ^  : |  | / (^)(^) <#|  | : (^)(^) : |
-| \________/ |  | '________' |  | \________/ |  | '________' |
+|            |  |            |  |    ___     |  |    ...     |
+|   .----.   |  |   ......   |  |  _/   \__  |  |  .:   :..  |
+|   (^  ^<#  |  |   :^  ^:   |  | /  ^  ^  <#|  | :  ^  ^  : |
+|   '----'   |  |   '----'   |  | \________/ |  | '________' |
 
-boulder                         cairn
+googly                          boulder
 |0          6|  |7          6|  |0          6|  |7          6|
 |            |  |            |  |            |  |            |
-|   .----.   |  |   ......   |  |    .--.    |  |    ....    |
-|  /      \  |  |  :      :  |  |   (^  ^<#  |  |   :^  ^:   |
-| |  ^  ^  <#|  | :  ^  ^  : |  |  .------.  |  |  ........  |
-|  \______/  |  |  '______'  |  | (________) |  | :________: |
+|    ____    |  |    ....    |  |   .----.   |  |   ......   |
+|  .'    '.  |  |  .'    '.  |  |  /      \  |  |  :      :  |
+| / (^)(^) <#|  | : (^)(^) : |  | |  ^  ^  <#|  | :  ^  ^  : |
+| \________/ |  | '________' |  |  \______/  |  |  '______'  |
 
-sett                            hoodoo
+cairn                           sett
 |0          6|  |7          6|  |0          6|  |7          6|
 |            |  |            |  |            |  |            |
-|            |  |            |  |   ______   |  |   ......   |
-|  ._______. |  |  ......... |  |  (______)  |  |  :......:  |
-|  | ^   ^ <#|  |  : ^   ^ : |  |   | ^^ <#  |  |   : ^^ :   |
-|  |_______| |  |  :_______: |  |   |____|   |  |   :____:   |
+|    .--.    |  |    ....    |  |            |  |            |
+|   (^  ^<#  |  |   :^  ^:   |  |  ._______. |  |  ......... |
+|  .------.  |  |  ........  |  |  | ^   ^ <#|  |  : ^   ^ : |
+| (________) |  | :________: |  |  |_______| |  |  :_______: |
 
-pebble
-|0          6|  |7          6|
-|            |  |            |
-|            |  |            |
-|   .----.   |  |   ......   |
-|  ( ^  ^ <# |  |  : ^  ^ :  |
-|   '----'   |  |   '----'   |
+hoodoo                          pebble
+|0          6|  |7          6|  |0          6|  |7          6|
+|            |  |            |  |            |  |            |
+|   ______   |  |   ......   |  |            |  |            |
+|  (______)  |  |  :......:  |  |   .----.   |  |   ......   |
+|   | ^^ <#  |  |   : ^^ :   |  |  ( ^  ^ <# |  |  : ^  ^ :  |
+|   |____|   |  |   :____:   |  |   '----'   |  |   '----'   |
 ```
 
 ## Its face
@@ -447,7 +475,8 @@ The owner's idea (2026-10-08): "the food could be # and there could be a simple 
 | 30 to 60 | `+`, half eaten | the same |
 | 60 on | gone | |
 
-- **Where:** just past the end of its face row, on its right. On the lump, the googly, the boulder and the sett that row reaches the grid's edge once the rock has slid a column right, so then its food goes on its left. Its mouth is the end of the row on that side, opening toward the food: `<#`, or `#>`.
+- **Where:** just past the end of its face row, on its right, or on its left when it has wandered to where that row reaches the grid's right edge. Its mouth is the end of the row on that side, opening toward the food: `<#`, or `#>`.
+- **It stays by its food** while it eats: for the hour after a feed it doesn't wander off ("Where it is").
 - **One frame per request.** An agent sees one screen at a time, so a meal plays out across looks. The reply to a feed always shows the mouth open, since the meal begins in its minute 0. On a busy rock, looks a few minutes apart catch it chewing.
 - **Every feed starts one,** whatever the feed did: a rock that wasn't hungry still eats what it is given. Other care leaves a meal going, and a new feed starts a new meal.
 - **It counts the time it lives,** so verified host downtime pauses a meal, as it pauses moss.
@@ -470,6 +499,27 @@ From hunger 7 on the screen the rock is drawn faint, in dotted lines, until a fe
 - **It follows the number the screen shows,** so `hunger 7/10` and a faint outline always go together.
 - **A grave is a stone again,** and drawn solid.
 
+## Where it is
+
+The owner's call (2026-10-08): "the pet should wander around the screen even without food. not nonstop, just regularly." It wanders along its ground, left and right. It doesn't go up and down the screen, because below it lie its personality's traces and its messes.
+
+| what moves it | when | where to |
+|---|---|---|
+| wandering | once in each four hours of UTC time, at a minute of its own | a spot of its own, sometimes where it already is |
+| its food | at a feed | the spot its food fell on |
+| the ice | on a few winter mornings ("Its days") | always somewhere else |
+
+- **It rests** for an hour after it moves, and for the hour after a feed, while it eats. Its food then falls beside it where it is.
+- **After the ice** it stays where it slid for the rest of that day.
+- **About six moves a day,** kept every 8 hours: its wanders, and the walks to its food. Between them it is still.
+- **Its furrow,** `~`, is the ground its base slid off, beside it. It shows for an hour after a wander or a walk to its food, and for the rest of that day after the ice.
+- **At an extreme it holds still:** it doesn't wander or go to its food. Only the ice may move it then. A rock that has stopped wandering is in trouble.
+- **While the host is down** it doesn't wander, since its time doesn't pass.
+- **A grave lies where it died.**
+- **The same for everyone:** it all follows from the log and the clock (`src/wander.mjs`). It follows the rock's moves from its birth, and the engine's state at each.
+- **Its room:** the pip has seven spots, three columns either way of the middle. Wider drawings have less: the hoodoo and the pebble two each way, the sett two to its left and one to its right, the others one.
+- **It is only drawn,** and changes nothing about the rock.
+
 ## The drawings
 
 The owner asked to see new drawings. They are all in the model sheet above, in the same five states, and with the ground, a meal and hunger on each, and `src/drawings.mjs` holds them. `DRAWING` names the one the screen uses. Choosing one takes five steps:
@@ -483,7 +533,8 @@ No other test depends on which drawing it is, except for the hoodoo: its eyes si
 
 | drawing | what it is | bytes |
 |---|---|---|
-| **lump** (drawn now) | a lump with a flat base | 43 |
+| **pip** (drawn now) | a small round stone, with room to wander | 31 |
+| **lump** | a lump with a flat base | 43 |
 | **googly** | googly eyes, the craft-table pet rock | 44 |
 | **boulder** | round and solid | 44 |
 | **cairn** | a small stone perched on a flat one | 42 |
@@ -498,7 +549,7 @@ What every drawing has:
 - three slots for veins, two for polish and two for crystals;
 - moss that grows along whatever its top is, then down its sides.
 
-Each stays within columns 1–10, so a rock that has moved a column either way still fits. The screen tests hold every drawing to these rules.
+Each stays within columns 1–10. The pip is drawn because it is small: it has room to wander three columns either way, where the lump has one ("Where it is"). The screen tests hold every drawing to these rules.
 
 ## The marks
 
@@ -509,7 +560,7 @@ Each stays within columns 1–10, so a rock that has moved a column either way s
 | a vein `/` in it | a close call | care ends a stretch at an extreme with a day or more of it at one; it counts when the last extreme ends | never; three are drawn, and `/history` counts the rest |
 | polish `'` on it | it has been petted a lot | after 500 points of happiness given by petting, and again after 3,000 | never |
 | crystals `*` in it | it has been fed a lot | after 100 meals, and again after 500 | never |
-| a trail `~~` beside it, the furrow it slid along | it moved | for the rest of that UTC day | the next day |
+| a furrow `~` beside it, the ground its base slid off | it moved | an hour after a wander or a walk to its food; the rest of that UTC day after the ice | then |
 
 A meal is one feed's worth of hunger taken away. Both polish and crystals count only what the care did, not what was asked for: a pet at full happiness, or a feed when it isn't hungry, adds nothing. So spamming the verbs can't polish it, and neither can a crowd.
 
@@ -547,7 +598,7 @@ Each care wears its own trace into the ground. A trace is as large as that care'
 - **Worn ground fades slowly.** A level, once reached, holds until its trace falls 0.02 below it. Care that settles right on a level, as a busy rock's can, would otherwise flicker its trace on and off from one look to the next. When every visit sends what the act line suggests, a trace dips under a level it has reached by 0.0074 at most (review round 3, ten routines from busy minutes to once a day); 0.02 covers that with room. Mixed care can drift further (review round 4 saw 0.028), but slowly, over weeks, and the ground follows it. It also lets a past habit linger a little. A rock born at 02:00 UTC, petted extra for its first twenty days and then visited every 8 hours with the act line's suggestion, kept five footprints until day 67 rather than 60, and three until day 151 rather than 134. Where its visits fall against the mess clock moves these by weeks: the same routine born at midnight gives days 60 rather than 55, and 121 rather than 110. So the ground follows the rock's care visit by visit, not only its totals.
 - **Raked lines** were the owner's choice too (2026-10-08: repeated lines, instead of a heavier `=`): the more an orderly rock is cleaned, the more lines are raked, the way a dry garden's gravel is.
 - **Where footprints cross a raked line,** they step on a stone, `o`, the way a garden's stepping stones keep feet off its raking. A gentle rock's visitors tread carefully.
-- **The footprints keep to the same cells on every drawing,** moving with the rock. They miss the first fourteen mess spots, so a light path keeps both its prints when a mess or two is about.
+- **The footprints keep to the same cells on every drawing,** moving with the rock. Where it sits at home they miss the first fourteen mess spots, so a light path keeps both its prints when a mess or two is about. Wandered off, a mess may lie on its path.
 
 **How often it is visited shapes it.** Personality counts every care as given, whatever it did (PERSONALITY.md), so the act line's own suggestion leaves a different ground at each pace:
 
@@ -572,7 +623,7 @@ The least-given care never shows, so at most two traces do. This is the personal
 
 **It forms over two weeks.** The traces grow in with the time the rock has lived, to full size at 14 days, so the first visitor's habit can't stamp it on day one. Verified host downtime doesn't count, as for moss. A grave keeps the ground it had when it died.
 
-**It is only drawn.** It changes nothing about the rock. A winter move's trail and the messes lie on top of it; the trail is `~~`, so it never reads as sand. Elsewhere on the model sheet the ground is left bare, so each section shows one thing.
+**It is only drawn.** It changes nothing about the rock. Its furrow and the messes lie on top of it; the furrow is `~`, so it never reads as sand. Elsewhere on the model sheet the ground is left bare, so each section shows one thing.
 
 **Where it comes from:**
 - **Sand:** a stone that stays put settles in. Stones left lying on the ground slowly sink into it: Darwin's last book showed earthworms burying them, carrying fine soil up from below and leaving it on the surface. A rock given its meals above everything else is the one that has made itself at home.
@@ -622,21 +673,24 @@ A look on an ordinary day says nothing. A look on another kind of day adds one l
 | Occasion | Line | Share of looks in its first year (600 rocks) |
 |---|---|---|
 | its birthday: 7, 30 and 100 days, then every year | `it is one week old today.` | 1.0%: four days, then one a year |
-| it moved this morning | `it moved this morning. no one saw it go.` | 0.7% |
+| it slid on the ice this morning | `it moved this morning. no one saw it go.` | 0.7% |
 | its wall day | `it is facing the wall today.` (drawn from behind) | 14.1% |
 | a small visitor | `it is sheltering a woodlouse.` | 10.5% |
 | an ordinary day | nothing | 73.8% |
 
 **Facing the wall.** This was the example of a quirk in the 2026-10-06 design review. On its day, a look shows it from behind: mirrored, with no face. A visitor who cares for it gets its face, because it turns round for them.
 
-**Moving by itself.** On Racetrack Playa in Death Valley, rocks slide across the dry lake bed in winter.
+**Sliding on the ice.** On Racetrack Playa in Death Valley, rocks slide across the dry lake bed in winter.
 - Nobody saw it happen until 2013–14, when GPS-tagged rocks caught the cause (Norris et al. 2014).
 - Wind pushes panels of ice 3–6 mm thick. They break up in the late-morning sun and shove the rocks along at 2–5 m a minute.
 
 This rock may do the same:
 - on a winter morning, December to February, about one day in twenty, at 10:00 UTC. That is late morning by the rock's own clock; at the Playa itself, late morning is about 19:00 UTC.
-- by one column, leaving a trail `~~` for the rest of that day (real trails are long furrows in the playa's mud, often curving);
+- to another spot along its ground, where it stays the rest of that day with its furrow `~` beside it (real trails are long furrows in the playa's mud, often curving);
+- even at an extreme, when it does nothing else;
 - never after it dies.
+
+The rest of the time it wanders on its own ("Where it is").
 
 Real stones also need a shallow winter pond, and can sit still for years, so this one is luckier than they are.
 
@@ -693,10 +747,10 @@ Ordinary care that changes no stats remains quiet but still contributes to perso
 - **Line weight:** it is drawn faint while it is hungry.
 - **Repeated lines:** cleaning rakes one, two, then three lines.
 - **Messes:** they stay `@`, as they always were.
-- **Moving around the screen:** a smaller rock that roams. That is a bigger change, to come separately: the lump is 10 of the grid's 12 columns wide, so it only has room to slide one column.
+- **Moving around the screen:** "the pet should wander around the screen even without food. not nonstop, just regularly." It wanders every few hours and goes to its food, drawn as the pip, small enough to have room.
 
 **Open:**
-1. **The drawing.** It is `DRAWING` in `src/drawings.mjs`, the lump until the owner picks.
+1. **The drawing.** It is `DRAWING` in `src/drawings.mjs`: the pip since 2026-10-08, picked so it can wander. The others are still there to choose from.
 
 ## Not built
 
@@ -715,42 +769,42 @@ Ordinary care that changes no stats remains quiet but still contributes to perso
 | a visit's reply | 272 | 287 (300) | 331 |
 
 The costs come from these places:
-- **The drawing:** 11 bytes on every screen.
+- **The drawing:** nothing. The pip takes 31 bytes, one fewer than the first build's pebble; the lump took 11 more.
 - **The name:** its length plus 2 (8 bytes for Pebble).
 - **The naming line:** about 55 bytes, until someone names it.
 - **The look line:** 38 bytes when there is one, on about a quarter of looks, so about 10 bytes a look overall.
-- **The ground:** nothing while its care is balanced, as it is when the act line's suggestion is followed every 3 to 10 hours. On the lump where it began: 1 byte for sand; 11, 24 or 36 for one, two or three raked lines; 9, 13 or 22 for two, three or five footprints; up to 37 for two traces together. On any drawing, wherever it has moved, 37 at most.
+- **The ground:** nothing while its care is balanced, as it is when the act line's suggestion is followed every 3 to 10 hours. On the pip at home: 1 byte for sand at its foot (3 deeper); 9, 24 or 36 for one, two or three raked lines; 9, 13 or 22 for two, three or five footprints; up to 37 for two traces together. On any drawing, wherever it has wandered, 42 at most.
 - **A meal:** 1 byte, or none, for the hour after a feed.
 - **Hunger:** nothing. A faint rock fills the same cells as a solid one.
 
-The largest screen is 378 bytes. It has the longest name, ten messes (the most a living rock carries without host downtime), both danger lines, a top full of moss, a four-digit age, the rock a column over, three raked lines and sand at its foot, and it is drawn faint. With one raked line it was 369: the second and third reach past the messes on their rows.
+The largest screen is 380 bytes: the hoodoo, wandered two columns right, with the longest name, ten messes (the most a living rock carries without host downtime), both danger lines, a top full of moss, a four-digit age, three raked lines and sand at its foot, drawn faint. The pip, drawn now, comes to 371 at most. Before the raked lines and the wandering it was 369.
 
 Credited host downtime makes the largest screen a little longer, in two ways:
-- **An eleventh mess.** Downtime in its last two days can let one land, since messes keep to the UTC clock while its sorrow clock pauses. That makes 380, and further messes add nothing.
-- **A longer "last care".** "last care 100d ago" counts wall-clock time, while moss and the danger clocks count lived time. That makes 382 after an outage of 100 days, and 383 after one of 1,000.
+- **An eleventh mess.** Downtime in its last two days can let one land, since messes keep to the UTC clock while its sorrow clock pauses. That makes 382, and further messes add nothing (up to 99).
+- **A longer "last care".** "last care 100d ago" counts wall-clock time, while moss and the danger clocks count lived time. That makes 384 after an outage of 100 days, and 385 after one of 1,000.
 
-The screen tests build each case on purpose, since no sample reaches them, and a test builds the eleventh mess from a real log. They hold every screen to 390 bytes (380 before the raked lines; 340 before moss and names). The bound assumes a 15-character host, and each extra character adds a byte to the screen, so a host of up to 22 characters keeps every screen within it.
+The screen tests build each case on purpose, for every drawing at every spot its room allows, since no sample reaches them; a test builds the eleventh mess from a real log. They hold every screen to 390 bytes (380 before the raked lines; 340 before moss and names). The bound assumes a 15-character host, and each extra character adds a byte to the screen, so a host of up to 20 characters keeps every screen within it.
 
 A look or a reply adds lines that depend on the rock's life: a reaction, a day's remark, the naming line.
-- **The largest known**, with a 15-character host and every drawing and ground forced on:
-  - a reply of 424 bytes: a starving rock kept by a bot that only pets, then fed;
-  - a look of 423: unnamed, three years old, on the morning it moved, with moss and messes on it;
-  - a look of 425 after 1,000 days of credited downtime ("last care 1001d ago"). Downtime adds nothing to a reply, which always says "last care just now". Its eleventh mess comes only at an extreme, which has no naming line or remark.
-- **A test builds each of these from a real life** and holds them under 450 bytes (440 before the raked lines) with a host of up to 22 characters.
-- **More host:** a look or a reply prints the host up to three times, so each extra character adds up to 3 bytes. At 24 characters they pass 450.
-- **`node tools/sizes.mjs <host length>`** samples real lives in the same way, to try other hosts. It samples, so it can miss the worst: it found 409 for the look.
+- **The largest known**, with a 15-character host and every drawing, ground and spot forced on:
+  - a reply of 427 bytes: a starving rock kept by a bot that only pets, then fed;
+  - a look of 427: unnamed, three years old, on a morning it slid on the ice, with moss and messes on it;
+  - a look of 429 after 1,000 days of credited downtime ("last care 1001d ago"). Downtime adds nothing to a reply, which always says "last care just now". Its eleventh mess comes only at an extreme, which has no naming line or remark.
+- **A test builds each of these from a real life** and holds them under 450 bytes (440 before the raked lines) with a host of up to 21 characters.
+- **More host:** a look or a reply prints the host up to three times, so each extra character adds up to 3 bytes. At 22 characters the look after downtime reaches 450.
+- **`node tools/sizes.mjs <host length>`** samples real lives in the same way, to try other hosts. It samples, so it can miss the worst.
 - **An error reply** adds its one error line and goes to the sender alone, so it isn't held to the bound.
 
-So a host of up to 22 characters keeps every screen within 390 bytes, and every look and accepted reply under 450.
+So a host of up to 20 characters keeps every screen within 390 bytes, and every look and accepted reply under 450.
 
 **Staying the same.** Once the rock is hosted, these formulas must not change, or a living rock's past would change under it:
 - its kind;
 - its weekday;
-- when it moves;
+- when it slides on the ice, and where it wanders: its four-hour blocks and their minutes, its spots, and how long it rests;
 - its visitors;
 - the thresholds for veins, polish and crystals;
 - how its care becomes its ground: the levels, how slowly worn ground fades, and the two weeks it takes to form (and the personality weights it reads, which are PERSONALITY.md's);
-- its meals: their hour, its thirds and its minutes;
+- its meals: their hour, its halves and its minutes;
 - the hunger from which it is drawn faint.
 
-Every one is computed again from the log on every request. If one has to change, it needs a version, the way `RULES.version` guards the rules. `test/days.test.mjs` pins one rock's winter of moves, so a change can't happen by accident.
+Every one is computed again from the log on every request. If one has to change, it needs a version, the way `RULES.version` guards the rules. `test/days.test.mjs` pins one rock's winter of slides and a day of its wandering, so a change can't happen by accident.

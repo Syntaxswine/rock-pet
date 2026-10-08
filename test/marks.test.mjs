@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { mossAt, marksOf, POLISH_AT, CRYSTALS_AT } from '../src/marks.mjs';
 import { DRAWINGS, DRAWING, mossCells, MOSS_CELLS } from '../src/drawings.mjs';
 import { render, sprite, eyes, faint, W } from '../src/screen.mjs';
-import { placeAt } from '../src/character.mjs';
+import { whereAt, roomOf, furrowShows } from '../src/wander.mjs';
 import { replay, born, applyVisit, HOUR } from '../src/engine.mjs';
 import { look, act, history, newLog } from '../src/rock.mjs';
 import { RULES } from '../src/rules.mjs';
@@ -92,9 +92,10 @@ test('a grave keeps the moss of its last days alone, and greens over: a week, a 
   assert.equal(fed.dead.cause, 'hungry');
   assert.deepEqual([0, 7 * DAY, 30 * DAY, 90 * DAY].map(d => at(fed, d)), [0, 4, 5, 6]);
   const drawn = d => grid(look(newLog(T), opts(lonely.dead.t + d)).text).slice(1, 6);
-  const room = mossCells(DRAWINGS[DRAWING].front).length;
-  assert.deepEqual([0, 7 * DAY, 30 * DAY, 90 * DAY].map(d => moss(drawn(d))), [3, 4, 5, 6].map(l => Math.min(TUFTS[l], room)));
-  const d = DRAWINGS[DRAWING], dx = placeAt(T, lonely.dead.t).col;
+  // Where it lies (it wandered before it died): a side of moss past the grid's edge isn't drawn.
+  const d = DRAWINGS[DRAWING], dx = whereAt(newLog(T), lonely.dead.t, d).dx;
+  const shown = n => mossCells(d.front).slice(0, n).filter(([, c]) => c + dx >= 0 && c + dx < W).length;
+  assert.deepEqual([0, 7 * DAY, 30 * DAY, 90 * DAY].map(day => moss(drawn(day))), [3, 4, 5, 6].map(l => shown(TUFTS[l])));
   for (const [r, row] of d.front.entries()) for (const [c, cell] of [...row].entries()) if (cell === 'E') assert.equal(drawn(0)[r][c + dx], 'x', 'crosses for eyes');
 });
 
@@ -197,25 +198,18 @@ test('every drawing is well formed', () => {
   }
 });
 
-test('every drawing leaves its trail beside its base on the day it moves, and none the next', () => {
-  const visits = b => { const v = []; for (let at = b + HOUR; at < b + 120 * DAY; at += 8 * HOUR) v.push({ t: at, acts: FULL }); return v; };
+test('every drawing leaves its furrow on the ground its base slid off, between any two of its spots', () => {
+  const s = { ...born(T), t: T, lastCare: T - HOUR, visits: 3, hunger: 2, happy: 6 };
   for (const [name, drawing] of Object.entries(DRAWINGS)) {
-    const base = drawing.front[4], left = base.search(/\S/), right = base.trimEnd().length - 1;
-    const seen = {};
-    for (let b = Date.UTC(2026, 10, 1); Object.keys(seen).length < 4; b += 5 * HOUR) {
-      for (let day = 1; day < 110 && Object.keys(seen).length < 4; day++) {
-        const t = Math.floor(b / DAY) * DAY + day * DAY + 11 * HOUR, p = placeAt(b, t);
-        if (p.from === null || seen[`${p.from}>${p.col}`]) continue;
-        const log = { ...newLog(b), visits: visits(b).filter(v => v.t <= t) };
-        const g = grid(render(replay(log, t), { now: t, host: 'x', drawing }));
-        const trail = p.col > p.from ? [left + p.col - 1, left + p.col - 2] : [right + p.col + 1, right + p.col + 2];
-        const furrow = trail.filter(c => c >= 0 && c < W).map(c => g[5][c]).join('');
-        assert.equal(furrow, '~'.repeat(furrow.length), `${name}, moved ${p.from}>${p.col}: "${g[5]}"`);
-        assert.ok(furrow.length >= 1, `${name}: some room for a trail`);
-        const next = grid(render(replay(log, t + DAY), { now: t + DAY, host: 'x', drawing }));
-        if (placeAt(b, t + DAY).from === null) assert.ok(!next[5].includes('~'), `${name}: gone the next day: "${next[5]}"`);
-        seen[`${p.from}>${p.col}`] = true;
-      }
+    const base = drawing.front[4], left = base.search(/\S/), right = base.trimEnd().length - 1, { min, max } = roomOf(drawing);
+    for (let from = min; from <= max; from++) for (let dx = min; dx <= max; dx++) {
+      if (from === dx) continue;
+      const g = grid(render(s, { now: T, host: 'x', drawing, place: { dx, from, furrow: true } })).map(row => row.padEnd(W));
+      const furrow = [...g[5]].flatMap((ch, c) => (ch === '~' ? [c] : []));
+      const [a, z] = dx > from ? [left + from, left + dx - 1] : [right + dx + 1, right + from];
+      assert.deepEqual(furrow, Array.from({ length: z - a + 1 }, (_, k) => a + k), `${name}, moved ${from}>${dx}: "${g[5]}"`);
+      assert.equal(g[5].slice(left + dx, right + dx + 1), base.slice(left), `${name}: its base is whole beside it`);
+      assert.ok(!render(s, { now: T, host: 'x', drawing, place: { dx, from, furrow: false } }).includes('~'), `${name}: no furrow once it has gone`);
     }
   }
 });
@@ -223,9 +217,11 @@ test('every drawing leaves its trail beside its base on the day it moves, and no
 test('every drawing draws every rock whole: the eyes, the outline, an @ per mess, the trail beside its base', () => {
   for (const { log, now } of lives(150, 9)) {
     const s = replay(log, now);
-    const { col: dx, from } = placeAt(s.born, s.dead ? s.dead.t : now);
     for (const [name, drawing] of Object.entries(DRAWINGS)) {
-      const g = render(s, { now, host: 'x', drawing }).split('\n').slice(0, W);
+      const p = whereAt(log, s.dead ? s.dead.t : now, drawing), dx = p.dx, furrow = !s.dead && furrowShows(p, now);
+      const { min, max } = roomOf(drawing);
+      assert.ok(dx >= min && dx <= max, `${name}: within its room`);
+      const g = render(s, { now, host: 'x', drawing, place: { dx, from: p.from, furrow } }).split('\n').slice(0, W);
       const slots = new Set([...drawing.veins, ...drawing.polish, ...drawing.crystals].map(([r, c]) => `${r},${c}`));
       // Its front, in dotted lines while it is hungry.
       (faint(s) ? drawing.faint.front : drawing.front).forEach((row, r) => [...row].forEach((cell, c) => {
@@ -234,9 +230,7 @@ test('every drawing draws every rock whole: the eyes, the outline, an @ per mess
       }));
       for (const row of g) assert.ok(row.length <= W && row === row.trimEnd(), `${name}: "${row}"`);
       assert.equal(g.join('').split('@').length - 1, Math.min(s.messes, 16), `${name}: an @ per mess`);
-      const base = drawing.front[4], left = base.search(/\S/) + dx, right = base.trimEnd().length - 1 + dx;
-      const beside = [g[5][left - 1], g[5][left - 2], g[5][right + 1], g[5][right + 2]].filter(c => c === '~').length;
-      assert.equal(beside > 0, !s.dead && from !== null, `${name}: a trail only the day it moved, and not on a grave:\n${g.join('\n')}`);
+      assert.equal(g[5].includes('~'), furrow, `${name}: a furrow only while it shows, and not on a grave:\n${g.join('\n')}`);
     }
   }
 });

@@ -6,7 +6,7 @@
 import { careTotals, personality, personalitySummary, percentages } from './personality.mjs';
 import { HOUR } from './engine.mjs';
 import { activeElapsed } from './outages.mjs';
-import { hash, nature, inDanger, placeAt } from './character.mjs';
+import { hash, nature, inDanger, iceTimes } from './character.mjs';
 import { marksOf, POLISH_AT, CRYSTALS_AT } from './marks.mjs';
 
 // The strongest part of its continuous personality blend chooses a short reaction.
@@ -127,7 +127,7 @@ export function biography(log, s, now) {
   longest = Math.max(longest, activeElapsed(log, previous, end));
   const credited = (log.outages ?? []).reduce((sum, o) => sum + o.end - o.start, 0);
   const n = nature(log.born);
-  const moves = placeAt(log.born, end).moves;
+  const slides = iceTimes(log.born, end).length;
   const m = marksOf(s);
   const lines = [
     'one rock, one shared life',
@@ -146,7 +146,7 @@ export function biography(log, s, now) {
     `close calls: ${s.closeCalls} (up to three veins shown)`,
     `petting received: ${Math.floor(s.petted)} points of happiness (polished at ${POLISH_AT.join(' and ')})`,
     `meals: ${Math.floor(m.meals)} (crystals at ${CRYSTALS_AT.join(' and ')})`,
-    `moved on its own: ${moves === 1 ? 'once' : `${moves} times`}`,
+    `slid on the ice: ${slides === 1 ? 'once' : `${slides} times`}`,
   ];
   if (s.dead) lines.push(`died: ${date(s.dead.t)} (${s.dead.cause})`);
   for (const o of log.outages ?? []) {

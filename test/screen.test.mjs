@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { render, eyes, faint, fullCare, shownHunger, shownHappy, MESS_SPOTS, W } from '../src/screen.mjs';
 import { DRAWINGS, DRAWING } from '../src/drawings.mjs';
-import { placeAt } from '../src/character.mjs';
+import { whereAt, roomOf } from '../src/wander.mjs';
 import { replay, applyVisit, born, HOUR } from '../src/engine.mjs';
 import { parseActions } from '../src/parse.mjs';
 import { RULES } from '../src/rules.mjs';
@@ -14,11 +14,10 @@ const T0 = Date.UTC(2026, 0, 1);
 const state = o => ({ ...born(0), ...o });
 const show = (s, now = s.t, name = null) => render(s, { now, host: 'rockpet.example', name });
 
-// The drawing as a screen must show it, for a rock drawn front on: every outline cell where the
-// rock has moved to (in dotted lines while it is hungry), its eyes in their cells. Only a mark
-// slot may differ (moss grows outside it).
-function assertIntact(grid, s, now, d = DRAWINGS[DRAWING]) {
-  const { col: dx } = placeAt(s.born, s.dead ? s.dead.t : now);
+// The drawing as a screen must show it, for a rock drawn front on and given no place (so where
+// its drawing puts it): every outline cell (in dotted lines while it is hungry), its eyes in their
+// cells. Only a mark slot may differ (moss grows outside it).
+function assertIntact(grid, s, now, d = DRAWINGS[DRAWING], dx = 0) {
   const slots = new Set([...d.veins, ...d.polish, ...d.crystals].map(([r, c]) => `${r},${c}`));
   (faint(s) ? d.faint.front : d.front).forEach((row, r) => [...row].forEach((cell, c) => {
     if (cell === ' ' || slots.has(`${r},${c}`)) return;
@@ -59,7 +58,7 @@ test('the alive screen is the DESIGN-NOTES mock', () => {
   const s = state({ born: now - 41 * DAY - 20 * HOUR, t: now, hunger: 3.2, happy: -2.2, messes: 1, lastCare: now - 6 * HOUR - 40 * MIN, visits: 9 });
   // Even-tempered: each care given in proportion to its need (PERSONALITY.md), so its ground is bare.
   assert.equal(render(s, { now, host: 'rockpet.example', name: 'Pebble', ground: groundOf({ feed: 25, clean: 15, pet: 36 }, 41 * DAY) }), [
-    '3         -2', '', '    ___', '  _/   \\__', ' /  -  -  \\', ' \\________/', '', '        @', '', '', '', '',
+    '3         -2', '', '', '   .----.', '   (-  -)', "   '----'", '', '        @', '', '', '', '',
     'hunger 3/10 (10=starving)  happy -2 (max 7)  mess 1 (@)',
     'Pebble  age 41d  now 14:05Z  last care 6h ago',
     'act: POST rockpet.example/act  body e.g. feed clean pet x6',
@@ -69,13 +68,15 @@ test('the alive screen is the DESIGN-NOTES mock', () => {
 test('the dead screen is the DESIGN-NOTES mock: crosses for eyes, and the moss of its last days alone', () => {
   // A real life, not a made-up state: cared for every 8h for six weeks, then left. It died alone
   // three days later, with the messes of those days, and a crystal from its meals. Its care ran
-  // heavy on petting, so a path is worn up to it (ground.mjs).
+  // heavy on petting, so a path is worn up to it (ground.mjs). It lies where it had wandered to.
   const b = Date.UTC(2026, 9, 5, 7), visits = [];
   for (let t = b + HOUR; t < b + 41 * DAY; t += 8 * HOUR) visits.push({ t, acts: [['feed', 4], ['clean', 1], ['pet', 10]] });
   const log = { born: b, rules: RULES.version, visits };
   const s = replay(log, Infinity);
-  assert.equal(render(s, { now: s.dead.t + 9 * HOUR, host: 'rockpet.example', name: 'Pebble', ground: groundAt(log, s.dead.t) }), [
-    'died: lonely', '    ",,', '  ,,___,"', '  _/   \\__', ' /  x  x  \\', ' \\______*_/', '   :', '  @ :   @', '     @', '         @', ' @', '',
+  const place = whereAt(log, s.dead.t, DRAWINGS[DRAWING]);
+  assert.equal(place.dx, -1);
+  assert.equal(render(s, { now: s.dead.t + 9 * HOUR, host: 'rockpet.example', name: 'Pebble', ground: groundAt(log, s.dead.t), place: { dx: place.dx, from: place.from, furrow: false } }), [
+    'died: lonely', '', '  ,",,,"', ' ,.----.', '  (x  x)', "  '*---'", '  :', '  @:    @', '     @', '         @', ' @', '',
     'here lies Pebble  age 43d  died 2026-11-17 23:36Z',
     'last care 3d ago  it does not stir',
   ].join('\n') + '\n');
@@ -238,25 +239,28 @@ test('the screen stays small (token efficiency): at most 390 bytes, whatever the
   assert.ok(sizes.at(-1) <= 390, `${sizes.at(-1)} bytes`);
   // ...but no sample reaches the worst, so build it: the longest name, ten messes (the most a
   // living rock carries without host downtime), both danger lines with two-digit hours, a top full of moss, a
-  // four-digit age, a column over from where it began, every mark, in every drawing, on every
-  // ground its care could give it. (Hungry, it is drawn faint, which costs nothing. It can't be
+  // four-digit age, every mark, in every drawing, at every spot its room allows (with the longest
+  // furrow or none), on every ground its care could give it. (Hungry, it is drawn faint, which costs nothing. It can't be
   // eating: a feed within the hour leaves hunger at 7.42 at most, test/meal.test.mjs.)
   const age = 1066 * DAY + 5 * HOUR;
-  let b = Date.UTC(2023, 11, 1);
-  while (placeAt(b, b + age).col !== 1) b += HOUR;
-  const now = b + age;
+  const b = Date.UTC(2023, 11, 1), now = b + age;
   const worst = { ...born(b), t: now, hunger: 10, starvingSince: now - 30 * HOUR, happy: -10, sorrowSince: now - 45 * HOUR, messes: 10, lastCare: now - 50 * HOUR, closeCalls: 3, petted: 3000, fed: 1500, visits: 4000 };
   // Every ground: all 64 mixes of levels, the 28 that care in fixed proportions reaches
   // (test/ground.test.mjs) and the rest, so no argument about which can happen is needed.
   const grounds = [];
   for (let f = 0; f < 4; f++) for (let c = 0; c < 4; c++) for (let p = 0; p < 4; p++) grounds.push({ feed: f, clean: c, pet: p });
-  const largest = (s, outages = []) => Object.fromEntries(Object.entries(DRAWINGS).map(([name, drawing]) => [name,
-    Math.max(...grounds.map(ground => Buffer.byteLength(render(s, { now, host: 'rockpet.example', name: 'Abcdefghijkl', drawing, outages, ground }))))]));
+  const largest = (s, outages = []) => Object.fromEntries(Object.entries(DRAWINGS).map(([name, drawing]) => {
+    const { min, max } = roomOf(drawing), places = [];
+    for (let dx = min; dx <= max; dx++) places.push({ dx, from: null, furrow: false }, { dx, from: dx - min > max - dx ? min : max, furrow: true });
+    return [name, Math.max(...places.flatMap(place => grounds.map(ground => Buffer.byteLength(render(s, { now, host: 'rockpet.example', name: 'Abcdefghijkl', drawing, outages, ground, place })))))];
+  }));
   const bytes = largest(worst);
   console.log(`  the worst screen, by drawing: ${JSON.stringify(bytes)}`);
   for (const [name, n] of Object.entries(bytes)) assert.ok(n <= 390, `${name}: ${n} bytes`);
-  // Three raked lines across ten messes' rows made it 378 (369 with one).
-  assert.equal(Math.max(...Object.values(bytes)), 378, 'the worst, as CHARACTER.md and AGENTS.md say');
+  // Three raked lines across ten messes' rows made it 378 (369 with one); wandering takes the
+  // narrower drawings further over.
+  const [worstPlain, eleven, sixteen, hundred, thousand] = [380, 382, 382, 384, 385];
+  assert.equal(Math.max(...Object.values(bytes)), worstPlain, 'the worst, as CHARACTER.md and AGENTS.md say');
   // Credited host downtime in its last two days lets an eleventh mess land (a test above builds one
   // from a real log), 2 bytes more; further messes add nothing (up to 99). A long outage adds more:
   // last care is wall-clock time ("100d ago"), while moss and the danger clocks count only the
@@ -265,9 +269,9 @@ test('the screen stays small (token efficiency): at most 390 bytes, whatever the
     const outages = [{ start: now - alone + HOUR, end: now - 49 * HOUR, evidence: 'host-1' }];
     return Math.max(...Object.values(largest({ ...worst, messes, lastCare: now - alone }, outages)));
   };
-  assert.equal(after(60 * HOUR, 11), 380, 'eleven messes, after a short outage');
-  assert.equal(after(60 * HOUR, 16), 380, 'more add nothing');
-  assert.equal(after(100 * DAY, 11), 382, 'after an outage of 100 days, as CHARACTER.md and AGENTS.md say');
-  assert.equal(after(1000 * DAY, 11), 383, 'and of 1,000');
+  assert.equal(after(60 * HOUR, 11), eleven, 'eleven messes, after a short outage');
+  assert.equal(after(60 * HOUR, 16), sixteen, 'more add nothing');
+  assert.equal(after(100 * DAY, 11), hundred, 'after an outage of 100 days, as CHARACTER.md and AGENTS.md say');
+  assert.equal(after(1000 * DAY, 11), thousand, 'and of 1,000');
   assert.ok(after(1000 * DAY, 11) <= 390);
 });

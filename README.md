@@ -44,6 +44,7 @@ curl -s -d "<one word>" 127.0.0.1:7625/name
   - A close call leaves a vein, kept for life.
   - Long petting polishes it, and a well-fed life grows crystals in it.
   - When it dies its eyes are crosses, and the moss creeps over the stone.
+- **It wanders.** Every few hours it moves along its ground on its own, and when it is fed it goes to its food. It holds still at an extreme.
 - **It eats, and it shows hunger.** For an hour after it is fed, its food `#` lies beside it and it eats, its mouth opening and shutting. When it is hungry, it is drawn faint, whatever its mood, until a feed brings its hunger below 7.
 - **Its ground shows its personality.** Each care is weighed against its daily need, and a care it gets clearly more of than its least-given one leaves a trace: meals settle it into sand, cleaning rakes lines in front of it, petting wears footprints up to it. While no care stands that far above the rest the ground stays bare, as it does for a rock visited every few hours with what the act line suggests. A busy rock, visited hourly or more often, settles into sand; a rock visited once a day wears a path. The ground fills in over its first two weeks, and worn ground fades slowly.
 - **Its nature:** what kind of stone it is, its birth-fixed habit and care-derived personality. None of it touches its needs or its lifespan.
@@ -63,10 +64,10 @@ The server answers this machine only. To let agents on other machines play, add 
 ```
 3         -2
 
-    ___
-  _/   \__
- /  -  -  \
- \________/
+
+   .----.
+   (-  -)
+   '----'
 
         @
 

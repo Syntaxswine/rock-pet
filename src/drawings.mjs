@@ -8,9 +8,17 @@
 //   The base keeps its line, lightening only at its ends: sand is `.` on that row, and a faint
 //   rock's sand must read as sand. Ticks stay off the cells beside polish slots.
 // - `veins`, `polish`, `crystals`: where each mark of its life goes, [row, col, mark], in order.
-// Every drawing keeps to columns 1-10, so a rock that has moved a column either way still fits.
+// Every drawing keeps to columns 1-10. It wanders along its ground as far as the room either side
+// of it allows (wander.mjs): the small pip has three columns each way, the wide lump one.
 
 export const DRAWINGS = {
+  pip: {
+    about: 'a small round stone, with room to wander',
+    front: ['', '', '   .----.', '   (E  E)', "   '----'"],
+    back: ['', '', '   .----.', '   (    )', "   '----'"],
+    faint: { front: ['', '', '   ......', '   :E  E:', "   '----'"], back: ['', '', '   ......', '   :    :', "   '----'"] },
+    veins: [[2, 5, '/'], [4, 6, '/'], [2, 7, '/']], polish: [[2, 4, "'"], [2, 6, "'"]], crystals: [[4, 4, '*'], [4, 7, '*']],
+  },
   lump: {
     about: 'a lump with a flat base',
     front: ['', '    ___', '  _/   \\__', ' /  E  E  \\', ' \\________/'],
@@ -62,8 +70,11 @@ export const DRAWINGS = {
   },
 };
 
-/** The one the screen draws. The owner's choice. */
-export const DRAWING = 'lump';
+/**
+ * The one the screen draws. The owner's choice: the pip, small enough to wander, from 2026-10-08
+ * ("the pet should wander around the screen"); the lump before.
+ */
+export const DRAWING = 'pip';
 
 // Where moss grows on a drawing, in the order it spreads: the cell above its outline in each
 // column, from the middle out, then down its sides.
