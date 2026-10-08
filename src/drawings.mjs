@@ -97,7 +97,7 @@ export function mossCells(rows) {
 }
 /**
  * How many of those cells hold moss at each level, 0-6 (marks.mjs says when). Every drawing has
- * at least 12; at the last level, a season after death, all of them do (but a side that a moved
- * rock has pushed past the grid's edge is not drawn).
+ * at least 12; at the last level, a season after death, all of them do. A cell that a moved rock
+ * has pushed past the grid's edge doesn't count: the moss grows on the next one instead.
  */
 export const MOSS_CELLS = [0, 2, 4, 7, 9, 11, Infinity];

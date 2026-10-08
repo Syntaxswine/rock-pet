@@ -12,7 +12,7 @@ import { look, act, history, newLog } from '../src/rock.mjs';
 import { RULES } from '../src/rules.mjs';
 
 const DAY = 24 * HOUR;
-const T = Date.UTC(2026, 9, 6); // October: no rock moves by itself
+const T = Date.UTC(2026, 9, 6); // October: no ice
 const FULL = [['feed', 4], ['clean', 1], ['pet', 10]];
 const opts = now => ({ now, host: 'rock.test' });
 const grid = text => text.split('\n').slice(0, W);
@@ -61,6 +61,20 @@ test('moss grows on a rock nobody comes to, and any visit brushes it off', () =>
   assert.equal(moss(grid(act(log, 'pet', opts(T + 40 * HOUR)).text).slice(1, 6)), 0, 'a visit brushes it off');
 });
 
+test('moss shows as many tufts wherever the rock has moved, at the edge of the grid too', () => {
+  // Alone 13, 25 and 49 hours: 2, 4 and 7 tufts, on every drawing at every spot of its room.
+  for (const [hours, tufts] of [[13, 2], [25, 4], [49, 7]]) {
+    const s = { ...born(T - 41 * DAY), t: T, lastCare: T - hours * HOUR, visits: 90 };
+    for (const [name, d] of Object.entries(DRAWINGS)) {
+      const { min, max } = roomOf(d);
+      for (let dx = min; dx <= max; dx++) {
+        const g = grid(render(s, { now: T, host: 'h', drawing: d, place: { dx, from: null, furrow: false } }));
+        assert.equal(moss(g.slice(1, 6)), tufts, `${name} at ${dx}, alone ${hours}h:\n${g.slice(1, 6).join('\n')}`);
+      }
+    }
+  }
+});
+
 test('verified host downtime grows no moss: it pauses moss as it pauses everything else', () => {
   // A full visit, then the host down for 50h (credited), then a look an hour after it came back.
   const visit = { t: T + HOUR, acts: FULL };
@@ -92,9 +106,10 @@ test('a grave keeps the moss of its last days alone, and greens over: a week, a 
   assert.equal(fed.dead.cause, 'hungry');
   assert.deepEqual([0, 7 * DAY, 30 * DAY, 90 * DAY].map(d => at(fed, d)), [0, 4, 5, 6]);
   const drawn = d => grid(look(newLog(T), opts(lonely.dead.t + d)).text).slice(1, 6);
-  // Where it lies (it wandered before it died): a side of moss past the grid's edge isn't drawn.
+  // Where it lies (it wandered before it died): moss grows on the cells the grid shows there, so
+  // past its edge it takes the next ones, up to all there are.
   const d = DRAWINGS[DRAWING], dx = whereAt(newLog(T), lonely.dead.t, d).dx;
-  const shown = n => mossCells(d.front).slice(0, n).filter(([, c]) => c + dx >= 0 && c + dx < W).length;
+  const shown = n => Math.min(n, mossCells(d.front).filter(([, c]) => c + dx >= 0 && c + dx < W).length);
   assert.deepEqual([0, 7 * DAY, 30 * DAY, 90 * DAY].map(day => moss(drawn(day))), [3, 4, 5, 6].map(l => shown(TUFTS[l])));
   for (const [r, row] of d.front.entries()) for (const [c, cell] of [...row].entries()) if (cell === 'E') assert.equal(drawn(0)[r][c + dx], 'x', 'crosses for eyes');
 });
@@ -198,6 +213,15 @@ test('every drawing is well formed', () => {
   }
 });
 
+// The cells a base swept as it slid, a column at a time, from `from` to `dx`, less those it covers
+// now: where its furrow should lie (worked out here, not with the screen's own formula).
+function swept(base, from, dx) {
+  const left = base.search(/\S/), right = base.trimEnd().length - 1, cells = new Set();
+  for (let x = from; x !== dx; x += Math.sign(dx - from)) for (let c = left + x; c <= right + x; c++) cells.add(c);
+  for (let c = left + dx; c <= right + dx; c++) cells.delete(c);
+  return [...cells].sort((p, q) => p - q);
+}
+
 test('every drawing leaves its furrow on the ground its base slid off, between any two of its spots', () => {
   const s = { ...born(T), t: T, lastCare: T - HOUR, visits: 3, hunger: 2, happy: 6 };
   for (const [name, drawing] of Object.entries(DRAWINGS)) {
@@ -206,19 +230,18 @@ test('every drawing leaves its furrow on the ground its base slid off, between a
       if (from === dx) continue;
       const g = grid(render(s, { now: T, host: 'x', drawing, place: { dx, from, furrow: true } })).map(row => row.padEnd(W));
       const furrow = [...g[5]].flatMap((ch, c) => (ch === '~' ? [c] : []));
-      const [a, z] = dx > from ? [left + from, left + dx - 1] : [right + dx + 1, right + from];
-      assert.deepEqual(furrow, Array.from({ length: z - a + 1 }, (_, k) => a + k), `${name}, moved ${from}>${dx}: "${g[5]}"`);
+      assert.deepEqual(furrow, swept(base, from, dx), `${name}, moved ${from}>${dx}: "${g[5]}"`);
       assert.equal(g[5].slice(left + dx, right + dx + 1), base.slice(left), `${name}: its base is whole beside it`);
       assert.ok(!render(s, { now: T, host: 'x', drawing, place: { dx, from, furrow: false } }).includes('~'), `${name}: no furrow once it has gone`);
     }
   }
 });
 
-test('every drawing draws every rock whole: the eyes, the outline, an @ per mess, the trail beside its base', () => {
+test('every drawing draws every rock whole: the eyes, the outline, an @ per mess, the furrow beside its base', () => {
   for (const { log, now } of lives(150, 9)) {
     const s = replay(log, now);
     for (const [name, drawing] of Object.entries(DRAWINGS)) {
-      const p = whereAt(log, s.dead ? s.dead.t : now, drawing), dx = p.dx, furrow = !s.dead && furrowShows(p, now);
+      const p = whereAt(log, s.dead ? s.dead.t : now, drawing), dx = p.dx, furrow = !s.dead && furrowShows(log, p, now);
       const { min, max } = roomOf(drawing);
       assert.ok(dx >= min && dx <= max, `${name}: within its room`);
       const g = render(s, { now, host: 'x', drawing, place: { dx, from: p.from, furrow } }).split('\n').slice(0, W);

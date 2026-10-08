@@ -163,7 +163,7 @@ test('a grave eats nothing', () => {
 // The rock's box drawn into a bare grid, `dx` columns over, as render does.
 function boxed(s, now, pose, drawing, dx) {
   const g = Array.from({ length: W }, () => Array(W).fill(' '));
-  sprite(s, now, pose, drawing).forEach((row, r) => { for (let c = 0; c < W; c++) if (row[c] !== ' ' && c + dx >= 0 && c + dx < W) g[1 + r][c + dx] = row[c]; });
+  sprite(s, now, pose, drawing, [], dx).forEach((row, r) => { for (let c = 0; c < W; c++) if (row[c] !== ' ' && c + dx >= 0 && c + dx < W) g[1 + r][c + dx] = row[c]; });
   return g;
 }
 

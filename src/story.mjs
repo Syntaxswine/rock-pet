@@ -127,7 +127,7 @@ export function biography(log, s, now) {
   longest = Math.max(longest, activeElapsed(log, previous, end));
   const credited = (log.outages ?? []).reduce((sum, o) => sum + o.end - o.start, 0);
   const n = nature(log.born);
-  const slides = iceTimes(log.born, end).length;
+  const slides = iceTimes(log.born, end, log.outages ?? []).length;
   const m = marksOf(s);
   const lines = [
     'one rock, one shared life',

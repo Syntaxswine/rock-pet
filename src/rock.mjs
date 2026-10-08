@@ -29,12 +29,12 @@ function moment(log, now) {
 
 // What a screen of rock `s` at `t` shows besides the rock itself: its name, the verified downtime
 // its moss does not count, its ground (a grave's, as it was when it died), its meal, and where it
-// has wandered to (a grave where it died; the screen draws no furrow on a grave).
+// has moved to (a grave where it died; the screen draws no furrow on a grave).
 function seen(log, s, t) {
   const end = s.dead ? s.dead.t : t, place = whereAt(log, end, DRAWINGS[DRAWING]);
   return {
     name: log.name?.name ?? null, outages: log.outages ?? [], ground: groundAt(log, end), meal: mealAt(log, t),
-    place: { dx: place.dx, from: place.from, furrow: furrowShows(place, t) },
+    place: { dx: place.dx, from: place.from, furrow: furrowShows(log, place, t) },
   };
 }
 
@@ -72,7 +72,7 @@ export function creditOutage(log, outage, { now }) {
 export function look(log, { now, host }) {
   const t = moment(log, now);
   const s = rockAt(log, t);
-  const o = occasion(s, t);
+  const o = occasion(s, t, log.outages ?? []);
   const pose = o?.what === 'wall' ? 'away' : 'front';
   return { status: 200, text: render(s, { now: t, host, pose, ...seen(log, s, t) }) + remark(o) + `history: ${host}/history\n`, ...firstSight(log, s) };
 }

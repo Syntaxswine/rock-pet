@@ -69,10 +69,11 @@ export function fullCare(s) {
 /**
  * The rock's box: 5 rows of W characters, drawn at screen rows 1-5, from a drawing in
  * drawings.mjs. On its front go its eyes and the marks of its life (marks.mjs); facing the wall
- * (pose 'away') it shows its back. Moss grows on whichever side shows, `,` with every third `"`.
- * While it is hungry, either side is drawn faint.
+ * (pose 'away') it shows its back. Moss grows on whichever side shows, `,` with every third `"`,
+ * on the cells the grid shows with the box `dx` columns over, so a rock that has moved to the edge
+ * has as many tufts. While it is hungry, either side is drawn faint.
  */
-export function sprite(s, now, pose = 'front', drawing = DRAWINGS[DRAWING], outages = []) {
+export function sprite(s, now, pose = 'front', drawing = DRAWINGS[DRAWING], outages = [], dx = 0) {
   const rows = rowsOf(s, pose, drawing);
   const b = rows.map(row => row.padEnd(W).split(''));
   const eye = eyes(s)[0];
@@ -81,7 +82,8 @@ export function sprite(s, now, pose = 'front', drawing = DRAWINGS[DRAWING], outa
     const m = marksOf(s);
     for (const [row, col, mark] of [...drawing.veins.slice(0, m.veins), ...drawing.polish.slice(0, m.polish), ...drawing.crystals.slice(0, m.crystals)]) b[row][col] = mark;
   }
-  for (const [i, [row, col]] of mossCells(rows).slice(0, MOSS_CELLS[mossAt(s, now, outages)]).entries()) b[row][col] = i % 3 === 2 ? '"' : ',';
+  const shown = mossCells(rows).filter(([, col]) => col + dx >= 0 && col + dx < W);
+  for (const [i, [row, col]] of shown.slice(0, MOSS_CELLS[mossAt(s, now, outages)]).entries()) b[row][col] = i % 3 === 2 ? '"' : ',';
   return b.map(row => row.join(''));
 }
 
@@ -116,7 +118,14 @@ export function render(s, { now, host, pose = 'front', name = null, drawing = DR
   else { put(0, 0, hunger); put(0, W - happy.length, happy); }
   const { dx, from } = place;
   const rows = rowsOf(s, pose, drawing);
-  sprite(s, now, pose, drawing, outages).forEach((row, r) => { for (let c = 0; c < W; c++) if (row[c] !== ' ' && c + dx >= 0 && c + dx < W) g[1 + r][c + dx] = row[c]; });
+  // Its room keeps the rock on the grid, and its moss keeps to the cells there, so nothing is clipped.
+  sprite(s, now, pose, drawing, outages, dx).forEach((row, r) => {
+    for (let c = 0; c < W; c++) {
+      if (row[c] === ' ') continue;
+      if (c + dx < 0 || c + dx >= W) throw new Error(`the rock drawn off the grid, at column ${c + dx}`);
+      g[1 + r][c + dx] = row[c];
+    }
+  });
   // Its food beside it while it eats, and its mouth.
   if (meal && !s.dead) drawMeal(g, meal, rows, drawing.front.findIndex(row => row.includes('E')), dx, pose);
   // The ground it sits on, which shows the care it has been given more of.

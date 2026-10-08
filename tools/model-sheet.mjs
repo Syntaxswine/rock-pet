@@ -49,20 +49,23 @@ const keptLog = until => {
 };
 const seenAt = (log, t, drawing = DRAWINGS[DRAWING]) => {
   const p = whereAt(log, t, drawing);
-  return [replay(log, t), { now: t, drawing, place: { dx: p.dx, from: p.from, furrow: furrowShows(p, t) }, meal: mealAt(log, t) }];
+  return [replay(log, t), { now: t, drawing, place: { dx: p.dx, from: p.from, furrow: furrowShows(log, p, t) }, meal: mealAt(log, t) }];
 };
-// Its first moves of the day after T, each seen five minutes after it was made, so its furrow shows.
+// Its first moves of a day, each seen five minutes after it was made, so its furrow shows: the
+// first day after T on which they include a walk to its food, so the sheet shows both kinds.
 function aDayOfMoves(n) {
-  const day = Math.ceil(T / DAY) * DAY, log = keptLog(day + DAY), out = [];
-  for (let t = day; out.length < n && t < day + DAY; t += 60_000) {
-    const p = whereAt(log, t, DRAWINGS[DRAWING]);
-    if (p.at === t) out.push([`${new Date(t).toISOString().slice(11, 16)} ${p.why === 'food' ? 'to food' : p.why}`, ...seenAt(log, t + 5 * 60_000)]);
+  for (let day = Math.ceil(T / DAY) * DAY; ; day += DAY) {
+    const log = keptLog(day + DAY), out = [];
+    for (let t = day; out.length < n && t < day + DAY; t += 60_000) {
+      const p = whereAt(log, t, DRAWINGS[DRAWING]);
+      if (p.at === t) out.push([`${new Date(t).toISOString().slice(11, 16)} ${p.why === 'food' ? 'to food' : p.why}`, ...seenAt(log, t + 5 * 60_000)]);
+    }
+    if (out.some(([label]) => label.endsWith('to food'))) return out;
   }
-  return out;
 }
 // Its first morning on the ice after T, seen that evening.
 function onTheIce() {
-  const t = iceTimes(T - 41 * DAY, T + 120 * DAY).find(at => at > T) + 9 * HOUR;
+  const t = iceTimes(T - 41 * DAY, T + 120 * DAY, []).find(at => at > T) + 9 * HOUR;
   return seenAt(keptLog(t), t);
 }
 
@@ -138,8 +141,8 @@ export function sheet() {
     row([2, 3, 4, 8].map(x => [`${x} times`, grid(...kept({ pet: x }))])),
     'its ground forms over two weeks: petted at 8 times its need, at 2, 7, 10 and 14 days old',
     row([2, 7, 10, 14].map(d => [`${d} days`, grid(...kept({ pet: 8 }, d))])),
-    'where it is: it wanders along its ground every few hours, and goes to its food. A day of its\n' +
-      'moves, each five minutes after it made it, with the furrow it left',
+    'where it is: about once in four hours it moves along its ground, to its food if it has just\n' +
+      'been fed. A day of its moves, each five minutes after it made it, with the furrow it left',
     row(aDayOfMoves(4).map(([label, s, o]) => [label, grid(s, o)])),
     'its days: the wall, and an evening after it slid on the ice',
     row([

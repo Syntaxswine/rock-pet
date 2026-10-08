@@ -186,19 +186,19 @@ export function replay(log, now) {
 }
 
 /**
- * The rock at each of `times`, which must be in time order: for each, exactly what replay(log, t)
- * gives, from one pass over the log rather than one replay per moment. For its character, which
- * asks how it was at moments of its own, such as when it might wander (wander.mjs). The pass
- * keeps the state as of each visit, as replay does, and takes each moment from a copy, so the
- * arithmetic is replay's to the last bit: splitting the flow at more moments would round
- * differently. Reads the log only.
+ * Replay as a cursor: a function that gives, for each moment it is asked about, exactly what
+ * replay(log, t) gives, from one pass over the log rather than one replay per moment. The moments
+ * must come in time order. For its character, which asks how it was at moments of its own, such as
+ * when it might wander (wander.mjs), and only at the ones it needs. It keeps the state as of each
+ * visit, as replay does, and takes each moment from a copy, so the arithmetic is replay's to the
+ * last bit: splitting the flow at more moments would round differently. Reads the log only.
  */
-export function statesAt(log, times) {
+export function replayer(log) {
   validateOutages(log);
   const outages = log.outages ?? [];
-  const s = born(log.born), out = [];
+  const s = born(log.born);
   let i = 0, last = log.born, prev = -Infinity;
-  for (const t of times) {
+  return t => {
     if (!(t >= prev)) throw new Error(`moments out of time order at ${t}`);
     prev = t;
     for (; i < log.visits.length && log.visits[i].t <= t; i++) {
@@ -211,7 +211,6 @@ export function statesAt(log, times) {
     }
     const then = { ...s };
     if (!then.dead) advance(then, t, outages);
-    out.push(then);
-  }
-  return out;
+    return then;
+  };
 }

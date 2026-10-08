@@ -112,7 +112,7 @@ export function groundAt(log, end) {
 /**
  * Draw `ground` into the grid `g` (rows of single characters) around a rock drawn from `rows`
  * (its drawing's front or back), `dx` columns from where it began. Call it after the rock and
- * before its trail and the messes, which lie on top. It draws on bare cells, with two
+ * before its furrow and the messes, which lie on top. It draws on bare cells, with two
  * exceptions: sand covers the outline of the rock's base (its corners, then all of it; marks
  * and moss there still show), and a footprint on a raked line becomes a stone.
  */

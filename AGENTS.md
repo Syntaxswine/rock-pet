@@ -17,7 +17,7 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 | Piece | What it does |
 |---|---|
 | `src/rules.mjs` | The decided numbers, in one frozen object. |
-| `src/engine.mjs` | `replay(log, now)`: the rock's state at any moment from its event log, in continuous time, closed-form between events. Death is the first moment a 48h clock ran out. `statesAt(log, times)` gives replay's states at many moments in one pass. |
+| `src/engine.mjs` | `replay(log, now)`: the rock's state at any moment from its event log, in continuous time, closed-form between events. Death is the first moment a 48h clock ran out. `replayer(log)` gives replay's state at moment after moment, in time order, from one pass. |
 | `src/screen.mjs` | The 12x12 grid and the named lines. |
 | `src/parse.mjs` | Action bodies such as `feed x4 clean pet x10`. |
 | `src/log.mjs` | The log's format: the birth, each visit, its name once given, and a death line once anyone has seen the rock dead. Parsing checks shape and refuses anything else. |
@@ -30,7 +30,7 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 | `src/marks.mjs` | The marks its life leaves: moss while nobody comes and on a grave; veins, polish and crystals, kept for life. |
 | `src/ground.mjs` | Its personality, drawn as the ground around it: sand (feed), one to three raked lines (clean) and footprints (pet), each as large as that care's weighted share stands above the least-given one's. Bare when its care is balanced, as when the act line's suggestion is followed every 3 to 10 hours. Follows the care visit by visit: a level holds until its trace falls 0.02 below it. It forms over its first two weeks of life (downtime excluded). |
 | `src/meal.mjs` | Its meals: for an hour after a feed, its food beside it (`#`, then `+` half eaten) and its mouth opening and shutting, minute by minute. Drawn only. |
-| `src/wander.mjs` | Where it is: it wanders along its ground once in each four hours, goes to its food, rests an hour after it moves and while it eats, holds still at an extreme or while the host is down, and lies where it died. The ice slides it on a few winter mornings. Drawn only. |
+| `src/wander.mjs` | Where it is: one chance to move in each four hours, which a feed takes to send it to its food, or else its own minute to wander. It rests an hour of its life after it moves, doesn't wander off while it eats, holds still at an extreme or while the host is down, and lies where it died. The ice slides it on a few winter mornings. `movesOf` lists its moves; `whereAt` is the last. Drawn only. |
 | `src/drawings.mjs` | The drawings it can have, for the owner to choose from (`DRAWING`, the pip, small enough to wander), each with its back, its faint front and back for when it is hungry, and its mark slots. |
 | `src/name.mjs` | Its name: one word, given once, never twice. |
 | `tools/model-sheet.mjs` | Every face, mark, pose, meal, hunger, ground, move and drawing, drawn by the real renderer. CHARACTER.md shows its output, and a test fails if the two differ. |
@@ -52,8 +52,12 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
   - 385 after one of 1,000 days.
 
   On those worst screens the host appears once (the act line), so each character beyond 15 adds a byte, and a host of up to 20 characters fits. Looks and accepted visits are held under 450 bytes. The largest known, which a test builds from real lives, are a reply of 427 and a look of 429 (after 1,000 days of downtime) with a 15-character host. Each extra character adds up to 3, so a host of up to 21 characters keeps those under 450 too. `node tools/sizes.mjs <host length>` samples for others. A longer host needs the bounds raised. Error replies add their error line and go to the sender alone (CHARACTER.md, "Size, and staying the same").
-- **Freeze the character's formulas once hosted:** its kind, days, moves, visitors, mark thresholds, how its care becomes its ground, its meals' timing, the hunger from which it is drawn faint, and where it wanders. Each is computed again from the log on every request, so a change would rewrite a living rock's past. If one must change, version it like `RULES.version` (CHARACTER.md, "Size, and staying the same").
-- **Keep the state, not just the log.** Every local request re-reads and replays the whole log, about 2 ms per 1,000 visits: 1 ms for the engine's replay and the parse, and about as much again for the ground, which follows the care visit by visit (measured 2026-10-07). That is fine for a local rock and wrong for a hosted one: keep the replayed state in the Durable Object (or a checkpoint row) and replay only what follows it. The checkpoint must hold the ground too, as `groundAt` has it after the last visit: the three levels and the three care totals. And it must hold the time of the latest feed, which `mealAt` reads for a meal still going, and where it is: its spot, its last move (from where, when, and why) and until when it rests, since `whereAt` follows its moves from its birth. Credit for an outage only ever comes after the latest event, so it never changes what an earlier visit settled.
+- **Freeze the character's formulas once hosted:** its kind, days, moves, visitors, mark thresholds, how its care becomes its ground, its meals' timing, the hunger from which it is drawn faint, and where it moves (its chances, rests and spots, which its drawing's room sets). Each is computed again from the log on every request, so a change would rewrite a living rock's past. If one must change, version it like `RULES.version` (CHARACTER.md, "Size, and staying the same").
+- **Keep the state, not just the log.** Every local request re-reads and replays the whole log, about 2 ms per 1,000 visits: 1 ms for the engine's replay and the parse, and about as much again for the ground, which follows the care visit by visit (measured 2026-10-07). Where it is adds about 4 ms per 1,000 days of its age, since `movesOf` follows its moves from its birth, and about 0.2 ms per 1,000 visits. A look at a rock kept daily for 1,000 days went from 2.9 to 7.8 ms, and one with 144,000 visits from 215 to 355 ms (measured 2026-10-08). That is fine for a local rock and wrong for a hosted one: keep the replayed state in the Durable Object (or a checkpoint row) and replay only what follows it.
+  - The checkpoint must hold the ground too, as `groundAt` has it after the last visit: the three levels and the three care totals.
+  - It must hold the time of the latest feed, which `mealAt` reads for a meal still going.
+  - It must hold where it is: its spot, its last move (from where, when, and why), the midnight the ice rests it until, the four hours whose chance it has had, and its latest feed. Take it as of the latest logged event, not at a look: crediting an outage removes the wander minutes the outage covers.
+  - Credit for an outage only ever comes after the latest event, so it never changes what an earlier visit settled.
 
 ## Invariants (must hold; these are the reasons the design is the way it is)
 Status in brackets: what the local build does today.
@@ -126,7 +130,7 @@ Status in brackets: what the local build does today.
     - It wanders along its ground every few hours, goes to its food, and leaves a furrow `~` behind it for a while (CHARACTER.md, "Where it is").
     - Its eyes follow its mood, and are `x  x` when it is dead.
     - On its wall day a look draws it from behind.
-    - Moss, veins, polish, crystals and a trail mark its life (CHARACTER.md).
+    - Moss, veins, polish and crystals mark its life (CHARACTER.md).
     - The ground at its base and in front of it shows its personality: sand, raked lines, footprints (CHARACTER.md, "Its ground").
     - For an hour after a feed its food lies beside its face, `#` then `+`, and its mouth opens and shuts (CHARACTER.md, "Its meals").
     - From hunger 7 it is drawn faint, in dotted lines, until a feed brings it below 7 (CHARACTER.md, "When it is hungry").

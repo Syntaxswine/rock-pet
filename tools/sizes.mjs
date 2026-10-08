@@ -81,7 +81,7 @@ for (let i = 0; i < lives; i++) {
     const now = log.visits.at(-1).t + Math.floor(rnd() * 40 * HOUR);
     const s = replay(log, now);
     if (s.dead) continue;
-    const o = occasion(s, now), pose = o?.what === 'wall' ? 'away' : 'front';
+    const o = occasion(s, now, log.outages ?? []), pose = o?.what === 'wall' ? 'away' : 'front';
     const views = [{ s, meal: mealAt(log, now), pose, tail: remark(o), what: 'a look' }];
     for (const body of BODIES) {
       const afterLog = { ...log, visits: [...log.visits, { t: now, acts: parseActions(body).acts }] }, after = replay(afterLog, now);

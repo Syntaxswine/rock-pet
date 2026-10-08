@@ -30,7 +30,7 @@ const D = DRAWINGS[DRAWING];
 const EYE_ROW = D.front.findIndex(r => r.includes('E')); // a box row; the screen row is one more
 const faceOf = (eye, faintly = false) => (faintly ? D.faint : D).front[EYE_ROW].replaceAll('E', eye);
 const BASE_LEFT = D.front[4].search(/\S/), BASE_RIGHT = D.front[4].trimEnd().length - 1;
-const baseAt = row => row.search(/[^ .,"~]/); // where a base row's outline starts, past moss, sand and trail
+const baseAt = row => row.search(/[^ .,"~]/); // where a base row's outline starts, past moss, sand and furrow
 // Where the game draws the rock with this log at t (wander.mjs), a row of its drawing moved there,
 // and a screen's rock rows (2-5) without the furrow of its last move.
 const dxOf = (log, t) => { const s = replay(log, t); return whereAt(log, s.dead ? s.dead.t : t, D).dx; };
@@ -137,7 +137,7 @@ test('it faces the wall on its weekday, for someone who only looks; care turns i
   assert.equal(quirks(r.text).length, 1);
   assert.ok(!r.text.includes('wall'), r.text);
   const wednesday = T + 30 * HOUR, cared = { ...log, visits: [...log.visits, { t: T + 28 * HOUR, acts: FULL }] };
-  assert.equal(occasion(replay(cared, wednesday), wednesday), null);
+  assert.equal(occasion(replay(cared, wednesday), wednesday, []), null);
   assert.equal(grid(look(cared, opts(wednesday)).text)[1 + EYE_ROW], shift(faceOf('^'), dxOf(cared, wednesday)), 'the next day it faces out');
   // At an extreme it does nothing odd, on any day.
   const floor = replay(newLog(T), Infinity).sorrowSince;
@@ -151,25 +151,30 @@ test('on a few winter mornings the ice slides it to another spot, and its furrow
   let slides = 0;
   for (let i = 0; i < 60; i++) {
     const b = Date.UTC(2026, 10, 1) + i * 3_333_333;
-    for (const t of iceTimes(b, b + 150 * DAY)) {
+    for (const t of iceTimes(b, b + 150 * DAY, [])) {
       slides++;
       const month = new Date(t).getUTCMonth();
       assert.ok(month === 11 || month <= 1, `only in winter, not month ${month}`);
       assert.equal(t % DAY, 10 * HOUR, 'at 10:00 UTC, late morning by its own clock');
       assert.ok(Math.floor(t / DAY) > Math.floor(b / DAY), 'not on the day it was born');
-      assert.ok(slidToday(b, t) && !slidToday(b, t - 1) && slidToday(b, t + 13 * HOUR) && !slidToday(b, t + 14 * HOUR), 'that day, from 10:00');
+      assert.ok(slidToday(b, t, []) && !slidToday(b, t - 1, []) && slidToday(b, t + 13 * HOUR, []) && !slidToday(b, t + 14 * HOUR, []), 'that day, from 10:00');
     }
   }
   assert.ok(slides > 150 && slides < 450, `${slides} slides over 60 winters (about 270 expected)`);
   // On the screen: a rock kept every 8h, on a morning it slid.
   const b = Date.UTC(2026, 10, 1);
   const care = until => { const v = []; for (let at = b + HOUR; at < until; at += 8 * HOUR) v.push({ t: at, acts: FULL }); return v; };
-  const t = iceTimes(b, b + 120 * DAY).find(at => ![7, 30, 100].includes(Math.floor((at - b) / DAY)));
+  const t = iceTimes(b, b + 120 * DAY, []).find(at => ![7, 30, 100].includes(Math.floor((at - b) / DAY)));
   const log = { ...newLog(b), visits: care(t + 15 * HOUR) };
   const before = whereAt(log, t - 1, D), after = whereAt(log, t, D);
   assert.notEqual(after.dx, before.dx, 'the ice always takes it somewhere else');
   assert.deepEqual([after.why, after.at, after.from], ['ice', t, before.dx]);
-  const furrow = after.dx > after.from ? [BASE_LEFT + after.from, BASE_LEFT + after.dx - 1] : [BASE_RIGHT + after.dx + 1, BASE_RIGHT + after.from];
+  // Its furrow: the cells its base swept, sliding a column at a time, less those it covers now.
+  const swept = new Set();
+  for (let x = after.from; x !== after.dx; x += Math.sign(after.dx - after.from)) for (let c = BASE_LEFT + x; c <= BASE_RIGHT + x; c++) swept.add(c);
+  for (let c = BASE_LEFT + after.dx; c <= BASE_RIGHT + after.dx; c++) swept.delete(c);
+  const furrow = [Math.min(...swept), Math.max(...swept)];
+  assert.equal(swept.size, furrow[1] - furrow[0] + 1, 'one stretch');
   for (const later of [MIN, 9 * HOUR, 14 * HOUR - MIN]) {
     const g = grid(look(log, opts(t + later)).text).map(row => row.padEnd(W));
     assert.equal(whereAt(log, t + later, D).dx, after.dx, 'it rests where the ice left it, all that day, fed or not');
@@ -179,11 +184,11 @@ test('on a few winter mornings the ice slides it to another spot, and its furrow
   }
   assert.deepEqual(quirks(look(log, opts(t + 2 * HOUR)).text), ['quirk: it moved this morning. no one saw it go.']);
   const next = whereAt(log, t + 14 * HOUR, D);
-  assert.equal(furrowShows(next, t + 14 * HOUR), next.at > t && next.at > t + 14 * HOUR - HOUR, 'the next day, only a fresh move shows a furrow');
+  assert.equal(furrowShows(log, next, t + 14 * HOUR), next.at > t && next.at > t + 14 * HOUR - HOUR, 'the next day, only a fresh move shows a furrow');
   // It does not move after it dies: its grave stays where it died, with no furrow.
   let gone = b;
   const graveOf = g => replay(newLog(g), Infinity);
-  while (iceTimes(gone, graveOf(gone).dead.t + 120 * DAY).length === iceTimes(gone, graveOf(gone).dead.t).length) gone += 3 * HOUR;
+  while (iceTimes(gone, graveOf(gone).dead.t + 120 * DAY, []).length === iceTimes(gone, graveOf(gone).dead.t, []).length) gone += 3 * HOUR;
   const grave = graveOf(gone), still = whereAt(newLog(gone), grave.dead.t, D).dx;
   for (const later of [HOUR, 30 * DAY, 120 * DAY]) {
     const g = grid(look(newLog(gone), opts(grave.dead.t + later)).text);
@@ -193,7 +198,7 @@ test('on a few winter mornings the ice slides it to another spot, and its furrow
 });
 
 test('birthdays: a week, thirty days, a hundred, then each year on the date', () => {
-  const at = (b, t) => occasion({ ...born(b), t, lastCare: t - HOUR }, t);
+  const at = (b, t) => occasion({ ...born(b), t, lastCare: t - HOUR }, t, []);
   const day = (b, t, o) => {
     assert.deepEqual(at(b, t), o);
     assert.deepEqual(at(b, t + DAY - 1), o, 'all that day');
@@ -256,7 +261,7 @@ test('a well-kept rock has something to say on about a quarter of looks', () => 
     const log = { ...newLog(b), visits: visits.filter(v => v.t <= now) };
     if (inDanger(replay(log, now))) continue;
     looks++;
-    const o = occasion(replay(log, now), now);
+    const o = occasion(replay(log, now), now, log.outages ?? []);
     if (o) { spoke++; said[o.what] = (said[o.what] ?? 0) + 1; }
     assert.equal(quirks(look(log, opts(now)).text).length, o ? 1 : 0);
   }
@@ -304,13 +309,13 @@ test('a look or a visit stays small', () => {
 function sendings(log, now, body = null) {
   const s = replay(log, now);
   const visited = body && { ...log, visits: [...log.visits, { t: now, acts: parseActions(body).acts }] };
-  const seen = visited ? replay(visited, now) : s, o = visited ? null : occasion(s, now);
+  const seen = visited ? replay(visited, now) : s, o = visited ? null : occasion(s, now, log.outages ?? []);
   const tail = visited ? reaction(visited, s, seen) : remark(o);
   return (host, drawing, ground, place) => render(seen, {
     now, host, pose: o?.what === 'wall' ? 'away' : 'front', name: log.name?.name ?? null, drawing, outages: log.outages ?? [], ground, meal: mealAt(visited || log, now), place,
   }) + tail + `history: ${host}/history\n`;
 }
-const placeOf = (log, now, drawing) => { const p = whereAt(log, now, drawing); return { dx: p.dx, from: p.from, furrow: furrowShows(p, now) }; };
+const placeOf = (log, now, drawing) => { const p = whereAt(log, now, drawing); return { dx: p.dx, from: p.from, furrow: furrowShows(log, p, now) }; };
 // The largest over every drawing, every mix of ground levels, and every place its room allows, with
 // no furrow or with the longest (from the far end of its room).
 const largestOf = (send, host) => {
@@ -345,13 +350,16 @@ test('the largest look and reply known, each from a real life, stay under 450 up
   const b2 = 1671131460000, now2 = 1765484241974, last2 = 1765418373895, left = newLog(b2);
   for (let t = b2 + HOUR; t < last2 - 8 * HOUR; t += 8 * HOUR) left.visits.push({ t, acts: t > last2 - HALF ? [['feed', 4], ['pet', 10]] : FULL_ });
   left.visits.push({ t: last2, acts: [['feed', 2], ['pet', 10]] });
-  assert.deepEqual(occasion(replay(left, now2), now2), { what: 'sailed' });
-  // The same kind of look, 1,000 days of credited host downtime later: "last care 1001d ago".
-  const b3 = 1675651980000, now3 = 1767386806976, last3 = 1680835980000, gone = newLog(b3);
+  assert.deepEqual(occasion(replay(left, now2), now2, []), { what: 'sailed' });
+  // The same kind of look, 1,000 days of credited host downtime later: "last care 1001d ago". The
+  // host is back at 00:59 on the icy morning, since the ice doesn't slide it while the host is down,
+  // and the look comes half an hour after the slide.
+  const b3 = 1675651980000, now3 = 1767349800000, last3 = 1680835980000, gone = newLog(b3);
   for (let t = b3 + HOUR; t < last3 - 8 * HOUR; t += 8 * HOUR) gone.visits.push({ t, acts: FULL_ });
   gone.visits.push({ t: last3, acts: [['feed', 2], ['pet', 10]] });
-  const outage = creditOutage(gone, { start: 1680851811056, end: 1767356797978, evidence: 'host-1' }, { now: 1767356797978 });
+  const outage = creditOutage(gone, { start: 1680851811056, end: 1767315540000, evidence: 'host-1' }, { now: 1767315540000 });
   const down = { ...gone, outages: [outage] };
+  assert.deepEqual(occasion(replay(down, now3), now3, down.outages), { what: 'sailed' });
   const [a, z, d] = [[427, 423], [427, 416], [429, 418]];
   const cases = [['a reply', sendings(kept, now1, 'feed'), a], ['a look', sendings(left, now2), z], ['a look after downtime', sendings(down, now3), d]];
   // What they compose is what the game sends.
@@ -379,7 +387,7 @@ test('the character only reads the rock: drawing it and describing it never chan
     const s = freeze(replay(log, now));
     const before = JSON.stringify(s);
     for (const pose of ['front', 'away']) render(s, { now, host: 'x', pose, ground: groundAt(log, now), meal: mealAt(log, now) });
-    remark(occasion(s, now));
+    remark(occasion(s, now, log.outages ?? []));
     mossAt(s, now);
     reaction(log, s, s);
     assert.equal(JSON.stringify(s), before);

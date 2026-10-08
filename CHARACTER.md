@@ -241,18 +241,18 @@ its ground forms over two weeks: petted at 8 times its need, at 2, 7, 10 and 14 
 |            |  |            |  |            |  |   :        |
 |            |  |            |  |            |  |            |
 
-where it is: it wanders along its ground every few hours, and goes to its food. A day of its
-moves, each five minutes after it made it, with the furrow it left
+where it is: about once in four hours it moves along its ground, to its food if it has just
+been fed. A day of its moves, each five minutes after it made it, with the furrow it left
 
-01:32 wander    05:50 wander    07:05 to food   10:02 wander
-|1          6|  |3          3|  |0         10|  |1          9|
+07:05 to food   08:41 wander    14:13 wander    18:23 wander
+|0         10|  |1          9|  |3          5|  |1          9|
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
-| .'---.     |  |     .'---. |  |   .'---.   |  |.'---.      |
-| (^  ^)     |  |     (o  o) |  |   (^  ^)#  |  |(^  ^)      |
-| '*---'~    |  | ~~~~'*---' |  |   '*---'~~ |  |'*---'~~~   |
+|     .'---. |  |   .'---.   |  |      .'---.|  |    .'---.  |
+|     (^  ^)#|  |   (^  ^)   |  |      (^  ^)|  |    (^  ^)  |
+|  ~~~'*---' |  |   '*---'~~ |  |   ~~~'*---'|  |    '*---'~~|
 |            |  |            |  |            |  |            |
-|        @   |  |        @   |  |            |  |            |
+|            |  |            |  |        @   |  |            |
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
 |            |  |            |  |            |  |            |
@@ -476,7 +476,7 @@ The owner's idea (2026-10-08): "the food could be # and there could be a simple 
 | 60 on | gone | |
 
 - **Where:** just past the end of its face row, on its right, or on its left when it has wandered to where that row reaches the grid's right edge. Its mouth is the end of the row on that side, opening toward the food: `<#`, or `#>`.
-- **It stays by its food** while it eats: for the hour after a feed it doesn't wander off ("Where it is").
+- **It stays by its food** while it eats: for the hour after a feed it doesn't wander off ("Where it is"). Only a new feed can send it on, to its new food, or the ice slide it, food and all.
 - **One frame per request.** An agent sees one screen at a time, so a meal plays out across looks. The reply to a feed always shows the mouth open, since the meal begins in its minute 0. On a busy rock, looks a few minutes apart catch it chewing.
 - **Every feed starts one,** whatever the feed did: a rock that wasn't hungry still eats what it is given. Other care leaves a meal going, and a new feed starts a new meal.
 - **It counts the time it lives,** so verified host downtime pauses a meal, as it pauses moss.
@@ -501,20 +501,25 @@ From hunger 7 on the screen the rock is drawn faint, in dotted lines, until a fe
 
 ## Where it is
 
-The owner's call (2026-10-08): "the pet should wander around the screen even without food. not nonstop, just regularly." It wanders along its ground, left and right. It doesn't go up and down the screen, because below it lie its personality's traces and its messes.
+The owner's call (2026-10-08): "the pet should wander around the screen even without food. not nonstop, just regularly." It moves along its ground, left and right. It doesn't go up and down the screen, because below it lie its personality's traces and its messes.
 
-| what moves it | when | where to |
+**One move in four hours.** Each four hours of UTC time, counted from 00:00, gives it one chance to move. The first of these to find it free takes it:
+
+| its chance | when | where to |
 |---|---|---|
-| wandering | once in each four hours of UTC time, at a minute of its own | a spot of its own, sometimes where it already is |
-| its food | at a feed | the spot its food fell on |
-| the ice | on a few winter mornings ("Its days") | always somewhere else |
+| its food | a feed | the spot its food fell on |
+| wandering | at a minute of its own, unless it is eating | a spot of its own |
 
-- **It rests** for an hour after it moves, and for the hour after a feed, while it eats. Its food then falls beside it where it is.
-- **After the ice** it stays where it slid for the rest of that day.
-- **About six moves a day,** kept every 8 hours: its wanders, and the walks to its food. Between them it is still.
-- **Its furrow,** `~`, is the ground its base slid off, beside it. It shows for an hour after a wander or a walk to its food, and for the rest of that day after the ice.
-- **At an extreme it holds still:** it doesn't wander or go to its food. Only the ice may move it then. A rock that has stopped wandering is in trouble.
-- **While the host is down** it doesn't wander, since its time doesn't pass.
+The spot may be where it already is, and then it stays put. Either way the chance is used: however often it is fed, it moves once in four hours at most. A feed that comes after that, or while it rests, drops its food beside it where it is.
+
+- **Free** means not resting and not at an extreme. It rests for an hour of its life after it moves.
+- **It doesn't wander off from its food** while it eats ("Its meals"). Only a new feed can send it on, to its new food.
+- **About five moves a day, whatever its visitors do,** and still in between. On the pip that is 4.8 to 5.4 a day, measured for bots that feed every 10 to 90 minutes and for full care every 3 hours, every 8 or once a day. A bot that feeds all the time takes nearly every chance with a feed, while a rock kept every 8 hours goes to its food about one move in four. The lump, with three spots, moves about four times a day.
+- **The ice** is the exception: on a few winter mornings ("Its days") it slides it to another spot, whatever else, its food with it. It stays there for the rest of that UTC day.
+- **At the same moment,** the ice comes first, then a feed, then its own minute.
+- **Its furrow,** `~`, is the ground its base slid off, beside it. It shows for an hour of its life after a wander or a walk to its food, and for the rest of that day after the ice.
+- **At an extreme it holds still,** starving or in sorrow: it doesn't wander or go to its food. Only the ice may move it then. A rock that has stopped moving is in trouble.
+- **While the host is down nothing moves it,** no wandering and no ice, since its time doesn't pass. Its rest, its meal and its furrow count only the time it lives, so downtime ends none of them.
 - **A grave lies where it died.**
 - **The same for everyone:** it all follows from the log and the clock (`src/wander.mjs`). It follows the rock's moves from its birth, and the engine's state at each.
 - **Its room:** the pip has seven spots, three columns either way of the middle. Wider drawings have less: the hoodoo and the pebble two each way, the sett two to its left and one to its right, the others one.
@@ -529,7 +534,7 @@ The owner asked to see new drawings. They are all in the model sheet above, in t
 4. redraw README's mock;
 5. in this page, move "(drawn now)" in the table below, update the drawing's bytes under "What it costs", and close the open call.
 
-No other test depends on which drawing it is, except for the hoodoo: its eyes sit side by side, so its screens print `tt` and `xx`. The test that every word the screen prints is reserved (`test/name.test.mjs`) then asks for those two to join the reserved words in `src/name.mjs`.
+No other test depends on which drawing it is, except for the hoodoo: its eyes sit side by side, so its screens print `tt` and `xx`. The test that every word the screen prints is reserved (`test/name.test.mjs`) then asks for those two to join the reserved words in `src/name.mjs`. The tests of where it goes hold the pip by name, so they pass whichever is drawn; but its room is part of where it goes, so choosing another drawing once it is hosted would move its past ("Staying the same").
 
 | drawing | what it is | bytes |
 |---|---|---|
@@ -560,7 +565,7 @@ Each stays within columns 1–10. The pip is drawn because it is small: it has r
 | a vein `/` in it | a close call | care ends a stretch at an extreme with a day or more of it at one; it counts when the last extreme ends | never; three are drawn, and `/history` counts the rest |
 | polish `'` on it | it has been petted a lot | after 500 points of happiness given by petting, and again after 3,000 | never |
 | crystals `*` in it | it has been fed a lot | after 100 meals, and again after 500 | never |
-| a furrow `~` beside it, the ground its base slid off | it moved | an hour after a wander or a walk to its food; the rest of that UTC day after the ice | then |
+| a furrow `~` beside it, the ground its base slid off | it moved | when it moves | an hour of its life after a wander or a walk to its food; at the next UTC midnight after the ice |
 
 A meal is one feed's worth of hunger taken away. Both polish and crystals count only what the care did, not what was asked for: a pet at full happiness, or a feed when it isn't hungry, adds nothing. So spamming the verbs can't polish it, and neither can a crowd.
 
@@ -688,6 +693,7 @@ This rock may do the same:
 - on a winter morning, December to February, about one day in twenty, at 10:00 UTC. That is late morning by the rock's own clock; at the Playa itself, late morning is about 19:00 UTC.
 - to another spot along its ground, where it stays the rest of that day with its furrow `~` beside it (real trails are long furrows in the playa's mud, often curving);
 - even at an extreme, when it does nothing else;
+- never while the host is down, when its time doesn't pass;
 - never after it dies.
 
 The rest of the time it wanders on its own ("Where it is").
@@ -747,7 +753,7 @@ Ordinary care that changes no stats remains quiet but still contributes to perso
 - **Line weight:** it is drawn faint while it is hungry.
 - **Repeated lines:** cleaning rakes one, two, then three lines.
 - **Messes:** they stay `@`, as they always were.
-- **Moving around the screen:** "the pet should wander around the screen even without food. not nonstop, just regularly." It wanders every few hours and goes to its food, drawn as the pip, small enough to have room.
+- **Moving around the screen:** "the pet should wander around the screen even without food. not nonstop, just regularly." It moves about once in four hours, to its food or on its own, drawn as the pip, small enough to have room.
 
 **Open:**
 1. **The drawing.** It is `DRAWING` in `src/drawings.mjs`: the pip since 2026-10-08, picked so it can wander. The others are still there to choose from.
@@ -775,6 +781,7 @@ The costs come from these places:
 - **The look line:** 38 bytes when there is one, on about a quarter of looks, so about 10 bytes a look overall.
 - **The ground:** nothing while its care is balanced, as it is when the act line's suggestion is followed every 3 to 10 hours. On the pip at home: 1 byte for sand at its foot (3 deeper); 9, 24 or 36 for one, two or three raked lines; 9, 13 or 22 for two, three or five footprints; up to 37 for two traces together. On any drawing, wherever it has wandered, 42 at most.
 - **A meal:** 1 byte, or none, for the hour after a feed.
+- **Wandering:** nothing, on average: from 0.2 bytes less to 0.4 more a look, since a rock moved left saves the spaces that one moved right adds. At most 9 bytes, or 21 with five footprints, on the pip three columns right. Its furrow shows on about a fifth of looks.
 - **Hunger:** nothing. A faint rock fills the same cells as a solid one.
 
 The largest screen is 380 bytes: the hoodoo, wandered two columns right, with the longest name, ten messes (the most a living rock carries without host downtime), both danger lines, a top full of moss, a four-digit age, three raked lines and sand at its foot, drawn faint. The pip, drawn now, comes to 371 at most. Before the raked lines and the wandering it was 369.
@@ -789,7 +796,7 @@ A look or a reply adds lines that depend on the rock's life: a reaction, a day's
 - **The largest known**, with a 15-character host and every drawing, ground and spot forced on:
   - a reply of 427 bytes: a starving rock kept by a bot that only pets, then fed;
   - a look of 427: unnamed, three years old, on a morning it slid on the ice, with moss and messes on it;
-  - a look of 429 after 1,000 days of credited downtime ("last care 1001d ago"). Downtime adds nothing to a reply, which always says "last care just now". Its eleventh mess comes only at an extreme, which has no naming line or remark.
+  - a look of 429 after 1,000 days of credited downtime ("last care 1001d ago"), the host back before 10:00 on an icy morning, since the ice doesn't slide it while the host is down. Downtime adds nothing to a reply, which always says "last care just now". Its eleventh mess comes only at an extreme, which has no naming line or remark.
 - **A test builds each of these from a real life** and holds them under 450 bytes (440 before the raked lines) with a host of up to 21 characters.
 - **More host:** a look or a reply prints the host up to three times, so each extra character adds up to 3 bytes. At 22 characters the look after downtime reaches 450.
 - **`node tools/sizes.mjs <host length>`** samples real lives in the same way, to try other hosts. It samples, so it can miss the worst.
@@ -800,11 +807,11 @@ So a host of up to 20 characters keeps every screen within 390 bytes, and every 
 **Staying the same.** Once the rock is hosted, these formulas must not change, or a living rock's past would change under it:
 - its kind;
 - its weekday;
-- when it slides on the ice, and where it wanders: its four-hour blocks and their minutes, its spots, and how long it rests;
+- when it slides on the ice, and where it moves: its four-hour chances and their minutes, the order of a tie, its spots, how long it rests, and which drawing it is, since the drawing's room sets its spots;
 - its visitors;
 - the thresholds for veins, polish and crystals;
 - how its care becomes its ground: the levels, how slowly worn ground fades, and the two weeks it takes to form (and the personality weights it reads, which are PERSONALITY.md's);
 - its meals: their hour, its halves and its minutes;
 - the hunger from which it is drawn faint.
 
-Every one is computed again from the log on every request. If one has to change, it needs a version, the way `RULES.version` guards the rules. `test/days.test.mjs` pins one rock's winter of slides and a day of its wandering, so a change can't happen by accident.
+Every one is computed again from the log on every request. If one has to change, it needs a version, the way `RULES.version` guards the rules. `test/days.test.mjs` pins one rock's winter of slides and where each took it, and two days of its moves with a walk to its food among them, so a change can't happen by accident.

@@ -72,18 +72,18 @@ test('its days come in order: a birthday, then a move, then the wall, then a vis
       if (Math.floor((t - b) / DAY) in { 7: 1, 30: 1, 100: 1 }) continue;
       const wall = new Date(t).getUTCDay() === nature(b).wallDay;
       if (!wall) continue;
-      if (both === null && slidToday(b, t)) both = [b, t];
-      if (wallAndVisitor === null && hash(b, 6, dayOf(t)) % 8 === 0 && !slidToday(b, t)) wallAndVisitor = [b, t];
+      if (both === null && slidToday(b, t, [])) both = [b, t];
+      if (wallAndVisitor === null && hash(b, 6, dayOf(t)) % 8 === 0 && !slidToday(b, t, [])) wallAndVisitor = [b, t];
     }
   }
   assert.ok(both && wallAndVisitor, 'found both coincidences');
-  const at = ([b, t]) => occasion({ ...born(b), t, lastCare: t - HOUR }, t)?.what;
+  const at = ([b, t]) => occasion({ ...born(b), t, lastCare: t - HOUR }, t, [])?.what;
   assert.equal(at(both), 'sailed', 'a move beats the wall');
   assert.equal(at(wallAndVisitor), 'wall', 'the wall beats a visitor');
   const birthdayAndMove = (() => {
     for (let b = Date.UTC(2026, 10, 1); b < Date.UTC(2026, 10, 1) + 2000 * DAY; b += 13 * HOUR) {
       const t = b + 30 * DAY + 13 * HOUR;
-      if (slidToday(b, t)) return [b, t];
+      if (slidToday(b, t, [])) return [b, t];
     }
   })();
   assert.equal(at(birthdayAndMove), 'birthday', 'a birthday beats a move');
@@ -91,7 +91,7 @@ test('its days come in order: a birthday, then a move, then the wall, then a vis
 
 test('a year birthday can fall in a different calendar year than the one before it', () => {
   const b = Date.UTC(2026, 11, 31, 12);
-  const at = t => occasion({ ...born(b), t, lastCare: t - HOUR }, t);
+  const at = t => occasion({ ...born(b), t, lastCare: t - HOUR }, t, []);
   assert.deepEqual(at(Date.UTC(2027, 11, 31, 12)), { what: 'birthday', years: 1 });
   assert.deepEqual(at(Date.UTC(2028, 0, 1, 6)), { what: 'birthday', years: 1 }, 'its first birthday runs on into New Year');
   assert.notEqual(at(Date.UTC(2028, 0, 1, 12))?.what, 'birthday');
@@ -106,7 +106,7 @@ test('it slides on the ice in each of December, January and February, about one 
       const t = Math.floor(b / DAY) * DAY + d * DAY + 12 * HOUR;
       const month = new Date(t).getUTCMonth();
       if (month === 11 || month <= 1) winterDays++;
-      if (slidToday(b, t)) { slides++; months.add(month); }
+      if (slidToday(b, t, [])) { slides++; months.add(month); }
     }
   }
   assert.deepEqual([...months].sort((a, z) => a - z), [0, 1, 11]);
@@ -115,7 +115,7 @@ test('it slides on the ice in each of December, January and February, about one 
   for (let i = 0; ; i++) {
     const b = Date.UTC(2026, 10, 1) + i * 3_600_000;
     const t = Date.UTC(2027, 2, 1);
-    if (iceTimes(b, t).length !== 1) continue;
+    if (iceTimes(b, t, []).length !== 1) continue;
     const visits = [];
     for (let at = b + HOUR; at < t; at += 8 * HOUR) visits.push({ t: at, acts: FULL });
     assert.match(history({ ...newLog(b), visits }, opts(t)).text, /^slid on the ice: once$/m);
@@ -130,7 +130,7 @@ test('a small visitor comes on about one day in ten (one in eight, less the days
     for (let d = 1; d <= 120; d++) {
       const t = b + d * DAY + (d % 4) * 5 * HOUR;
       days++;
-      if (occasion({ ...born(b), t, lastCare: t - HOUR }, t)?.what === 'visitor') visitors++;
+      if (occasion({ ...born(b), t, lastCare: t - HOUR }, t, [])?.what === 'visitor') visitors++;
     }
   }
   assert.ok(visitors / days > 0.095 && visitors / days < 0.117, `${visitors} visitors in ${days} days`);
@@ -138,23 +138,30 @@ test('a small visitor comes on about one day in ten (one in eight, less the days
 
 test('these formulas are frozen: the same births slide and wander the same (CHARACTER.md, "Size and staying the same")', () => {
   const b = Date.UTC(2026, 10, 1, 9, 30);
-  assert.deepEqual(iceTimes(b, b + 130 * DAY).map(t => new Date(t).toISOString().slice(0, 10)), PINNED_SLIDES);
-  // Kept every 8h, its moves through its tenth day: where it went, and why.
+  assert.deepEqual(iceTimes(b, b + 130 * DAY, []).map(t => new Date(t).toISOString().slice(0, 10)), PINNED_SLIDES);
+  // Kept every 8h, on the pip (its room is part of the formula): its moves on its ninth and tenth
+  // days, where it went and why, a walk to its food among them; and where the ice took it.
   const log = newLog(b);
-  for (let t = b + HOUR; t < b + 11 * DAY; t += 8 * HOUR) log.visits.push({ t, acts: FULL });
+  for (let t = b + HOUR; t < b + 130 * DAY; t += 8 * HOUR) log.visits.push({ t, acts: FULL });
   const moves = [];
-  for (let t = b + 9 * DAY, last = null; t < b + 10 * DAY; t += 60_000) {
-    const p = whereAt(log, t, D);
+  for (let t = b + 8 * DAY, last = null; t < b + 10 * DAY; t += 60_000) {
+    const p = whereAt(log, t, DRAWINGS.pip);
     if (p.at !== last && p.at === t) moves.push(`${new Date(t).toISOString().slice(11, 16)} ${p.from}>${p.dx} ${p.why}`);
     last = p.at;
   }
   assert.deepEqual(moves, PINNED_WANDERS);
+  const slides = iceTimes(b, b + 130 * DAY, []).map(t => {
+    const p = whereAt(log, t, DRAWINGS.pip);
+    assert.deepEqual([p.why, p.at], ['ice', t]);
+    return `${new Date(t).toISOString().slice(0, 10)} ${whereAt(log, t - 1, DRAWINGS.pip).dx}>${p.dx}`;
+  });
+  assert.deepEqual(slides, PINNED_ICE);
 });
 test('the visitors are frozen too: the same birth has the same visitors on the same days', () => {
   const b = Date.UTC(2026, 10, 1, 9, 30), seen = [];
   for (let d = 1; d <= 60; d++) {
     const t = b + d * DAY + 2 * HOUR;
-    const o = occasion({ ...born(b), t, lastCare: t - HOUR }, t);
+    const o = occasion({ ...born(b), t, lastCare: t - HOUR }, t, []);
     if (o?.what === 'visitor') seen.push(`${new Date(t).toISOString().slice(0, 10)} ${remark(o).slice(7, -1)}`);
   }
   assert.deepEqual(seen, PINNED_VISITORS);
@@ -168,7 +175,13 @@ const PINNED_VISITORS = [ // b = 2026-11-01T09:30Z
 const PINNED_SLIDES = [ // b = 2026-11-01T09:30Z: the same days its slides came on before it wandered
   '2026-12-01', '2026-12-05', '2026-12-08', '2026-12-19', '2026-12-20', '2027-01-17', '2027-02-09', '2027-02-17',
 ];
-const PINNED_WANDERS = ["10:11 -1>-2 wander","12:39 -2>0 wander","19:50 0>1 wander","23:52 1>-1 wander","02:04 -1>3 wander","05:06 3>2 wander"];
+const PINNED_ICE = [ // the same rock kept every 8h: where each slide took it on the pip
+  '2026-12-01 -3>0', '2026-12-05 -1>-2', '2026-12-08 -1>-2', '2026-12-19 -1>-2', '2026-12-20 1>-1', '2027-01-17 2>-1', '2027-02-09 0>-1', '2027-02-17 1>0',
+];
+const PINNED_WANDERS = [ // its ninth and tenth days, on the pip
+  '10:30 1>-2 food', '12:46 -2>1 wander', '16:42 1>-2 wander', '21:27 -2>-1 wander', '00:00 -1>3 wander', '06:24 3>-1 wander',
+  '10:11 -1>-2 wander', '12:39 -2>0 wander', '23:52 0>-1 wander', '02:04 -1>3 wander', '05:06 3>2 wander',
+];
 
 test('its days are the same in every time zone', () => {
   // The same probes, run by four processes in four zones: a local-time slip anywhere differs.
@@ -183,7 +196,7 @@ test('its days are the same in every time zone', () => {
       const log = { born: b, rules: 1, visits: [] };
       for (let t = b + HOUR; t < b + 30 * 24 * HOUR; t += 8 * HOUR) log.visits.push({ t, acts: [['feed', 4], ['clean', 1], ['pet', 10]] });
       for (let h = 0; h < 24 * 30; h += 7) out.push(whereAt(log, b + h * HOUR, DRAWINGS[DRAWING]).dx);
-      const at = t => out.push(JSON.stringify(occasion({ ...born(b), t, lastCare: t - HOUR }, t)), slidToday(b, t));
+      const at = t => out.push(JSON.stringify(occasion({ ...born(b), t, lastCare: t - HOUR }, t, [])), slidToday(b, t, []));
       for (let h = 0; h < 24 * 120; h += 5) at(b + h * HOUR);
       for (const k of [1, 2]) for (const h of [-13, -1, 0, 1, 11, 23, 25]) at(Date.UTC(2026 + k, 10, 1) + i * 37 * HOUR + i * 7919 + h * HOUR);
     }
@@ -198,8 +211,8 @@ test('its days are the same in every time zone', () => {
 test('/history counts only the moves made before death (review round 3)', () => {
   let b = Date.UTC(2026, 10, 1);
   const graveOf = g => replay(newLog(g), Infinity);
-  while (iceTimes(b, graveOf(b).dead.t + 120 * DAY).length === iceTimes(b, graveOf(b).dead.t).length) b += 3 * HOUR;
-  const slides = iceTimes(b, graveOf(b).dead.t).length;
+  while (iceTimes(b, graveOf(b).dead.t + 120 * DAY, []).length === iceTimes(b, graveOf(b).dead.t, []).length) b += 3 * HOUR;
+  const slides = iceTimes(b, graveOf(b).dead.t, []).length;
   assert.match(history(newLog(b), { now: graveOf(b).dead.t + 120 * DAY }).text, new RegExp(`^slid on the ice: ${slides === 1 ? 'once' : `${slides} times`}$`, 'm'));
 });
 

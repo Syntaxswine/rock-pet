@@ -12,7 +12,7 @@ import { RULES } from '../src/rules.mjs';
 import { act, look, name, newLog } from '../src/rock.mjs';
 
 const DAY = 24 * HOUR;
-const T = Date.UTC(2026, 10, 16, 14, 5); // a November afternoon: no winter move, no trail
+const T = Date.UTC(2026, 10, 16, 14, 5); // a November afternoon: no ice
 // Lifetime care in proportion to each daily need (10/3 feeds, 2 cleans, 4.8 pets): together these
 // sit at the triangle's center, and each alone at a corner (PERSONALITY.md's own example).
 const NEED = { feed: 25, clean: 15, pet: 36 };
@@ -33,6 +33,14 @@ function pathRows(dx, steps, messes) {
   for (const [r, c] of PATH.slice(0, steps)) g[r][c + dx] = ':';
   for (const [r, c] of MESS_SPOTS.slice(0, messes)) g[r][c] = '@';
   return g.map(row => row.join('').trimEnd());
+}
+// The cells a base swept as it slid, a column at a time, from `from` to `dx`, less those it covers
+// now: where its furrow should lie (worked out here, not with the screen's own formula).
+function swept(base, from, dx) {
+  const left = base.search(/\S/), right = base.trimEnd().length - 1, cells = new Set();
+  for (let x = from; x !== dx; x += Math.sign(dx - from)) for (let c = left + x; c <= right + x; c++) cells.add(c);
+  for (let c = left + dx; c <= right + dx; c++) cells.delete(c);
+  return [...cells].sort((p, q) => p - q);
 }
 // One visit's acts for care totals, in words of at most 20.
 const acts = care => Object.entries(care).flatMap(([verb, n]) => Array.from({ length: Math.ceil(n / 20) }, (_, i) => [verb, Math.min(20, n - 20 * i)]));
@@ -244,25 +252,31 @@ test('the ground keeps a level reached between visits, as a look saw it, and los
   while (first < b + 14 * DAY && groundAt(log, first).pet === 0) first += 10 * 60_000;
   assert.ok(first < b + 14 * DAY, 'the path shows while the ground is still growing');
   assert.ok(first > log.visits.at(-1).t, 'reached between visits');
-  // Its first two footprint cells, wherever it has wandered to by then.
-  const prints = (text, lg, t) => { const dx = whereAt(lg, t, DRAWINGS[DRAWING]).dx; return grid(text).slice(6, 8).map(row => row.padEnd(W)).map((row, i) => row[[3, 4][i] + dx]); };
+  // Its first two footprint cells, wherever it has wandered to by then; a print a mess lies on
+  // can't be read, so the other must be (CHARACTER.md: "a mess may lie on its path").
+  const prints = (text, lg, t) => {
+    const dx = whereAt(lg, t, DRAWINGS[DRAWING]).dx, cells = grid(text).slice(6, 8).map(row => row.padEnd(W)).map((row, i) => row[[3, 4][i] + dx]);
+    assert.ok(cells.includes(':') || cells.includes(' '), `both prints under messes at ${new Date(t).toISOString()}`);
+    return cells.map(c => (c === '@' ? null : c));
+  };
+  const like = (got, want, what) => assert.deepEqual(got.map((c, i) => c ?? want[i]), want, what);
   const scaled = (visit, t) => tracesOf(careTotals({ visits: [...log.visits, visit] })).pet * (t - b) / (14 * DAY);
-  assert.deepEqual(prints(look(log, { now: first + HOUR - 60_000, host: 'h' }).text, log, first + HOUR - 60_000), [':', ':']);
+  like(prints(look(log, { now: first + HOUR - 60_000, host: 'h' }).text, log, first + HOUR - 60_000), [':', ':']);
   const r = act(log, 'feed x20 feed x10', { now: first + HOUR, host: 'h' });
   assert.equal(r.status, 200);
   const after = scaled(r.visit, first + HOUR);
   assert.ok(after > 0.28 && after < 0.3, `the trace after the meal: ${after}`);
-  assert.deepEqual(prints(r.text, { ...log, visits: [...log.visits, r.visit] }, first + HOUR), [':', ':'], 'the reply keeps the path the look showed');
+  like(prints(r.text, { ...log, visits: [...log.visits, r.visit] }, first + HOUR), [':', ':'], 'the reply keeps the path the look showed');
   // A heavier meal lowers it by more than 0.02: the path goes with that visit, and does not come
   // back until the growing trace reaches the level again, more than half a day later.
   const heavy = act(log, 'feed x20 clean x10', { now: first + HOUR, host: 'h' });
   const low = scaled(heavy.visit, first + HOUR);
   assert.ok(low < 0.28, `the trace after the heavier meal: ${low}`);
-  assert.deepEqual(prints(heavy.text, { ...log, visits: [...log.visits, heavy.visit] }, first + HOUR), [' ', ' '], 'the reply has lost the path');
+  like(prints(heavy.text, { ...log, visits: [...log.visits, heavy.visit] }, first + HOUR), [' ', ' '], 'the reply has lost the path');
   const later = { ...log, visits: [...log.visits, heavy.visit] };
   for (const hours of [3, 7, 12]) {
     assert.ok(scaled(heavy.visit, first + (1 + hours) * HOUR) < 0.3);
-    assert.deepEqual(prints(look(later, { now: first + (1 + hours) * HOUR, host: 'h' }).text, later, first + (1 + hours) * HOUR), [' ', ' '], `${hours}h on: not back before its trace is`);
+    like(prints(look(later, { now: first + (1 + hours) * HOUR, host: 'h' }).text, later, first + (1 + hours) * HOUR), [' ', ' '], `${hours}h on: not back before its trace is`);
   }
 });
 
@@ -331,7 +345,7 @@ test('the ground, drawn: the seven personalities and the first level of each car
   assert.deepEqual(sand(DRAWINGS.pebble), ["  .'----'.", '....----....', '............']);
 });
 
-test('the ground goes where the rock has moved, and a trail lies on top of it', () => {
+test('the ground goes where the rock has moved, and its furrow lies on top of it', () => {
   const right = at(1), left = at(-1);
   assert.deepEqual(groundRows(times({ feed: 3 }), DRAWINGS.lump, right)[0], ' .\\________/', 'sand at its foot, one column over');
   assert.deepEqual(groundRows(times({ feed: 3 }), DRAWINGS.lump, left)[0], '\\________/.');
@@ -344,23 +358,22 @@ test('the ground goes where the rock has moved, and a trail lies on top of it', 
   assert.deepEqual(groundRows(only('clean', 'pet'), DRAWINGS.pip, at(-3)).slice(1, 4), ['o-----------', '-o----------', ':'], 'its path, three columns the other way');
   // Its furrow lies over the sand: ~ on the ground its base slid off, never sand.
   for (const [drawing, from, dx] of [[DRAWINGS.lump, 0, 1], [DRAWINGS.lump, 0, -1], [DRAWINGS.pip, -3, 3], [DRAWINGS.pip, 2, -1]]) {
-    const base = drawing.front[4], left = base.search(/\S/), right = base.trimEnd().length - 1;
-    const [a, z] = dx > from ? [left + from, left + dx - 1] : [right + dx + 1, right + from];
+    const furrow = swept(drawing.front[4], from, dx);
     for (const care of [times({ feed: 4 }), only('feed')]) {
       const row = groundRows(care, drawing, at(dx, from))[0].padEnd(W);
-      for (let c = 0; c < W; c++) assert.equal(row[c] === '~', c >= a && c <= z, `moved ${from}>${dx}: "${row}"`);
+      for (let c = 0; c < W; c++) assert.equal(row[c] === '~', furrow.includes(c), `moved ${from}>${dx}: "${row}"`);
     }
   }
 });
 
-test("every drawing's back stands on its front's base, which the ground and the trail both read", () => {
+test("every drawing's back stands on its front's base, which the ground and the furrow both read", () => {
   for (const [name, drawing] of Object.entries(DRAWINGS)) assert.equal(drawing.back[4], drawing.front[4], name);
 });
 
 // The rock's box drawn into a bare grid, `dx` columns over, as render does.
 function boxed(s, now, pose, drawing, dx) {
   const g = Array.from({ length: W }, () => Array(W).fill(' '));
-  sprite(s, now, pose, drawing).forEach((row, r) => { for (let c = 0; c < W; c++) if (row[c] !== ' ' && c + dx >= 0 && c + dx < W) g[1 + r][c + dx] = row[c]; });
+  sprite(s, now, pose, drawing, [], dx).forEach((row, r) => { for (let c = 0; c < W; c++) if (row[c] !== ' ' && c + dx >= 0 && c + dx < W) g[1 + r][c + dx] = row[c]; });
   return g;
 }
 
