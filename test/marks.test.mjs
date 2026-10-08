@@ -209,11 +209,11 @@ test('every drawing leaves its trail beside its base on the day it moves, and no
         const log = { ...newLog(b), visits: visits(b).filter(v => v.t <= t) };
         const g = grid(render(replay(log, t), { now: t, host: 'x', drawing }));
         const trail = p.col > p.from ? [left + p.col - 1, left + p.col - 2] : [right + p.col + 1, right + p.col + 2];
-        const dots = trail.filter(c => c >= 0 && c < W).map(c => g[5][c]).join('');
-        assert.equal(dots, '.'.repeat(dots.length), `${name}, moved ${p.from}>${p.col}: "${g[5]}"`);
-        assert.ok(dots.length >= 1, `${name}: some room for a trail`);
+        const furrow = trail.filter(c => c >= 0 && c < W).map(c => g[5][c]).join('');
+        assert.equal(furrow, '~'.repeat(furrow.length), `${name}, moved ${p.from}>${p.col}: "${g[5]}"`);
+        assert.ok(furrow.length >= 1, `${name}: some room for a trail`);
         const next = grid(render(replay(log, t + DAY), { now: t + DAY, host: 'x', drawing }));
-        if (placeAt(b, t + DAY).from === null) assert.ok(!next[5].includes('.'), `${name}: gone the next day: "${next[5]}"`);
+        if (placeAt(b, t + DAY).from === null) assert.ok(!next[5].includes('~'), `${name}: gone the next day: "${next[5]}"`);
         seen[`${p.from}>${p.col}`] = true;
       }
     }
@@ -234,7 +234,7 @@ test('every drawing draws every rock whole: the eyes, the outline, an @ per mess
       for (const row of g) assert.ok(row.length <= W && row === row.trimEnd(), `${name}: "${row}"`);
       assert.equal(g.join('').split('@').length - 1, Math.min(s.messes, 16), `${name}: an @ per mess`);
       const base = drawing.front[4], left = base.search(/\S/) + dx, right = base.trimEnd().length - 1 + dx;
-      const beside = [g[5][left - 1], g[5][left - 2], g[5][right + 1], g[5][right + 2]].filter(c => c === '.').length;
+      const beside = [g[5][left - 1], g[5][left - 2], g[5][right + 1], g[5][right + 2]].filter(c => c === '~').length;
       assert.equal(beside > 0, !s.dead && from !== null, `${name}: a trail only the day it moved, and not on a grave:\n${g.join('\n')}`);
     }
   }

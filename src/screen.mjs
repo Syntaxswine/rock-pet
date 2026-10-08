@@ -7,6 +7,7 @@ import { HOUR, ceilingOf } from './engine.mjs';
 import { placeAt } from './character.mjs';
 import { mossAt, marksOf } from './marks.mjs';
 import { DRAWINGS, DRAWING, mossCells, MOSS_CELLS } from './drawings.mjs';
+import { drawGround } from './ground.mjs';
 
 export const W = 12; // the grid is W x W
 
@@ -82,22 +83,26 @@ const iso = t => new Date(t).toISOString();
  * 'away' only for a look on its day for facing the wall (story.mjs says so on the screen).
  * `name` is its name, if it has one (name.mjs); until then, while it is not at an extreme, a line
  * says how to give it one. `outages` is the log's verified host downtime, which moss does not
- * count. `drawing` is for showing the others (tools/model-sheet.mjs).
+ * count. `ground` is the levels of the ground around it, which shows its personality
+ * (groundAt in ground.mjs); without it the ground is bare. `drawing` is for showing the others
+ * (tools/model-sheet.mjs).
  */
-export function render(s, { now, host, pose = 'front', name = null, drawing = DRAWINGS[DRAWING], outages = [] }) {
+export function render(s, { now, host, pose = 'front', name = null, drawing = DRAWINGS[DRAWING], outages = [], ground = { feed: 0, clean: 0, pet: 0 } }) {
   const g = Array.from({ length: W }, () => Array(W).fill(' '));
   const put = (row, col, text) => { for (let i = 0; i < text.length; i++) g[row][col + i] = text[i]; };
   const hunger = String(shownHunger(s)), happy = String(shownHappy(s));
   if (s.dead) put(0, 0, `died: ${s.dead.cause}`);
   else { put(0, 0, hunger); put(0, W - happy.length, happy); }
-  // Where it has sailed to (it stops when it dies), and on the day it moved, its trail: two
-  // dots on the ground it slid across, beside its base.
+  // Where it has sailed to (it stops when it dies), and on the day it moved, its trail: the
+  // furrow it slid along, ~~ beside its base.
   const { col: dx, from } = placeAt(s.born, s.dead ? s.dead.t : now);
   sprite(s, now, pose, drawing, outages).forEach((row, r) => { for (let c = 0; c < W; c++) if (row[c] !== ' ' && c + dx >= 0 && c + dx < W) g[1 + r][c + dx] = row[c]; });
+  // The ground it sits on, which shows the care it has been given more of.
+  drawGround(g, ground, pose === 'away' ? drawing.back : drawing.front, dx);
   if (!s.dead && from !== null) {
     const base = drawing.front[4], left = base.search(/\S/), right = base.trimEnd().length - 1;
     const trail = dx > from ? [left + dx - 2, left + dx - 1] : [right + dx + 1, right + dx + 2];
-    for (const c of trail) if (c >= 0 && c < W) g[5][c] = '.';
+    for (const c of trail) if (c >= 0 && c < W) g[5][c] = '~';
   }
   for (const [row, col] of MESS_SPOTS.slice(0, s.messes)) g[row][col] = '@';
   const lines = g.map(row => row.join('').trimEnd());
@@ -114,8 +119,8 @@ export function render(s, { now, host, pose = 'front', name = null, drawing = DR
     if (s.starvingSince !== null) lines.push(`hunger: at 10 for ${hours(now - s.starvingSince)}h of ${R.graceH}`);
     lines.push(`${name ? `${name}  ` : ''}age ${span(now - s.born)}  now ${iso(now).slice(11, 16)}Z  last care ${ago(s.lastCare)}`);
     if (!name && s.sorrowSince === null && s.starvingSince === null) lines.push(`unnamed: POST ${host}/name  body: a one-word name`);
-    const care = fullCare(s);
-    lines.push(`act: POST ${host}/act  ${care ? `body e.g. ${care}` : 'nothing needed now (verbs: feed clean pet)'}`);
+    const body = fullCare(s);
+    lines.push(`act: POST ${host}/act  ${body ? `body e.g. ${body}` : 'nothing needed now (verbs: feed clean pet)'}`);
   }
   return lines.join('\n') + '\n';
 }

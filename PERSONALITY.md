@@ -2,7 +2,7 @@
 
 The rock's personality grows from three lifetime counters: accepted **feed**, **clean** and **pet** actions. `pet x5` contributes five pets. Extra care counts even when a need is already satisfied. Invalid requests, rejected visits after death, reads, time passing and host downtime contribute nothing. Counts are the accepted counts already in the event log, including its existing per-word cap of 20.
 
-These counters summarize personality; the event log is still needed for survival, outage auditing and biography dates. No new log format or migration is needed. A future hosted checkpoint can keep just `{ feed, clean, pet }` for this feature and call `addCare` for each newly accepted visit.
+These counters summarize personality; the event log is still needed for survival, outage auditing and biography dates. No new log format or migration is needed. A future hosted checkpoint can keep just `{ feed, clean, pet }` for this feature and call `addCare` for each newly accepted visit. (The screen's ground, which draws these shares, also keeps its three levels; see AGENTS.md, "Keep the state".)
 
 ## Weights
 
@@ -51,4 +51,4 @@ A newborn with zero care is **still forming**, with no plotted point; it has not
 - `personality(totals, dailyWeights?)` returns normalized shares, unit-width triangle coordinates, all seven blend weights and the strongest component.
 - `personalitySummary(profile)` provides a short description whose rounded percentages sum to 100.
 
-`story.mjs` uses the profile for care reactions and the biography. `rock.mjs` passes the log including the newly accepted visit to the reaction. Personality changes no survival rules. Claude's character design adds naming, physical marks and occasions alongside it. A care action at an already satisfied stat still changes these counters, but stays quiet except at visit milestones; its influence is visible in history and subsequent reactions.
+`story.mjs` uses the profile for care reactions and the biography. The screen draws its shares as the ground around the rock (`src/ground.mjs`; CHARACTER.md, "Its ground"). `rock.mjs` passes the log including the newly accepted visit to the reaction. Personality changes no survival rules. Claude's character design adds naming, physical marks and occasions alongside it. A care action at an already satisfied stat still changes these counters, but stays quiet except at visit milestones; its influence is visible in history, subsequent reactions and the ground on the screen.

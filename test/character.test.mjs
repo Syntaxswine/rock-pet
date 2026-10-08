@@ -26,7 +26,7 @@ const D = DRAWINGS[DRAWING];
 const EYE_ROW = D.front.findIndex(r => r.includes('E')); // a box row; the screen row is one more
 const faceOf = eye => D.front[EYE_ROW].replaceAll('E', eye);
 const BASE_LEFT = D.front[4].search(/\S/), BASE_RIGHT = D.front[4].trimEnd().length - 1;
-const baseAt = row => row.search(/[^ .,"]/); // where a base row's outline starts, past moss and trail
+const baseAt = row => row.search(/[^ .,"~]/); // where a base row's outline starts, past moss, sand and trail
 
 
 function mulberry(seed) {
@@ -167,10 +167,10 @@ test('it may move on a winter morning, by one column, and leaves a trail that da
   const g = grid(look(log, opts(t)).text);
   assert.equal(baseAt(g[5]), BASE_LEFT + p.col, `the base, at column ${BASE_LEFT + p.col}: "${g[5]}"`);
   const trail = p.col > p.from ? g[5].slice(Math.max(0, BASE_LEFT + p.col - 2), BASE_LEFT + p.col) : g[5].slice(BASE_RIGHT + p.col + 1, BASE_RIGHT + p.col + 3);
-  assert.match(trail, /^\.+$/, `the trail: "${g[5]}"`);
+  assert.match(trail, /^~+$/, `the trail: "${g[5]}"`);
   assert.deepEqual(quirks(look(log, opts(t)).text), ['quirk: it moved this morning. no one saw it go.']);
   const next = grid(look({ ...log, visits: care(t + 21 * HOUR) }, opts(t + 21 * HOUR)).text);
-  assert.equal(next[5].trim().startsWith('.') || next[5].endsWith('.'), placeAt(b, t + 21 * HOUR).from !== null, 'a trail only on the day it moved');
+  assert.equal(next[5].includes('~'), placeAt(b, t + 21 * HOUR).from !== null, 'a trail only on the day it moved');
   // It does not move after it dies: a rock that would have moved since, drawn where it died.
   let gone = b;
   const graveOf = g => replay(newLog(g), Infinity);
@@ -183,7 +183,7 @@ test('it may move on a winter morning, by one column, and leaves a trail that da
   let last = Date.UTC(2026, 11, 1);
   while (placeAt(last, graveOf(last).dead.t).from === null) last += HOUR;
   const tomb = graveOf(last);
-  assert.ok(!grid(look(newLog(last), opts(tomb.dead.t + MIN)).text)[5].includes('.'), 'no trail on a grave');
+  assert.ok(!grid(look(newLog(last), opts(tomb.dead.t + MIN)).text)[5].includes('~'), 'no trail on a grave');
 });
 
 test('birthdays: a week, thirty days, a hundred, then each year on the date', () => {
