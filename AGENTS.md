@@ -161,5 +161,6 @@ Status in brackets: what the local build does today.
 ## Working here
 - Commit identity: `StonePhilosopher <270513546+StonePhilosopher@users.noreply.github.com>`.
 - `node --test` must pass. `node tools/mutate.mjs` must catch every mutant; add one when you add a rule.
+- A test cleans up even when it fails. Await anything that can throw (a start, a request) inside the `try` whose `finally` closes the server and removes the temporary directory. A server's `onError` collects; it never throws, since a throw there leaves its request unanswered, the test never reaches its `finally`, and a plain `node --test` never ends. `node tools/mutate.mjs` keeps the suite's temporary directories inside its copy, and stops if the unmutated suite leaves one behind.
 - A new line for the rock goes in `src/story.mjs` and must pass the voice test. If the drawing changes, paste `node tools/model-sheet.mjs` into CHARACTER.md.
 - Keep `tools/rocksim.mjs` as the reference. If the rules change, change it and `src/rules.mjs` in the same commit (a test fails if they differ), and update the test vectors.
