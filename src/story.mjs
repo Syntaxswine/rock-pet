@@ -119,6 +119,7 @@ export function biography(log, s, now) {
   const balance = percentages(profile.shares);
   const end = s.dead?.t ?? now;
   let firstMeal = null, previous = log.born, longest = 0;
+  if (log.checkpoint) ({ firstMeal, previous, longest } = log.checkpoint.biography);
   for (const v of log.visits) {
     longest = Math.max(longest, activeElapsed(log, previous, v.t));
     previous = v.t;

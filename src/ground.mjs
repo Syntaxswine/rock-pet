@@ -89,6 +89,11 @@ export function groundOf(care, lived) {
 export function groundAt(log, end) {
   const ground = { feed: 0, clean: 0, pet: 0 };
   let care = { feed: 0, clean: 0, pet: 0 }, traces = tracesOf(care);
+  if (log.checkpoint) {
+    Object.assign(ground, log.checkpoint.ground);
+    care = { ...log.checkpoint.care };
+    traces = tracesOf(care);
+  }
   const settle = t => {
     const grown = grownBy(activeElapsed(log, log.born, t));
     for (const k of CARE_AXES) {

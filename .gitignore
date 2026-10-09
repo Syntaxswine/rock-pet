@@ -4,3 +4,10 @@ dist/
 .env
 .dev.vars
 data/
+
+.next/
+.openai/execution-profile.json
+.openai/sites-*.json
+.env.*
+!.env.example
+.sites-runtime/

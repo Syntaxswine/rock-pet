@@ -172,7 +172,9 @@ export function replay(log, now) {
   validateOutages(log);
   const outages = log.outages ?? [];
   const s = born(log.born);
-  let last = log.born;
+  if (log.checkpoint) Object.assign(s, structuredClone(log.checkpoint.engine));
+  if (log.checkpoint && now < s.t) throw new Error("time precedes checkpoint");
+  let last = s.t;
   for (const v of log.visits) {
     if (!(v.t >= last)) throw new Error(`visits out of time order at ${v.t}`);
     last = v.t;
@@ -197,7 +199,8 @@ export function replayer(log) {
   validateOutages(log);
   const outages = log.outages ?? [];
   const s = born(log.born);
-  let i = 0, last = log.born, prev = -Infinity;
+  if (log.checkpoint) Object.assign(s, structuredClone(log.checkpoint.engine));
+  let i = 0, last = s.t, prev = log.checkpoint ? s.t : -Infinity;
   return t => {
     if (!(t >= prev)) throw new Error(`moments out of time order at ${t}`);
     prev = t;

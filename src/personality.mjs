@@ -42,6 +42,7 @@ export function addCare(totals, acts) {
 /** Input is an accepted event log, not a hypothetical future visit schedule. */
 export function careTotals(log) {
   let totals = { feed: 0, clean: 0, pet: 0 };
+  if (log.checkpoint) totals = { ...log.checkpoint.care };
   for (const visit of log.visits) totals = addCare(totals, visit.acts);
   return totals;
 }

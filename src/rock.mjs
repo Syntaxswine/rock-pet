@@ -24,7 +24,7 @@ export const newLog = now => ({ born: now, rules: RULES.version, visits: [], die
 // clock set back before a recorded death cannot reach a time when the rock was alive.
 function moment(log, now) {
   if (log.rules !== RULES.version) throw new Error(`log written under rules v${log.rules}; this build runs v${RULES.version}`);
-  return Math.max(now, log.born, log.visits.at(-1)?.t ?? -Infinity, log.died?.t ?? -Infinity, log.outages?.at(-1)?.end ?? -Infinity, log.name?.t ?? -Infinity);
+  return Math.max(now, log.born, log.checkpoint?.engine.t ?? -Infinity, log.visits.at(-1)?.t ?? -Infinity, log.died?.t ?? -Infinity, log.outages?.at(-1)?.end ?? -Infinity, log.name?.t ?? -Infinity);
 }
 
 // What a screen of rock `s` at `t` shows besides the rock itself: its name, the verified downtime
@@ -42,7 +42,7 @@ function seen(log, s, t) {
 function rockAt(log, t) {
   const s = replay(log, t);
   if (s.dead && log.name?.t >= s.dead.t) throw new Error('the log contains a name at or after death');
-  if (s.visits !== log.visits.length) throw new Error('the log contains visits at or after death');
+  if (s.visits !== log.visits.length + (log.checkpoint?.engine.visits ?? 0)) throw new Error('the log contains visits at or after death');
   if (s.dead && log.outages?.some(o => o.start >= s.dead.t)) throw new Error('the log contains an outage at or after death');
   if (log.died && !(s.dead && s.dead.t === log.died.t && s.dead.cause === log.died.cause)) {
     throw new Error('the log records a death its visits do not produce');
@@ -57,7 +57,7 @@ const firstSight = (log, s) => (s.dead && !log.died ? { died: s.dead } : {});
 export function creditOutage(log, outage, { now }) {
   if (!isTime(now) || !outage || !isTime(outage.end) || outage.end > now) throw new Error('only a completed outage can be credited');
   if (log.died) throw new Error('a recorded death is permanent');
-  const last = Math.max(log.born, log.visits.at(-1)?.t ?? -Infinity, log.outages?.at(-1)?.end ?? -Infinity, log.name?.t ?? -Infinity);
+  const last = Math.max(log.born, log.checkpoint?.engine.t ?? -Infinity, log.visits.at(-1)?.t ?? -Infinity, log.outages?.at(-1)?.end ?? -Infinity, log.name?.t ?? -Infinity);
   if (outage.start < last) throw new Error('credit must follow the latest recorded event');
   const after = { ...log, outages: [...(log.outages ?? []), outage] };
   validateOutages(after);

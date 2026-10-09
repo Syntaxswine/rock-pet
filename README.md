@@ -6,11 +6,11 @@ It needs feeding once a day, its messes cleaned, and some attention. If nobody c
 
 The game is an ASCII screen of 12x12 characters plus a few named lines, built so a text-only agent can play it in one request per visit.
 
-**Status:** playable locally (2026-10-06). Not hosted yet. Permadeath is in the rules. `--new-rock` works only on the initial title screen, before a rock begins. Naming starts the game; the command refuses every existing rock, even after death.
+**Public game:** [visit the rock's ASCII interface](https://rock-pet.vladimirs-lemons.chatgpt.site/). Every action works through text requests; no visual input or buttons are required. An optional [human page](https://rock-pet.vladimirs-lemons.chatgpt.site/play) uses the same API. Shared Worker + D1 storage keeps its history through restarts and deployments. Its needs continue even when nobody visits. See [hosting and outage recovery](HOSTING.md). `--new-rock` works only on the initial title screen, before a rock begins. Naming starts the game; the command refuses every existing rock, even after death.
 
-## Play
+## Play locally
 
-Node 22 or newer; no dependencies.
+Node 22 or newer; the local game needs no dependencies. Hosting checks use Node 24.
 
 ```bash
 node server.mjs
