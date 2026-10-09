@@ -188,7 +188,7 @@ test('on a few winter mornings the ice slides it to another spot, and its furrow
     const marked = [...g[5]].flatMap((ch, c) => (ch === '~' ? [c] : []));
     assert.deepEqual(marked, Array.from({ length: furrow[1] - furrow[0] + 1 }, (_, k) => furrow[0] + k), `its furrow, the ground its base slid off: "${g[5]}"`);
   }
-  assert.deepEqual(quirks(look(log, opts(t + 2 * HOUR)).text), ['quirk: it moved this morning. no one saw it go.']);
+  assert.deepEqual(quirks(look(log, opts(t + 2 * HOUR)).text), ['quirk: it slid on the ice this morning.']);
   const next = whereAt(log, t + 14 * HOUR, D);
   assert.equal(furrowShows(log, next, t + 14 * HOUR), next.at > t && next.at > t + 14 * HOUR - HOUR, 'the next day, only a fresh move shows a furrow');
   // It does not move after it dies: its grave stays where it died, with no furrow.
@@ -350,26 +350,31 @@ test('the largest look and reply known, each from a real life, stay under 450 up
   for (let t = b1 + HOUR; t < last1 - 8 * HOUR; t += 8 * HOUR) kept.visits.push({ t, acts: FULL_ });
   kept.visits.push({ t: last1, acts: FULL_ });
   for (let t = last1 + HOUR; t <= now1 - 15 * MIN; t += 20 * MIN) kept.visits.push({ t, acts: [['pet', 10]] });
-  // A look: unnamed, about three years old, on a morning it slid on the ice (a 40-character line),
-  // 18 hours after a visit that fed it a little and petted it, its last cleans skipped, so two
-  // messes and moss are on it.
-  const b2 = 1671131460000, now2 = 1765484241974, last2 = 1765418373895, left = newLog(b2);
+  // A look: unnamed, about three years old, on a day it watches an ant carry a crumb past (the
+  // longest remark, 37 characters), 18 hours after a visit that fed it a little and petted it, its
+  // last cleans skipped, so two messes and moss are on it.
+  const ANT = 'quirk: it watches an ant carry a crumb past.\n';
+  const remarks = [{ what: 'sailed' }, { what: 'wall' }, ...[7, 30, 100].map(days => ({ what: 'birthday', days })),
+    ...Array.from({ length: 40 }, (_, i) => ({ what: 'birthday', years: i + 1 })), ...Array.from({ length: 8 }, (_, which) => ({ what: 'visitor', which }))].map(remark);
+  assert.equal(Math.max(...remarks.map(r => r.length)), ANT.length, 'no remark is longer than the ant');
+  const b2 = 1671131460000, now2 = 1766607441974, last2 = 1766541573895, left = newLog(b2);
   for (let t = b2 + HOUR; t < last2 - 8 * HOUR; t += 8 * HOUR) left.visits.push({ t, acts: t > last2 - HALF ? [['feed', 4], ['pet', 10]] : FULL_ });
   left.visits.push({ t: last2, acts: [['feed', 2], ['pet', 10]] });
-  assert.deepEqual(occasion(replay(left, now2), now2, []), { what: 'sailed' });
-  // The same kind of look after 1,166 days of credited host downtime ("last care 1166d ago"),
-  // found in review round 2: kept for 340 days, its last cleans skipped (two messes), last fed and
-  // petted at 16:49. The host goes down at 01:38, after the 00:00 mess, and is back at 09:25 on an
-  // icy morning, before the ice at 10:00, which doesn't slide it while the host is down; the look
-  // comes at 12:36, after the 12:00 mess. So four messes, moss after 12 hours of its life alone,
-  // and the morning's remark.
-  const b3 = 1667812192732, now3 = 1798029390112, last3 = 1697215750479, gone = newLog(b3);
+  assert.equal(remark(occasion(replay(left, now2), now2, [])), ANT);
+  // The same kind of look after 1,197 days of credited host downtime ("last care 1197d ago"),
+  // found in review round 2 and moved on to the ant's day: kept for 340 days, its last cleans
+  // skipped (two messes), last fed and petted at 16:49. The host goes down at 01:38, after the
+  // 00:00 mess, and is back at 09:25; the look comes at 12:36, after the 12:00 mess. So four
+  // messes, moss after 12 hours of its life alone, and the ant.
+  const b3 = 1667812192732, now3 = 1800707790112, last3 = 1697215750479, gone = newLog(b3);
   for (let t = b3 + HOUR; t < b3 + 340 * DAY; t += 8 * HOUR) gone.visits.push({ t, acts: t > b3 + 340 * DAY - HALF ? [['feed', 4], ['pet', 10]] : FULL_ });
   gone.visits.push({ t: last3, acts: [['feed', 4], ['pet', 10]] });
-  const outage = creditOutage(gone, { start: 1697247502683, end: 1798017935409, evidence: 'host-1' }, { now: 1798017935409 });
+  const outage = creditOutage(gone, { start: 1697247502683, end: 1800696335409, evidence: 'host-1' }, { now: 1800696335409 });
   const down = { ...gone, outages: [outage] };
-  assert.deepEqual([replay(down, now3).messes, occasion(replay(down, now3), now3, down.outages)], [4, { what: 'sailed' }]);
-  const [a, z, d] = [[427, 423], [427, 416], [433, 427]];
+  assert.deepEqual([replay(down, now3).messes, remark(occasion(replay(down, now3), now3, down.outages))], [4, ANT]);
+  // Until the slide's line went from 40 characters to 32 (2026-10-08), these looks were the
+  // largest on a morning it slid, at 427 and 433.
+  const [a, z, d] = [[427, 423], [424, 413], [430, 424]];
   const cases = [['a reply', sendings(kept, now1, 'feed'), a], ['a look', sendings(left, now2), z], ['a look after downtime', sendings(down, now3), d]];
   // What they compose is what the game sends.
   const host = 'rockpet.example';

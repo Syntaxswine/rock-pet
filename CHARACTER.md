@@ -679,7 +679,7 @@ A look on an ordinary day says nothing. A look on another kind of day adds one l
 | Occasion | Line | Share of looks in its first year (600 rocks) |
 |---|---|---|
 | its birthday: 7, 30 and 100 days, then every year | `it is one week old today.` | 1.0%: four days, then one a year |
-| it slid on the ice this morning | `it moved this morning. no one saw it go.` | 0.7% |
+| a morning it slid on the ice | `it slid on the ice this morning.` | 0.7% |
 | its wall day | `it is facing the wall today.` (drawn from behind) | 14.1% |
 | a small visitor | `it is sheltering a woodlouse.` | 10.5% |
 | an ordinary day | nothing | 73.8% |
@@ -796,10 +796,11 @@ The screen tests build each case on purpose, for every drawing at every spot its
 A look or a reply adds lines that depend on the rock's life: a reaction, a day's remark, the naming line.
 - **The largest known**, with a 15-character host and every drawing, ground and spot forced on:
   - a reply of 427 bytes: a starving rock kept by a bot that only pets, then fed;
-  - a look of 427: unnamed, three years old, on a morning it slid on the ice, with moss and messes on it;
-  - a look of 433 after 1,166 days of credited downtime ("last care 1166d ago"). It has four messes: two from skipped cleans, and two that fell on either side of the outage within its last 12 hours alive. It also has moss, and the morning's remark: the host was back before 10:00 on that icy morning, since the ice doesn't slide it while the host is down. Downtime adds nothing to a reply, which always says "last care just now". Its eleventh mess comes only at an extreme, which has no naming line or remark.
+  - a look of 424: unnamed, three years old, on a day it watches an ant carry a crumb past (the longest remark), with moss and messes on it;
+  - a look of 430 after 1,197 days of credited downtime ("last care 1197d ago"). It has four messes: two from skipped cleans, and two that fell on either side of the outage within its last 12 hours alive. It also has moss, and the ant. Downtime adds nothing to a reply, which always says "last care just now". Its eleventh mess comes only at an extreme, which has no naming line or remark.
+  - Until 2026-10-08 the slide's line was the longest remark, and these looks were largest on a morning it slid, at 427 and 433.
 - **A test builds each of these from a real life** and holds them under 450 bytes (440 before the raked lines) with a host of up to 20 characters.
-- **More host:** a look or a reply prints the host up to three times, so each extra character adds up to 3 bytes. At 21 characters the look after downtime reaches 451.
+- **More host:** a look or a reply prints the host up to three times, so each extra character adds up to 3 bytes. At 22 characters the look after downtime reaches 451.
 - **`node tools/sizes.mjs <host length>`** samples real lives in the same way, to try other hosts. It samples, so it can miss the worst.
 - **An error reply** adds its one error line and goes to the sender alone, so it isn't held to the bound.
 
