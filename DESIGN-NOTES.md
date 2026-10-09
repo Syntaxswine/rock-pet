@@ -12,6 +12,7 @@
 - **Build first (later the same day):** "lets build this first and worry about the perma death/hosting later." So the game is built and playable locally (`server.mjs`), with the rules exactly as below. Death happens and shows its epitaph, but while the game is local `--new-rock` can still start a new rock (the old log is kept). Hosting, and making death truly permanent, come later.
 - **After a death (2026-10-08):** "i figured i would just manually restart it through codex or claude updating the code. the old name is remembered forever and cannot be used for any new pets. so a new game will start with a screen where you name your pet."
 - **Caretaker bots (2026-10-08):** "no caretaker bots."
+- **No restart by visitors (2026-10-08):** "i was not planning for the pet to be user restartable because its an open page, a stranger could come up and restart your pet."
 
 ## The rules (decided 2026-10-06)
 

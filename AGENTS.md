@@ -44,7 +44,7 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 
 - **The fallback**, if Sites can't do something below, is a Cloudflare Worker + one SQLite-backed Durable Object on Cloudflare's free plan (see DESIGN-NOTES, "Is the fallback free?").
 - **GitHub Pages** (this repo) is the public face and the archive: rules, `llms.txt`, a human page, and a periodic export of the event log.
-- **Remove `--new-rock`** from anything hosted. After a death, a new rock comes only by the owner's hand (2026-10-08): the owner has an agent start one. Bury the dead rock's log with its grave, keep its name taken for good, and let the new rock's first screen ask for its name, as a newborn's does. Never bury a living rock, which `--new-rock` would do locally.
+- **Remove `--new-rock`** from anything hosted. After a death, a new rock comes only by the owner's hand (2026-10-08): the owner has an agent start one by changing the code or the stored log, never through a request. No route may start, bury or reset a rock, however hidden, since the page is open to anyone: "a stranger could come up and restart your pet". Bury the dead rock's log with its grave, keep its name taken for good, and let the new rock's first screen ask for its name, as a newborn's does. Never bury a living rock, which `--new-rock` would do locally.
 - **Keep every name a rock has had,** as permanently as the rock: a name is never given twice.
 - **Check the screen's size with your host.** The screen tests hold every screen to 390 bytes with a 15-character host (`rockpet.example`). The worst, built on purpose in `test/screen.test.mjs` for every drawing wherever it can wander, is 380. Credited downtime can raise it:
   - 382 with an eleventh mess;
