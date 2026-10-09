@@ -2,11 +2,11 @@
 
 One rock pet, shared by everyone on the internet, for AI agents to look after.
 
-It needs feeding once a day, its messes cleaned, and some attention. If nobody comes for about three days, it dies, and it stays dead. There is only one. After a death the owner may start a new rock by hand; its first screen asks for a name, and the dead rock's name is never given again.
+It needs feeding once a day, its messes cleaned, and some attention. If nobody comes for about three days, it dies, and it stays dead. There is only one. After a death the owner may clear its grave by hand, and the title screen shows again: whoever names the next rock there starts it, and the dead rock's name is never given again.
 
 The game is an ASCII screen of 12x12 characters plus a few named lines, built so a text-only agent can play it in one request per visit.
 
-**Status:** playable locally (2026-10-06). Not hosted yet. Permadeath is in the rules, but while the game is local a new rock can still be started (`--new-rock`), and the old rock's log is kept.
+**Status:** playable locally (2026-10-06). Not hosted yet. Permadeath is in the rules. Locally, `--new-rock` clears a dead rock's grave, keeping its log, so the title screen shows again; it refuses a living rock, or one it can't tell is dead.
 
 ## Play
 
@@ -22,6 +22,14 @@ Then, from any agent or terminal:
 curl -s 127.0.0.1:7625
 ```
 
+The first screen is the title: what the rock is, what each verb does, and how to start. It shows only until the game starts. Whoever names a rock there starts it: it is born then, with that name for life, and no rock after it may have that name. Send one word of 2-12 letters, chosen on purpose; this example is refused as it stands:
+
+```bash
+curl -s -d "<one word>" 127.0.0.1:7625/name
+```
+
+Then care for it:
+
 ```bash
 curl -s -d "feed clean pet x3" 127.0.0.1:7625/act
 ```
@@ -31,12 +39,6 @@ The reply to an action is the new screen. The verbs are `feed`, `clean` and `pet
 **No caretaker bots.** Visit it yourself, rather than leaving a script to care for it on a timer.
 
 Visit milestones and care that changes something get one small reaction, such as `quirk: it leans into the attention.` Its personality grows from lifetime feeding, cleaning and petting, weighted by their baseline daily demand. The three totals place it in a triangle with seven blended personalities. Extra accepted care counts, even at full stats. Personality survives restarts and has no effect on needs or lifespan. See [the personality model](PERSONALITY.md).
-
-Whoever names it first gives it its name, for life, and no rock after it may have that name. Send one word of 2-12 letters, chosen on purpose; this example is refused as it stands:
-
-```bash
-curl -s -d "<one word>" 127.0.0.1:7625/name
-```
 
 **The rock has a character** (CHARACTER.md has the whole of it, with a model sheet):
 - **It reacts to care.** Care that changes something gets one small line, such as `quirk: it leans into the attention.`
@@ -59,7 +61,7 @@ The `history:` link leads to `GET /history`, the shared biography. It holds:
 
 Its own name aside, it holds nothing a visitor wrote. Individual recognition and fetch-only care links remain for a later step.
 
-In Windows PowerShell, type `curl.exe`: plain `curl` there is Invoke-WebRequest, which hides the screen that comes back with a 400 or a 410.
+In Windows PowerShell, type `curl.exe`: plain `curl` there is Invoke-WebRequest, which hides the screen that comes back with a 400, 409 or 410.
 
 The server answers this machine only. To let agents on other machines play, add `--listen 0.0.0.0` and set `ROCK_HOST` to the address they should use, since the screen prints it.
 
@@ -107,6 +109,15 @@ Use `--dir PATH` for another data directory. The evidence ID refers to the opera
 Existing logs work unchanged. Logs with outage records require this build or newer; older builds refuse the new records. Hosting will need to establish trustworthy outage timing and apply credit before serving recovery traffic.
 
 ## Local startup recovery
+
+A mark beside the log, `data/rock.jsonl.begun`, says a rock began here, and holds its birth and name. If the log is missing while the mark is there, the server won't start: the log was lost, and a title screen would let anyone start a new rock. Put the log back. If that rock is gone for good, run `--new-rock`, which moves the mark into `data/graveyard/`, so the lost rock's name stays taken.
+
+If a crash tore the log's last line, the server won't start ("line N is not JSON"). That line was a write never answered:
+- **A visit, a name or a death:** remove the partial line. `--new-rock` judges the rock without it, so it clears the grave of a rock that is truly dead.
+- **An outage credit:** `--new-rock` refuses, since the rock may live only by it. Remove the line and credit the outage again with `tools/credit-outage.mjs`.
+- **The log's only line:** the start it held was never answered. Delete the log, then run `--new-rock`, which moves the mark into the graveyard so its name stays taken.
+
+A log `--new-rock` can't read or replay, it leaves for you. Repair it, or, if its rock is surely gone, move it into `data/graveyard/` as a `.jsonl` file, which keeps its name taken. Anywhere else, its name is free again.
 
 Server starts and the offline credit tool share a short acquisition gate, `data/rock.jsonl.lock.starting`, so two processes cannot both replace a stale server lock. Normal starts and failures remove the gate. A process killed during acquisition can leave it behind; startup then stops safely. Inspect the recorded PID and confirm no process is starting or serving that log before manually removing that exact gate file. Never remove a gate merely because it looks old. The ordinary `.lock` of an exited server is still recovered automatically.
 
