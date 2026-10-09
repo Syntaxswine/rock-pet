@@ -287,14 +287,16 @@ test('a malformed request cannot take the server down', async () => {
 test('the command line serves this machine only, and prints the address it serves', async () => {
   const dir = tmpDir();
   const said = [];
-  const server = await main(['--port', '0', '--dir', dir], { say: s => said.push(s) });
+  let server;
   try {
+    // Inside the try, so a start that throws still has its directory removed.
+    server = await main(['--port', '0', '--dir', dir], { say: s => said.push(s) });
     assert.equal(server.address().address, '127.0.0.1');
     // Not "localhost": where that means ::1 first, PowerShell and Python wait 2s per request.
     assert.ok(said.at(-1).startsWith('Rock Pet on http://127.0.0.1:'), said.at(-1));
     assert.equal(readLog(path.join(dir, 'rock.jsonl')).visits.length, 0, 'a rock is born at start');
   } finally {
-    await new Promise(r => server.close(r));
+    if (server) await new Promise(r => server.close(r));
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });

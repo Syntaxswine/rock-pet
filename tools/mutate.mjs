@@ -3,7 +3,8 @@
 //
 //   node tools/mutate.mjs        every mutant, one after another; exits 1 if any survives
 //
-// It works on a copy in the OS temp directory and never touches the working tree.
+// It works on a copy in the OS temp directory and never touches the working tree. The suite's
+// own temporary directories go inside that copy, and the unmutated suite must leave none behind.
 
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -337,10 +338,16 @@ const MUTANTS = [
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'rockpet-mutate-'));
 for (const p of ['src', 'test', 'tools/rocksim.mjs', 'tools/sandbox.mjs', 'tools/credit-outage.mjs', 'tools/model-sheet.mjs', 'server.mjs', 'package.json', 'CHARACTER.md']) fs.cpSync(path.join(root, p), path.join(work, p), { recursive: true });
+// The suite's own temporary directories go inside the copy too (os.tmpdir() reads TMPDIR, TMP or
+// TEMP). A mutant can stop a test before its cleanup, in a hang the timeout kills or a failure
+// --test-force-exit walks away from; whatever that leaves is removed with the copy.
+const tmp = path.join(work, 'tmp');
+fs.mkdirSync(tmp);
+const env = { ...process.env, TMPDIR: tmp, TMP: tmp, TEMP: tmp };
 
 // The suite's verdict: the names of the top-level tests that failed (TAP, one process).
 function suite() {
-  const r = spawnSync(process.execPath, ['--test', '--test-force-exit', '--test-reporter=tap'], { cwd: work, encoding: 'utf8', timeout: 120_000 });
+  const r = spawnSync(process.execPath, ['--test', '--test-force-exit', '--test-reporter=tap'], { cwd: work, env, encoding: 'utf8', timeout: 120_000 });
   if (r.error?.code === 'ETIMEDOUT') return { failed: ['(timed out)'] };
   const failed = [...r.stdout.matchAll(/^not ok [0-9]+ - (.*)$/gm)].map(m => m[1]);
   if (r.status !== 0 && failed.length === 0) failed.push(`(exit ${r.status}) ${r.stderr.split('\n')[0]}`);
@@ -349,8 +356,11 @@ function suite() {
 
 let bad = 0;
 const control = suite();
-if (control.failed.length) {
-  console.error(`the unmutated suite fails, so nothing can be learned: ${control.failed.join('; ')}`);
+const left = fs.readdirSync(tmp); // a passing suite removes every temporary directory it makes
+if (control.failed.length || left.length) {
+  if (control.failed.length) console.error(`the unmutated suite fails, so nothing can be learned: ${control.failed.join('; ')}`);
+  else console.error(`the unmutated suite passes but leaves temporary directories behind: ${left.join(', ')}`);
+  fs.rmSync(work, { recursive: true, force: true });
   process.exit(1);
 }
 console.log(`control: the unmutated suite passes. ${MUTANTS.length} mutants:\n`);
