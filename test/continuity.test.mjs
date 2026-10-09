@@ -52,6 +52,10 @@ test('stale-lock takeover cannot unlink a competing starter\'s lock', async () =
   } finally {
     fs.rmSync = original;
     if (server) await close(server);
+    // The competitor too, when the first start threw before it was looked at: a server left
+    // listening keeps a plain run from ever ending.
+    const other = await competitor;
+    if (other?.server?.listening) await close(other.server);
     remove(dir);
   }
 });

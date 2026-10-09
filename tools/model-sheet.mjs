@@ -16,7 +16,7 @@ import { iceTimes } from '../src/character.mjs';
 import { CARE_AXES, DAILY_CARE } from '../src/personality.mjs';
 import { groundOf } from '../src/ground.mjs';
 import { mealAt } from '../src/meal.mjs';
-import { whereAt, furrowShows } from '../src/wander.mjs';
+import { whereAt, movesOf, furrowShows } from '../src/wander.mjs';
 
 const DAY = 24 * HOUR;
 const T = Date.UTC(2026, 10, 16, 14, 5); // a Monday afternoon in November
@@ -54,14 +54,17 @@ const seenAt = (log, t, drawing = DRAWINGS[DRAWING]) => {
 // Its first moves of a day, each seen five minutes after it was made, so its furrow shows: the
 // first day after T on which they include a walk to its food, so the sheet shows both kinds.
 function aDayOfMoves(n) {
-  for (let day = Math.ceil(T / DAY) * DAY; ; day += DAY) {
-    const log = keptLog(day + DAY), out = [];
-    for (let t = day; out.length < n && t < day + DAY; t += 60_000) {
-      const p = whereAt(log, t, DRAWINGS[DRAWING]);
-      if (p.at === t) out.push([`${new Date(t).toISOString().slice(11, 16)} ${p.why === 'food' ? 'to food' : p.why}`, ...seenAt(log, t + 5 * 60_000)]);
-    }
+  const first = Math.ceil(T / DAY) * DAY;
+  // A broken movement rule may never send it to food. Search a bounded set of days, using
+  // the moves themselves rather than replaying the whole life at every minute of each day.
+  for (let day = first; day < first + 14 * DAY; day += DAY) {
+    const log = keptLog(day + DAY);
+    const out = movesOf(log, day + DAY - 1, DRAWINGS[DRAWING])
+      .filter(p => p.at >= day).slice(0, n)
+      .map(p => [`${new Date(p.at).toISOString().slice(11, 16)} ${p.why === 'food' ? 'to food' : p.why}`, ...seenAt(log, p.at + 5 * 60_000)]);
     if (out.some(([label]) => label.endsWith('to food'))) return out;
   }
+  throw new Error('the model sheet found no walk to food within fourteen days');
 }
 // Its first morning on the ice after T, seen that evening.
 function onTheIce() {

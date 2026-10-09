@@ -207,7 +207,10 @@ test('host downtime late in a life lets an eleventh mess land, and the screen sh
   // its tenth pauses that clock but not the UTC clock that messes keep to (AGENTS.md, invariant 7),
   // so an eleventh lands while it lives.
   const b = Date.UTC(2026, 9, 6, 3), log = newLog(b), HALF = 12 * HOUR;
-  for (let t = b + HOUR; replay(log, t).messes < 10; t += 30 * MIN) log.visits.push({ t, acts: [['feed', 4], ['pet', 10]] });
+  // A broken mess clock may never reach ten. Fail the fixture instead of searching forever.
+  let t = b + HOUR;
+  for (; t < b + 6 * DAY && replay(log, t).messes < 10; t += 30 * MIN) log.visits.push({ t, acts: [['feed', 4], ['pet', 10]] });
+  assert.equal(replay(log, t).messes, 10, 'the tenth mess arrives within six days');
   const tenth = Math.ceil(log.visits.at(-1).t / HALF) * HALF, eleventh = tenth + HALF;
   const plain = replay(log, eleventh + MIN);
   assert.ok(plain.dead && plain.messes <= 10, 'without downtime it dies first, with ten at most');
