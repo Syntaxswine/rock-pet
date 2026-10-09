@@ -346,21 +346,18 @@ test('one server per log: a second is refused while the first runs; a dead one\'
   }
 });
 
-test('a log too broken to serve stops the start with the reason; --new-rock clears it once its rock is told dead', async () => {
+test('a log too broken to serve stops the start with the reason; --new-rock leaves it untouched', async () => {
   const dir = tmpDir();
   const file = path.join(dir, 'rock.jsonl');
-  const torn = birth(Date.UTC(2026, 0, 1)) + '{"t":17913'; // long dead: judged without its torn last line
+  const torn = birth(Date.UTC(2026, 0, 1)) + '{"t":17913'; // even a long-dead rock cannot be reset
   fs.writeFileSync(file, torn);
   try {
     await refusedStart(['--port', '0', '--dir', dir], /line 2 is not JSON/);
     assert.equal(fs.existsSync(file + '.lock'), false, 'a refused start releases the lock');
     assert.equal(fs.readFileSync(file, 'utf8'), torn, 'and leaves the log alone');
-    const server = await main(['--new-rock', '--port', '0', '--dir', dir], { say: () => {} });
-    await new Promise(r => server.close(r));
-    const [grave] = fs.readdirSync(path.join(dir, 'graveyard'));
-    assert.match(grave, /^rock-unreadable-/);
-    assert.equal(fs.readFileSync(path.join(dir, 'graveyard', grave), 'utf8'), torn);
-    assert.equal(fs.existsSync(file), false, 'its grave cleared: the title screen, until someone names the next');
+    await refusedStart(['--new-rock', '--port', '0', '--dir', dir], /only available on the initial title screen/);
+    assert.equal(fs.readFileSync(file, 'utf8'), torn, 'a torn log is preserved whole');
+    assert.equal(fs.existsSync(path.join(dir, 'graveyard')), false, 'nothing buried');
     // A log that reads but can't be replayed, here one written under other rules, is refused too.
     const other = JSON.stringify({ born: NOW - HOUR, rules: RULES.version + 1 }) + '\n';
     fs.writeFileSync(file, other);
@@ -371,20 +368,23 @@ test('a log too broken to serve stops the start with the reason; --new-rock clea
   }
 });
 
-test('--new-rock keeps the old log in the graveyard, never over another', async () => {
+test('the manual bury utility keeps the old log in the graveyard, never over another', () => {
   const dir = tmpDir();
   const file = path.join(dir, 'rock.jsonl');
   const old = birth(Date.UTC(2026, 0, 1)) + JSON.stringify({ t: Date.UTC(2026, 0, 1, 2), acts: [['pet', 1]] }) + '\n';
   try {
     for (const n of [1, 2]) {
       fs.writeFileSync(file, old);
-      const server = await main(['--new-rock', '--port', '0', '--dir', dir], { say: () => {} });
-      await new Promise(r => server.close(r));
+      bury(file);
       const graves = fs.readdirSync(path.join(dir, 'graveyard')).sort();
       assert.equal(graves.length, n);
       for (const g of graves) assert.equal(fs.readFileSync(path.join(dir, 'graveyard', g), 'utf8'), old);
       assert.equal(fs.existsSync(file), false, 'its grave cleared: the title screen, until someone names the next');
     }
+    fs.writeFileSync(file, 'broken');
+    const unreadable = bury(file, NOW);
+    assert.match(path.basename(unreadable), /^rock-unreadable-/);
+    assert.equal(fs.readFileSync(unreadable, 'utf8'), 'broken');
     assert.equal(bury(path.join(dir, 'none.jsonl')), null, 'nothing to bury');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });

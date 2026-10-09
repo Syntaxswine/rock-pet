@@ -1,8 +1,8 @@
 // The title screen (the owner, 2026-10-08): with no rock yet, every page is the title, which says
 // what the rock is, what its three verbs do and how to send them. Whoever names a rock there
 // starts the game, the rock born then with that name. It shows only until then, never again for
-// that rock, whether the server keeps running or starts again, and --new-rock, which clears a
-// grave for the next, never ends a life or frees a name.
+// that rock, whether the server keeps running or starts again. --new-rock works only before
+// a rock begins, never to clear a grave or recover a lost log.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,11 +10,10 @@ import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createRockServer, readLog, main, begunOf, takenNames } from '../server.mjs';
+import { createRockServer, readLog, main, begunOf } from '../server.mjs';
 import { title, start, look, creditOutage } from '../src/rock.mjs';
 import { renderTitle } from '../src/screen.mjs';
 import { birthLine, visitLine, nameLine, outageLine } from '../src/log.mjs';
-import { replay } from '../src/engine.mjs';
 import { DRAWINGS, DRAWING } from '../src/drawings.mjs';
 
 const HOUR = 3_600_000, DAY = 24 * HOUR;
@@ -148,15 +147,34 @@ test('with no rock every page is the title screen, nothing is written until a na
   }, { graveyard: ['{"born":1,"rules":1}\n{"named":"Pebble","t":2}\n'] });
 });
 
-test('a start counts at once: a log lost right after it, before anyone asks again, is an error and never the title', async () => {
-  await withTitle(async ({ req, file }) => {
-    assert.equal((await req('POST', '/name', 'basalt')).status, 200);
-    fs.rmSync(file);
-    for (const [method, url, body] of [['GET', '/'], ['GET', '/history'], ['POST', '/name', 'flint'], ['POST', '/act', 'pet']]) {
-      assert.equal((await req(method, url, body)).status, 500, `${method} ${url}: a lost log is an error, not the title screen`);
-    }
-    assert.equal(fs.existsSync(file), false, 'and no second rock');
-  });
+test('a start counts at once: files lost right after it, before anyone asks again, never bring back the title', async () => {
+  for (const loseMark of [false, true]) {
+    await withTitle(async ({ req, file }) => {
+      assert.equal((await req('POST', '/name', 'basalt')).status, 200);
+      fs.rmSync(file);
+      if (loseMark) fs.rmSync(begunOf(file));
+      for (const [method, url, body] of [['GET', '/'], ['GET', '/history'], ['POST', '/name', 'flint'], ['POST', '/act', 'pet']]) {
+        assert.equal((await req(method, url, body)).status, 500, `${method} ${url}: a lost log is an error, not the title screen`);
+      }
+      assert.equal(fs.existsSync(file), false, 'and no second rock');
+    });
+  }
+});
+
+test('the server factory honors a begun mark even without a log, before and after it starts listening', async () => {
+  for (const alreadyThere of [true, false]) {
+    await withTitle(async ({ req, file }) => {
+      if (!alreadyThere) {
+        assert.equal((await req('GET', '/')).text, title({ host: 'rock.test' }).text);
+        fs.writeFileSync(begunOf(file), `${T}\n`);
+      }
+      for (const [method, url, body] of [['GET', '/'], ['GET', '/history'], ['POST', '/name', 'basalt'], ['POST', '/act', 'pet']]) {
+        assert.equal((await req(method, url, body)).status, 500, `${method} ${url}: the mark means a lost rock, not an unstarted game`);
+      }
+      assert.equal(fs.existsSync(file), false, 'a lost rock is never replaced');
+      assert.equal(fs.readFileSync(begunOf(file), 'utf8'), `${T}\n`);
+    }, { before: file => { if (alreadyThere) fs.writeFileSync(begunOf(file), `${T}\n`); } });
+  }
 });
 
 test('names sent at once start one rock', async () => {
@@ -211,11 +229,18 @@ test('a start writes over nothing: not a log the check wrongly says is not there
     }, { seed, before: file => { restore = stub('statSync', file, () => undefined); } }); // as if the log weren't there
   } finally { restore(); }
   const mark = birthLine(T - DAY) + nameLine({ name: 'Granite', t: T - DAY });
-  await withTitle(async ({ req, file }) => {
-    assert.equal((await req('POST', '/name', 'flint')).status, 500);
-    assert.equal(fs.readFileSync(begunOf(file), 'utf8'), mark, 'the mark as it was');
-    assert.equal(fs.existsSync(file), false, 'and no rock');
-  }, { before: file => fs.writeFileSync(begunOf(file), mark) });
+  try {
+    await withTitle(async ({ req, file }) => {
+      assert.equal((await req('POST', '/name', 'flint')).status, 500);
+      restore();
+      assert.equal(fs.readFileSync(begunOf(file), 'utf8'), mark, 'the mark as it was');
+      assert.equal(fs.existsSync(file), false, 'and no rock');
+    }, { before: file => {
+      fs.writeFileSync(begunOf(file), mark);
+      restore = stub('statSync', begunOf(file), () => undefined);
+    } });
+  } finally { restore(); }
+
 });
 
 test('a check that fails is an error, never the title screen: the log, or the graveyard of names', async () => {
@@ -254,7 +279,8 @@ test('a log that turns up while the title shows is served, marked and kept: lost
     assert.equal((await req('GET', '/')).text, look(readLog(file), { now: T, host: 'rock.test' }).text);
     assert.equal(fs.readFileSync(begunOf(file), 'utf8'), birthLine(T - HOUR), 'its mark, from its own first lines');
     fs.rmSync(file);
-    assert.equal((await req('GET', '/')).status, 500, 'never the title again');
+    fs.rmSync(begunOf(file));
+    assert.equal((await req('GET', '/')).status, 500, 'never the title again even if both files are lost');
     assert.equal((await req('POST', '/name', 'flint')).status, 500, 'nor a second rock');
   });
 });
@@ -282,96 +308,80 @@ async function refusedStart(argv, reason) {
 }
 const HOST = process.env.ROCK_HOST ?? '127.0.0.1:0';
 
-test('--new-rock clears only a grave it can tell is one, and then the title screen shows', async () => {
+test('--new-rock works only on the initial title screen and leaves every existing rock untouched', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rockpet-title-'));
   const file = path.join(dir, 'rock.jsonl'), grave = path.join(dir, 'graveyard');
-  const now = Date.now(), b = now - 10 * DAY, kept = { t: b + HOUR, acts: FULL };
-  const down = creditOutage({ born: b, rules: 1, visits: [kept], died: null }, { start: b + 2 * HOUR, end: now - HOUR, evidence: 'host-1' }, { now: now - HOUR });
-  // A rock left alone from birth, born so that it dies between `from` and `to` from now. How long
-  // it lasts alone depends on where its birth falls on the UTC mess clock, so this searches.
-  const bornToDie = (from, to) => {
-    for (let at = now - 80 * HOUR; at < now; at += 60_000) {
-      const d = replay({ born: at, rules: 1, visits: [], died: null }, at + 30 * DAY).dead.t - now;
-      if (d >= from && d <= to) return at;
-    }
-    throw new Error('no such birth');
-  };
-  const dying = bornToDie(30 * 60_000, 90 * 60_000), died = bornToDie(-90 * 60_000, -30 * 60_000);
-  const mark = birthLine(1) + nameLine({ name: 'Granite', t: 1 });
+  const now = Date.now(), b = now - 10 * DAY;
+  const kept = { born: b, rules: 1, visits: [{ t: b + HOUR, acts: FULL }], died: null };
+  const down = creditOutage(kept, { start: b + 2 * HOUR, end: now - HOUR, evidence: 'host-1' }, { now: now - HOUR });
   let server;
   try {
-    // Refused: the log and the mark left as they were, nothing buried, the lock let go.
-    for (const [what, text, reason] of [
-      ['a living rock', birthLine(now - HOUR) + visitLine({ t: now - 1000, acts: [['pet', 1]] }), /is alive; --new-rock only clears a grave/],
-      ['a rock with an hour to live', birthLine(dying), /is alive/],
-      ['a living rock whose last line a crash tore', `${birthLine(now - HOUR)}{"t":${now - 1000},"acts":[["pe`, /is alive/],
-      ['a rock alive by its last visit, whole but for its newline', birthLine(died) + JSON.stringify({ t: now - 2 * HOUR, acts: FULL }), /is alive/],
-      ['a rock alive only because the host was down', birthLine(b) + visitLine(kept) + outageLine(down), /is alive/],
-      ['the same, its credit torn', birthLine(b) + visitLine(kept) + outageLine(down).slice(0, 30), /ends in a torn outage credit, which its rock may live by. remove that line and credit the outage again/],
-      ['a log broken before its last line', `${birthLine(now - HOUR)}{"t":179\n${visitLine({ t: now - 1000, acts: [['pet', 1]] })}`, /can't be read \(line 2 is not JSON\), so its rock can't be told dead\. repair it, or, if its rock is surely gone, move it into data\/graveyard\/ as a \.jsonl, which keeps its name taken/],
-      ['a dead rock whose last line is whole JSON but no visit', birthLine(Date.UTC(2026, 0, 1)) + JSON.stringify({ t: Date.UTC(2026, 0, 1, 1), acts: [['pet', 21]] }), /can't be read \(line 2 is not a visit\)/],
-      ['a log written under other rules', JSON.stringify({ born: now - HOUR, rules: 2 }) + '\n', /this build can't replay the log in .* \(log written under rules v2; this build runs v1\), so its rock can't be told dead\. use the build its rules need/],
+    const said = [];
+    server = await main(['--new-rock', '--port', '0', '--dir', dir], { say: s => said.push(s) });
+    assert.equal(said[0], 'the title screen shows until someone names the rock');
+    assert.equal((await page(server)).text, title({ host: HOST }).text);
+    assert.equal(fs.existsSync(file), false, 'the flag alone does not start a rock');
+    assert.equal(fs.existsSync(begunOf(file)), false, 'nor mark it begun');
+    assert.equal((await page(server, '/name', { method: 'POST', body: 'basalt' })).status, 200);
+    await shut(server);
+    server = null;
+    const named = fs.readFileSync(file, 'utf8');
+    const mark = fs.readFileSync(begunOf(file), 'utf8');
+    await refusedStart(['--new-rock', '--port', '0', '--dir', dir], /only available on the initial title screen/);
+    assert.equal(fs.readFileSync(file, 'utf8'), named, 'naming closes the title permanently');
+    assert.equal(fs.readFileSync(begunOf(file), 'utf8'), mark);
+    fs.rmSync(begunOf(file));
+
+    // Even a legacy log without a mark closes the title, whatever its contents or state.
+    for (const [what, text] of [
+      ['a living rock', birthLine(now - HOUR) + visitLine({ t: now - 1000, acts: [['pet', 1]] })],
+      ['a living rock whose last line a crash tore', `${birthLine(now - HOUR)}{"t":${now - 1000},"acts":[["pe`],
+      ['a rock alive only because the host was down', birthLine(b) + visitLine(kept.visits[0]) + outageLine(down)],
+      ['a dead rock', birthLine(b)],
+      ['a dead named rock', birthLine(b) + JSON.stringify({ named: 'Basalt', t: b }) + '\n'],
+      ['a dead rock with a torn last line', `${birthLine(b)}{"t":17`],
+      ['a log broken before its last line', `${birthLine(now - HOUR)}{"t":179\n${visitLine({ t: now - 1000, acts: [['pet', 1]] })}`],
+      ['a complete but invalid last record without a newline', birthLine(b) + JSON.stringify({ t: now - 1000, acts: [] })],
+      ['a log written under other rules', JSON.stringify({ born: now - HOUR, rules: 2 }) + '\n'],
+      ['an empty log', ''],
     ]) {
       fs.writeFileSync(file, text);
-      fs.writeFileSync(begunOf(file), mark);
-      await refusedStart(['--new-rock', '--port', '0', '--dir', dir], reason);
+      await refusedStart(['--new-rock', '--port', '0', '--dir', dir], /only available on the initial title screen/);
       assert.equal(fs.readFileSync(file, 'utf8'), text, `${what}: left be`);
-      assert.equal(fs.readFileSync(begunOf(file), 'utf8'), mark, `${what}: its mark left be`);
       assert.equal(fs.existsSync(grave), false, `${what}: nothing buried`);
       assert.equal(fs.existsSync(file + '.lock'), false, `${what}: the lock let go`);
     }
-    // Buried, whole, and then the title: a rock dead an hour, or long dead, its last line torn or not.
-    for (const dead of [birthLine(died), birthLine(Date.UTC(2026, 0, 1)), `${birthLine(Date.UTC(2026, 0, 2))}{"t":17`]) {
-      fs.writeFileSync(file, dead);
-      fs.writeFileSync(begunOf(file), mark);
-      const said = [];
-      server = await main(['--new-rock', '--port', '0', '--dir', dir], { say: s => said.push(s) });
-      assert.equal(fs.existsSync(file), false, 'its grave cleared');
-      assert.equal(fs.existsSync(begunOf(file)), false, 'and the mark with it');
-      assert.ok(fs.readdirSync(grave).some(g => fs.readFileSync(path.join(grave, g), 'utf8') === dead), 'its log kept whole');
-      assert.match(said[0], /^the old rock's log is now .*; the title screen shows until someone names the next$/);
-      assert.equal((await page(server)).text, title({ host: HOST }).text, 'the title screen, for the next');
-      await shut(server);
-      server = null;
-    }
-    // With no log and no mark it buries nothing, and says so.
-    const said = [];
-    server = await main(['--new-rock', '--port', '0', '--dir', dir], { say: s => said.push(s) });
-    assert.equal(said[0], 'there was no rock to bury; the title screen shows until someone names the next');
   } finally {
     if (server) await shut(server);
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('a rock that began here is never forgotten: without its log the server refuses, and --new-rock keeps its name taken', async () => {
+test('a rock that began here is never forgotten: without its log the server refuses even with --new-rock, preserving its name', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rockpet-title-'));
   const file = path.join(dir, 'rock.jsonl');
   let server, restore = () => {};
   const stop = async () => { await shut(server); server = null; };
-  // Lose the log, see the start refused, then --new-rock: the mark goes into the graveyard.
+  // Losing a log cannot reopen the title, with or without the flag.
   const lose = async () => {
+    const mark = fs.readFileSync(begunOf(file), 'utf8');
     fs.rmSync(file);
-    await refusedStart(['--port', '0', '--dir', dir], /a rock began here, but its log .* is missing: put it back, or run --new-rock/);
-    const said = [];
-    server = await main(['--new-rock', '--port', '0', '--dir', dir], { say: s => said.push(s) });
-    assert.match(said[0], /^its log was lost, and its mark is now .*rock-lost-.*\.jsonl, so its name stays taken; the title screen shows until someone names the next$/);
-    assert.equal(fs.existsSync(begunOf(file)), false, 'the mark is moved, not left');
+    await refusedStart(['--port', '0', '--dir', dir], /a rock began here, but its log .* is missing: restore its log before serving/);
+    await refusedStart(['--new-rock', '--port', '0', '--dir', dir], /only available on the initial title screen/);
+    assert.equal(fs.readFileSync(begunOf(file), 'utf8'), mark, 'the mark and its name are preserved');
+    assert.equal(fs.existsSync(file), false, 'the lost rock is never replaced');
+    assert.equal(fs.existsSync(file + '.lock'), false, 'refusal releases the lock');
   };
   try {
     // A game started from the title screen, its log lost while the server was down: its name is
-    // still taken once --new-rock clears the way for the next.
+    // preserved in the mark; --new-rock cannot replace it.
     server = await main(['--port', '0', '--dir', dir], { say: () => {} });
     assert.equal((await page(server, '/name', { method: 'POST', body: 'basalt' })).status, 200);
     await stop();
     await lose();
-    assert.deepEqual(takenNames(file), ['Basalt']);
-    assert.equal((await page(server, '/name', { method: 'POST', body: 'basalt' })).status, 409, "the lost rock's name stays taken");
-    assert.equal((await page(server, '/name', { method: 'POST', body: 'flint' })).status, 200);
-    await stop();
+    assert.match(fs.readFileSync(begunOf(file), 'utf8'), /"named":"Basalt"/);
     // A rock from before the mark gets it when a server first starts over its log; named later,
     // its mark has the name too.
-    fs.rmSync(file);
     fs.rmSync(begunOf(file));
     fs.writeFileSync(file, birthLine(Date.now() - HOUR));
     server = await main(['--port', '0', '--dir', dir], { say: () => {} });
@@ -380,18 +390,13 @@ test('a rock that began here is never forgotten: without its log the server refu
     assert.match(fs.readFileSync(begunOf(file), 'utf8'), /"named":"Granite"/);
     await stop();
     await lose();
-    assert.deepEqual(takenNames(file).sort(), ['Basalt', 'Granite']);
-    await stop();
+    assert.match(fs.readFileSync(begunOf(file), 'utf8'), /"named":"Granite"/);
     // A mark that can't be checked: an error, never the title.
     fs.writeFileSync(begunOf(file), birthLine(1));
     restore = stub('statSync', begunOf(file), EPERM);
     await refusedStart(['--port', '0', '--dir', dir], /EPERM/);
     restore();
-    // Once --new-rock has cleared the way, a restart keeps the title.
-    server = await main(['--new-rock', '--port', '0', '--dir', dir], { say: () => {} });
-    await stop();
-    server = await main(['--port', '0', '--dir', dir], { say: () => {} });
-    assert.equal((await page(server)).text, title({ host: HOST }).text, 'and it stays the title after a restart');
+    await refusedStart(['--new-rock', '--port', '0', '--dir', dir], /only available on the initial title screen/);
   } finally {
     restore();
     if (server) await shut(server);

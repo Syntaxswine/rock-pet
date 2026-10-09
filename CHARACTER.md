@@ -647,7 +647,7 @@ Whoever names it first gives it its name: `POST /name` with one word, on the tit
   - a client's empty values and probes: `null`, `undefined`, `test`, `string`, `hello`…;
   - the words for who is speaking, which an agent might read as a label: `system`, `assistant`, `user`…
 - **Once:** a rock is named once, for life. A second name is refused (409).
-- **Never twice:** a name a rock before it had is refused too (409), in any case. Locally, those rocks are the logs in `data/graveyard/`, which `--new-rock` moves a dead rock into, along with the mark of a rock whose log was lost. Once hosted, the names must be kept as permanently as the rock.
+- **Never twice:** a name a rock before it had is refused too (409), in any case. Locally, those rocks are the logs preserved by the owner in `data/graveyard/`. A begun mark also preserves the name if its full log is lost; `--new-rock` cannot remove it or reopen the title screen. Once hosted, the names must be kept as permanently as the rock.
 - **Where it shows:** the screen shows it in one place, first on the age line (`Pebble  age 41d …`). A grave reads `here lies Pebble`. `/history` says when it was named.
 - **Until then:** a rock started from the title screen is named from birth. One from before it, while it has no name and isn't at an extreme, has a line `unnamed: POST <host>/name  body: a one-word name`. It costs about 55 bytes, until someone names it.
 - **Naming isn't care.** It changes nothing about the rock but its name. None of its lines ever says the name.

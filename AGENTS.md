@@ -22,7 +22,7 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 | `src/parse.mjs` | Action bodies such as `feed x4 clean pet x10`. |
 | `src/log.mjs` | The log's format: the birth, each visit, its name once given, and a death line once anyone has seen the rock dead. Parsing checks shape and refuses anything else. |
 | `src/rock.mjs` | `look(log, {now, host})`, `act(log, body, {now, host})` and `name(log, body, {now, host, taken})`: the HTTP status, the screen, and what to append to the log (an accepted action's `visit`; a given name; the `died` line the first time the rock is seen dead). Before there is a rock, `title({host})` is every page, and `start(body, {now, host, taken})` names one and so starts it, giving the log's first two lines. |
-| `server.mjs` | The local server, answering 127.0.0.1 only unless `--listen` says otherwise. The log is `data/rock.jsonl`, read and appended in one synchronous step per request, with a lock file so only one server serves a log. With no log it serves the title screen until a name starts the rock. A mark beside the log, `rock.jsonl.begun`, says a rock began and holds its birth and name, so a lost log is never taken for none. `--new-rock` clears a dead rock's grave (local only), and moves a lost rock's mark into the graveyard so its name stays taken. It refuses a living rock, and one it can't tell is dead. |
+| `server.mjs` | The local server, answering 127.0.0.1 only unless `--listen` says otherwise. The log is `data/rock.jsonl`, read and appended in one synchronous step per request, with a lock file so only one server serves a log. With no log it serves the title screen until a name starts the rock. A mark beside the log, `rock.jsonl.begun`, says a rock began and holds its birth and name, so a lost log is never taken for none. `--new-rock` serves only the initial title screen; any log or begun mark makes it refuse, even after death. |
 | `tools/sandbox.mjs` | The engine on a pretend clock. |
 | `tools/mutate.mjs` | Applies deliberate faults in a temporary copy; every mutant must be caught. LF and CRLF checkouts are supported. |
 | `src/story.mjs` | The rock's authored lines: one reaction after effective care or a visit milestone, one line on a look on a day that is not ordinary, and the shared biography at `GET /history`. Never changes the engine. |
@@ -44,12 +44,12 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 
 - **The fallback**, if Sites can't do something below, is a Cloudflare Worker + one SQLite-backed Durable Object on Cloudflare's free plan (see DESIGN-NOTES, "Is the fallback free?").
 - **GitHub Pages** (this repo) is the public face and the archive: rules, `llms.txt`, a human page, and a periodic export of the event log.
-- **Remove `--new-rock`** from anything hosted. After a death, only the owner clears the grave (2026-10-08). They have an agent do it by changing the code or the stored log, never through a request.
+- **No reset command:** `--new-rock` is only available on the initial title screen (2026-10-09). It never clears a log or begun mark, locally or hosted. After a death, only the owner clears the grave (2026-10-08). They have an agent do it by changing the code or the stored log, never through a request.
   - No route may end, bury, reset or replace a rock, however hidden, since the page is open to anyone: "a stranger could come up and restart your pet".
   - Bury the dead rock's log with its grave, and keep its name taken for good.
   - Then the title screen shows. Its `POST /name` may start the next rock only while the store has none, creating it only if none exists, as `'wx'` does locally.
   - Keep a record that a rock began, with its name (locally `rock.jsonl.begun`). Clear it only with its grave, or keep it as the grave of a rock whose log was lost, so its name stays taken. Show the title only while the store has neither a rock nor that record: never because a read failed, or because a log was lost.
-  - Never bury a living rock, or one that can't be told dead: locally `--new-rock` refuses both.
+  - Never bury a living rock, or one that can't be told dead: `--new-rock` refuses every existing log, including a grave.
 - **Keep every name a rock has had,** as permanently as the rock: a name is never given twice.
 - **Check the screen's size with your host.** The screen tests hold every screen to 390 bytes with a 15-character host (`rockpet.example`). The worst, built on purpose in `test/screen.test.mjs` for every drawing wherever it can wander, is 380. Credited downtime can raise it:
   - 382 with an eleventh mess;

@@ -92,9 +92,6 @@ export function start(body, { now, host, taken = [] }) {
   return { status: 200, text: render(s, { now, host, ...seen(log, s, now) }) + `quirk: ${NAMED}\n` + `history: ${host}/history\n`, born: now, named };
 }
 
-/** Whether the rock is alive at `now`, as a look would find it (server.mjs's --new-rock asks). */
-export const livesAt = (log, now) => !rockAt(log, moment(log, now)).dead;
-
 // A look on a day that is not ordinary gets one line about it; on its day for facing the wall it
 // is drawn from behind. Someone caring for it gets a reaction instead, and it turns round for them.
 export function look(log, { now, host }) {

@@ -6,9 +6,8 @@
 //   node server.mjs --port 8000       another port
 //   node server.mjs --listen 0.0.0.0  serve the local network too, and set ROCK_HOST to the
 //                                     address agents should use: the screen prints it
-//   node server.mjs --new-rock        move a dead rock's log to data/graveyard/, so the title
-//                                     screen shows again (a rock alive, or not to be told, is
-//                                     refused)
+//   node server.mjs --new-rock        serve the initial title screen; refused once any rock
+//                                     has begun, even if dead or its log is missing
 //
 //   GET /        the screen (text/plain, no-store)
 //   GET /history the shared biography and verified downtime receipts
@@ -24,7 +23,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { look, act, history, name, title, start, livesAt } from './src/rock.mjs';
+import { look, act, history, name, title, start } from './src/rock.mjs';
 import { parseLog, birthLine, visitLine, deathLine, nameLine } from './src/log.mjs';
 
 const MAX_BODY = 1024; // bytes; a full visit is under 30
@@ -37,9 +36,9 @@ export const readLog = file => parseLog(fs.readFileSync(file, 'utf8'));
 const present = file => fs.statSync(file, { throwIfNoEntry: false }) !== undefined;
 
 // The mark that a rock began beside `file`: written when a game starts, and for a log from before
-// it, or one put back; cleared only by --new-rock. While it is there, a missing log is a lost one,
-// not a new game. It holds the rock's birth and, once it has one, its name, as its log's first
-// lines: if the log is lost, --new-rock moves it into the graveyard, so the name stays taken.
+// it, or one put back. No startup command removes it. While it is there, a missing log is a
+// lost one, not a new game. It holds the birth and name as log lines, preserving the name
+// even if the full log is lost.
 export const begunOf = file => `${file}.begun`;
 const markOf = (born, named) => birthLine(born) + (named ? nameLine(named) : '');
 
@@ -78,11 +77,12 @@ export function createRockServer({ file, host, now = Date.now, onError = console
   // With no log yet, the title screen, until there is one: the one a name starts there, or one
   // that is here already or turns up, which is marked. Once there, it stays so: a log lost later
   // is an error, never a game anyone could start again.
-  let started = present(file);
+  const hasBegun = () => present(file) || present(begunOf(file));
+  let started = hasBegun();
   if (started) markOnce(file);
   const isStarted = () => {
     if (started) return true;
-    if (!present(file)) return false;
+    if (!hasBegun()) return false;
     started = true;
     markOnce(file);
     return true;
@@ -199,30 +199,6 @@ export function bury(file, now = Date.now(), kind = 'rock') {
   return to;
 }
 
-// Moved into the graveyard as a .jsonl, a log keeps its rock's name taken, wherever else it goes.
-const ASIDE = 'or, if its rock is surely gone, move it into data/graveyard/ as a .jsonl, which keeps its name taken';
-
-// What `file` holds now, for --new-rock: { state } 'none', 'alive' or 'dead', or 'refused' with why.
-// A last line that isn't JSON at all was torn by a crash, a write never answered, so the rock is
-// judged without it, unless it was an outage credit, which its rock may live by. Any other log
-// it can't read, or can't replay under this build, it can't tell dead, so it is never a grave.
-function judge(file) {
-  if (!present(file)) return { state: 'none' };
-  const text = fs.readFileSync(file, 'utf8');
-  let log;
-  try { log = parseLog(text); } catch (e) {
-    const cut = text.lastIndexOf('\n') + 1, tail = text.slice(cut).trim();
-    let torn = tail !== '';
-    try { JSON.parse(tail); torn = false; } catch { /* not JSON: torn */ }
-    if (!torn) return { state: 'refused', why: `the log in ${file} can't be read (${e.message}), so its rock can't be told dead. repair it, ${ASIDE}` };
-    if (tail.startsWith('{"outage"')) return { state: 'refused', why: `the log in ${file} ends in a torn outage credit, which its rock may live by. remove that line and credit the outage again (tools/credit-outage.mjs)` };
-    try { log = parseLog(text.slice(0, cut)); } catch (e2) { return { state: 'refused', why: `the log in ${file} can't be read (${e2.message}), so its rock can't be told dead. repair it, ${ASIDE}` }; }
-  }
-  try { return { state: livesAt(log, Date.now()) ? 'alive' : 'dead' }; } catch (e) {
-    return { state: 'refused', why: `this build can't replay the log in ${file} (${e.message}), so its rock can't be told dead. use the build its rules need, ${ASIDE}` };
-  }
-}
-
 // One server per log: two would interleave their appends and break it. The lock holds the
 // server's pid; a lock whose process is gone (a hard kill) is stale and taken over.
 const lockOf = file => `${file}.lock`;
@@ -263,24 +239,15 @@ export async function main(argv, { say = console.log } = {}) {
   takeLock(file);
   const release = () => releaseLock(file);
   try {
-    // --new-rock clears a grave, so the title screen shows again; it never ends a life.
+    // The flag is only for the initial title screen, never a reset or recovery command.
     if (argv.includes('--new-rock')) {
-      const { state, why } = judge(file);
-      if (state === 'alive') throw new Error(`the rock in ${file} is alive; --new-rock only clears a grave`);
-      if (state === 'refused') throw new Error(`--new-rock leaves it: ${why}`);
-      let done = 'there was no rock to bury';
-      if (state === 'dead') {
-        done = `the old rock's log is now ${bury(file)}`;
-        fs.rmSync(begunOf(file), { force: true });
-      } else if (present(begunOf(file))) {
-        done = `its log was lost, and its mark is now ${bury(begunOf(file), Date.now(), 'rock-lost')}, so its name stays taken`;
-      }
-      say(`${done}; the title screen shows until someone names the next`);
+      if (present(file) || present(begunOf(file))) throw new Error('--new-rock is only available on the initial title screen, before a rock begins');
+      say('the title screen shows until someone names the rock');
     }
     if (present(file)) {
       look(readLog(file), { now: Date.now(), host }); // refuse to serve a log that cannot be replayed
     } else if (present(begunOf(file))) {
-      throw new Error(`a rock began here, but its log ${file} is missing: put it back, or run --new-rock to start the next`);
+      throw new Error(`a rock began here, but its log ${file} is missing: restore its log before serving`);
     }
     const server = createRockServer({ file, host });
     await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, listen, resolve); });

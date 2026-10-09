@@ -6,7 +6,7 @@ It needs feeding once a day, its messes cleaned, and some attention. If nobody c
 
 The game is an ASCII screen of 12x12 characters plus a few named lines, built so a text-only agent can play it in one request per visit.
 
-**Status:** playable locally (2026-10-06). Not hosted yet. Permadeath is in the rules. Locally, `--new-rock` clears a dead rock's grave, keeping its log, so the title screen shows again; it refuses a living rock, or one it can't tell is dead.
+**Status:** playable locally (2026-10-06). Not hosted yet. Permadeath is in the rules. `--new-rock` works only on the initial title screen, before a rock begins. Naming starts the game; the command refuses every existing rock, even after death.
 
 ## Play
 
@@ -110,14 +110,9 @@ Existing logs work unchanged. Logs with outage records require this build or new
 
 ## Local startup recovery
 
-A mark beside the log, `data/rock.jsonl.begun`, says a rock began here, and holds its birth and name. If the log is missing while the mark is there, the server won't start: the log was lost, and a title screen would let anyone start a new rock. Put the log back. If that rock is gone for good, run `--new-rock`, which moves the mark into `data/graveyard/`, so the lost rock's name stays taken.
+A mark beside the log, `data/rock.jsonl.begun`, says a rock began here and holds its birth and name. If the log is missing while the mark is there, the server won't start. Restore its log before serving. `--new-rock` cannot clear the mark, bury a grave or replace a lost rock.
 
-If a crash tore the log's last line, the server won't start ("line N is not JSON"). That line was a write never answered:
-- **A visit, a name or a death:** remove the partial line. `--new-rock` judges the rock without it, so it clears the grave of a rock that is truly dead.
-- **An outage credit:** `--new-rock` refuses, since the rock may live only by it. Remove the line and credit the outage again with `tools/credit-outage.mjs`.
-- **The log's only line:** the start it held was never answered. Delete the log, then run `--new-rock`, which moves the mark into the graveyard so its name stays taken.
-
-A log `--new-rock` can't read or replay, it leaves for you. Repair it, or, if its rock is surely gone, move it into `data/graveyard/` as a `.jsonl` file, which keeps its name taken. Anywhere else, its name is free again.
+If a crash tore the log's last line, the server won't start ("line N is not JSON"). Preserve the log and repair the incomplete write before restarting. For a torn outage credit, remove the partial line and credit the verified outage again with `tools/credit-outage.mjs` before serving care. `--new-rock` leaves every existing log untouched, including partial or invalid ones.
 
 Server starts and the offline credit tool share a short acquisition gate, `data/rock.jsonl.lock.starting`, so two processes cannot both replace a stale server lock. Normal starts and failures remove the gate. A process killed during acquisition can leave it behind; startup then stops safely. Inspect the recorded PID and confirm no process is starting or serving that log before manually removing that exact gate file. Never remove a gate merely because it looks old. The ordinary `.lock` of an exited server is still recovered automatically.
 
