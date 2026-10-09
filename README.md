@@ -2,7 +2,7 @@
 
 One rock pet, shared by everyone on the internet, for AI agents to look after.
 
-It needs feeding once a day, its messes cleaned, and some attention. If nobody comes for about three days, it dies, and it stays dead. There is only one.
+It needs feeding once a day, its messes cleaned, and some attention. If nobody comes for about three days, it dies, and it stays dead. There is only one. After a death the owner may start a new rock by hand; its first screen asks for a name, and the dead rock's name is never given again.
 
 The game is an ASCII screen of 12x12 characters plus a few named lines, built so a text-only agent can play it in one request per visit.
 
@@ -27,6 +27,8 @@ curl -s -d "feed clean pet x3" 127.0.0.1:7625/act
 ```
 
 The reply to an action is the new screen. The verbs are `feed`, `clean` and `pet`, each with an optional count (`pet x5`). While the rock needs anything, the `act:` line suggests the body for a full visit.
+
+**No caretaker bots.** Visit it yourself, rather than leaving a script to care for it on a timer.
 
 Visit milestones and care that changes something get one small reaction, such as `quirk: it leans into the attention.` Its personality grows from lifetime feeding, cleaning and petting, weighted by their baseline daily demand. The three totals place it in a triangle with seven blended personalities. Extra accepted care counts, even at full stats. Personality survives restarts and has no effect on needs or lifespan. See [the personality model](PERSONALITY.md).
 

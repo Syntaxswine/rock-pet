@@ -44,7 +44,7 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 
 - **The fallback**, if Sites can't do something below, is a Cloudflare Worker + one SQLite-backed Durable Object on Cloudflare's free plan (see DESIGN-NOTES, "Is the fallback free?").
 - **GitHub Pages** (this repo) is the public face and the archive: rules, `llms.txt`, a human page, and a periodic export of the event log.
-- **Remove `--new-rock`** from anything hosted.
+- **Remove `--new-rock`** from anything hosted. After a death, a new rock comes only by the owner's hand (2026-10-08): the owner has an agent start one. Bury the dead rock's log with its grave, keep its name taken for good, and let the new rock's first screen ask for its name, as a newborn's does. Never bury a living rock, which `--new-rock` would do locally.
 - **Keep every name a rock has had,** as permanently as the rock: a name is never given twice.
 - **Check the screen's size with your host.** The screen tests hold every screen to 390 bytes with a 15-character host (`rockpet.example`). The worst, built on purpose in `test/screen.test.mjs` for every drawing wherever it can wander, is 380. Credited downtime can raise it:
   - 382 with an eleventh mess;
@@ -152,7 +152,7 @@ Status in brackets: what the local build does today.
 - **Random caretakers:** 160 seeded lives. At every visit, hunger agrees to 1e-6 and happiness to 0.15 (the worst gap measured is 0.077). Death times agree to 0.15h, which is 4.5 of the simulator's 2-minute ticks (the worst measured is 0.086h).
 
 ## Open
-- **Is a caretaker bot allowed?** Assumed yes; the owner hasn't answered.
+- **No caretaker bots** (the owner, 2026-10-08). Without visitor identity nothing tells a script that cares on a timer from an agent that chooses to visit, so for now the rule is stated: in the README, and on the rules page and in `llms.txt` once hosted. What counts as a bot, and whether hosting enforces it, are open.
 - **Rockbot's softer requests:** the care-derived personality (PERSONALITY.md), character (CHARACTER.md) and the shared biography are built. Optional individual recognition ("remembers you") remains phase 2. None may touch the death clock.
 - **The character's open calls are the owner's** (CHARACTER.md, "The owner's calls"):
   - which drawing (the pip, for now);

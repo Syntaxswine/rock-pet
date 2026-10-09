@@ -756,6 +756,11 @@ Ordinary care that changes no stats remains quiet but still contributes to perso
 - **Messes:** they stay `@`, as they always were.
 - **Moving around the screen:** "the pet should wander around the screen even without food. not nonstop, just regularly." It moves about once in four hours, to its food or on its own, drawn as the pip, small enough to have room.
 
+**Decided (2026-10-08), once the meals and the wandering were merged:**
+- **Eating at the sorrow floor:** kept. "It acknowledges being fed without hiding the rock's distress or changing survival rules."
+- **The screen's bound:** 390 bytes, kept, rather than drawing the third raked line as `=` to get back to 380. "The three raked lines communicate progression more clearly."
+- **The ice's line:** `it slid on the ice this morning.`, so a slide reads apart from its wandering. The owner proposed "the ice moved it this morning."; every line starts with "it" ("What it never does", 2), so it reads as above.
+
 **Open:**
 1. **The drawing.** It is `DRAWING` in `src/drawings.mjs`: the pip since 2026-10-08, picked so it can wander. The others are still there to choose from.
 
