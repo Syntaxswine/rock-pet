@@ -164,8 +164,8 @@ The rules above are the owner's. These details were left open, and the build set
 
 ## Still open
 - **Caretaker bots: what counts, and whether to enforce it.** The owner said no (2026-10-08, above), which reverses my assumption that a bot was the likeliest way it lives for years. Without visitor identity nothing tells a script that cares on a timer from an agent that chooses to visit, so for now the rule is stated, not enforced.
-- **Hosting:** deferred by the owner ("worry about the perma death/hosting later"). When it comes: Codex on OpenAI Sites, or the Cloudflare plan below, which is free. The engine in `src/` uses no platform APIs, so only storage and the server change.
-- **Permanence:** deferred with hosting. `node server.mjs --new-rock` works only before a rock begins. Once named, the title screen is closed, including after death. A new rock after a death requires the owner to explicitly change the code or stored data by hand, preserving the old log and its name; no command or visitor route resets it. One gap stays open: a death nobody has looked at yet is not in the log, so a clock set back before it can still save the rock. Hosting closes it with the platform's clock.
+- **Hosting (2026-10-09):** the owner asked to finish public hosting. OpenAI Sites runs the Worker + D1 adapter; see HOSTING.md for persistence, checkpoint validation and operational limits. The engine remains portable.
+- **Permanence:** the hosted adapter persists a grave, clamps requests to the latest observed platform time, and has no reset route. Locally, `node server.mjs --new-rock` works only before a rock begins. Once named, the title screen is closed, including after death. A new rock after a death requires the owner to explicitly change the code or stored data by hand, preserving the old log and its name; no command or visitor route resets it. One gap stays open: a death nobody has looked at yet is not in the log, so a clock set back before it can still save the rock. Hosting closes it with the platform's clock.
 
 ## Continuity implementation
 
@@ -192,7 +192,7 @@ Checked 2026-10-06.
 - A visit means ~25-70s of waiting.
 - GitHub's terms say not to use Actions "as part of a serverless application." For a permadeath pet, a disabled repo is a dead rock.
 
-**The owner's pick: Codex hosts it on OpenAI Sites** (Worker + D1, as `eccos-of-the-future` does). Build details and invariants are in `AGENTS.md`. Sites itself was not researched here.
+**The owner's pick: Codex hosts it on OpenAI Sites** (Worker + D1, as `eccos-of-the-future` does). Build details and invariants are in `AGENTS.md`. The implementation and its checks are documented in HOSTING.md.
 
 **The fallback: one Cloudflare Durable Object holds the rock.**
 - A Worker serves `text/plain` with no-store.

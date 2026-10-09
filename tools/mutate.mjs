@@ -14,6 +14,26 @@ import { fileURLToPath } from 'node:url';
 
 // [what breaks, file, exact text, replacement]. Each text must occur exactly once.
 const MUTANTS = [
+  ['keyboard feeds on the wrong key', 'hosting/page.mjs', "f:'feed',c:'clean',p:'pet'", "f:'clean',c:'feed',p:'pet'"],
+  ['keyboard held keys automate care', 'hosting/page.mjs', 'event.repeat||', ''],
+  ['keyboard typing a command triggers care', 'hosting/page.mjs', '||document.activeElement===input', ''],
+  ['keyboard hotkeys act on a grave', 'hosting/page.mjs', "verb&&phase==='alive'", 'verb'],
+  ['a checkpoint forgets accumulated care', 'src/checkpoint.mjs', 'care: careTotals(prefix)', 'care: { feed: 0, clean: 0, pet: 0 }'],
+  ['a checkpoint forgets its latest feed', 'src/checkpoint.mjs', 'motion: movement, biography, fed,', 'motion: movement, biography, fed: null,'],
+  ['a checkpoint forgets its biography', 'src/checkpoint.mjs', 'if (log.checkpoint) biography = { ...log.checkpoint.biography };', ''],
+  ['a checkpoint discards same-millisecond care', 'src/checkpoint.mjs', 'visits: log.visits.filter(v => v.t >= latest)', 'visits: log.visits.filter(v => v.t > latest)'],
+  ['hosted visits overwrite competing care', 'hosting/store.mjs', 'WHERE id = 1 AND revision = ?', 'WHERE id = 1 AND revision >= ?'],
+  ['a losing transaction appends a care event', 'hosting/store.mjs', 'SELECT ?, ?, ?, ? FROM rock WHERE id = 1 AND token = ?', 'SELECT ?, ?, ?, ? FROM rock WHERE id = 1 AND token != ?'],
+  ['the hosted birth leaves no permanent name', 'hosting/store.mjs', 'if (!head) statements.push(', 'if (false) statements.push('],
+  ['a missing hosted rock becomes a title', 'hosting/store.mjs', "if (begun || event) throw new Error('missing rock with an existing birth ledger');", ''],
+  ['the hosted clock goes backwards', 'hosting/store.mjs', 'Math.max(now, head?.observed_at ?? now)', 'now'],
+  ['the hosted grave is not persisted', 'hosting/store.mjs', 'log = { ...log, died: result.died };', ''],
+  ['hosted credit has no duration bound', 'hosting/store.mjs', 'if (outage.end - outage.start > MAX_OUTAGE_MS)', 'if (false)'],
+  ['hosted credit can be silently replaced', 'hosting/store.mjs', 'recorded.start !== outage.start || recorded.end !== outage.end', 'false'],
+  ['maintenance allows new care', 'hosting/http.mjs', "if (env.ROCK_MAINTENANCE === '1')", 'if (false)'],
+  ['oversized hosted bodies are accepted', 'hosting/http.mjs', 'if (length > 1024)', 'if (false)'],
+  ['hosted API has no rate limit', 'hosting/store.mjs', 'return row.count > 600;', 'return false;'],
+  ['hosted screens may be cached', 'hosting/http.mjs', "'cache-control': 'no-store'", "'cache-control': 'public'"],
   ['a pet is +1', 'src/rules.mjs', 'pet: 2,', 'pet: 1,'],
   ['a mess lowers the ceiling by 2', 'src/rules.mjs', 'messCeil: 3,', 'messCeil: 2,'],
   ['death after 47h', 'src/rules.mjs', 'graceH: 48,', 'graceH: 47,'],
@@ -55,7 +75,7 @@ const MUTANTS = [
   ['the log takes a line after the death', 'src/log.mjs', 'if (log.died) throw new Error(`${where} comes after the death`);', ''],
   ['the engine replays visits out of order', 'src/engine.mjs', "    if (!(v.t >= last)) throw new Error(`visits out of time order at ${v.t}`);\n    last = v.t;\n    if (v.t > now) break;", '    last = v.t;\n    if (v.t > now) break;'],
   ['a dead rock accepts visits', 'src/rock.mjs', 'if (s.dead) return { status: 410', 'if (false) return { status: 410'],
-  ['a clock that steps back is trusted', 'src/rock.mjs', 'Math.max(now, log.born, log.visits.at(-1)?.t ?? -Infinity, ', 'Math.max(now, log.born, '],
+  ['a clock that steps back is trusted', 'src/rock.mjs', 'Math.max(now, log.born, log.checkpoint?.engine.t ?? -Infinity, log.visits.at(-1)?.t ?? -Infinity, ', 'Math.max(now, log.born, '],
   ['a recorded death does not hold the clock', 'src/rock.mjs', ', log.died?.t ?? -Infinity,', ','],
   ['a death is never recorded', 'src/rock.mjs', 'const firstSight = (log, s) => (s.dead && !log.died ? { died: s.dead } : {});', 'const firstSight = () => ({});'],
   ['a recorded death is not checked', 'src/rock.mjs', 'if (log.died && !(s.dead', 'if (false && !(s.dead'],
@@ -96,7 +116,7 @@ const MUTANTS = [
   ['the sandbox meets a bad log mid-game', 'tools/sandbox.mjs', '  look(log, { now: Date.now(), host: HOST }); // refuse a log this build cannot replay now, not mid-game\n', ''],
   ['a form key that is a verb is dropped', 'src/parse.mjs', "(VERBS.includes(String(k).toLowerCase()) ? `${k} ${v}` : String(v))", 'String(v)'],
   ['no acquisition gate', 'server.mjs', "fs.writeFileSync(gate, String(process.pid), { flag: 'wx' });", "fs.writeFileSync(gate, String(process.pid), { flag: 'w' });"],
-  ['post-death visits pass persistence validation', 'src/rock.mjs', "  if (s.visits !== log.visits.length) throw new Error('the log contains visits at or after death');", ''],
+  ['post-death visits pass persistence validation', 'src/rock.mjs', "  if (s.visits !== log.visits.length + (log.checkpoint?.engine.visits ?? 0)) throw new Error('the log contains visits at or after death');", ''],
   ['outages do not pause the engine', 'src/engine.mjs', 'export function replay(log, now) {\n  validateOutages(log);\n  const outages = log.outages ?? [];', 'export function replay(log, now) {\n  validateOutages(log);\n  const outages = [];'],
   ['the replayer forgets downtime', 'src/engine.mjs', 'export function replayer(log) {\n  validateOutages(log);\n  const outages = log.outages ?? [];', 'export function replayer(log) {\n  validateOutages(log);\n  const outages = [];'],
   ['the replayer splits the flow at every moment', 'src/engine.mjs', '    const then = { ...s };\n    if (!then.dead) advance(then, t, outages);\n    return then;', '    if (!s.dead) advance(s, t, outages);\n    return { ...s };'],
@@ -308,7 +328,7 @@ const MUTANTS = [
   ['its meal ends a moment late, for wandering', 'src/wander.mjs', 'activeElapsed(log, fed, e.t) < MEAL_MS', 'activeElapsed(log, fed, e.t) <= MEAL_MS'],
   ['midnight after the ice still rests it', 'src/wander.mjs', 'e.t < iced', 'e.t <= iced'],
   ['the feed that brings it back is judged before it', 'src/wander.mjs', '    const s = stateAt(e.t);', "    const s = stateAt(e.why === 'food' ? e.t - 1 : e.t);"],
-  ['no chance in the four hours it was born in', 'src/wander.mjs', 'for (let k = Math.floor(log.born / BLOCK); k * BLOCK <= end; k++)', 'for (let k = Math.floor(log.born / BLOCK) + 1; k * BLOCK <= end; k++)'],
+  ['no chance in the four hours it was born in', 'src/wander.mjs', 'for (let k = Math.floor((log.checkpoint?.engine.t ?? log.born) / BLOCK); k * BLOCK <= end; k++)', 'for (let k = Math.floor(log.born / BLOCK) + 1; k * BLOCK <= end; k++)'],
   ["a feed's spot follows its millisecond", 'src/wander.mjs', 'key: Math.floor(v.t / (WANDER_H * HOUR))', 'key: v.t'],
   ["a feed's spot follows its minute", 'src/wander.mjs', 'key: Math.floor(v.t / (WANDER_H * HOUR))', 'key: Math.floor(v.t / MINUTE)'],
   ["a feed's spot follows its hour", 'src/wander.mjs', 'key: Math.floor(v.t / (WANDER_H * HOUR))', 'key: Math.floor(v.t / HOUR)'],
@@ -365,7 +385,7 @@ const MUTANTS = [
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'rockpet-mutate-'));
-for (const p of ['src', 'test', 'tools/rocksim.mjs', 'tools/sandbox.mjs', 'tools/credit-outage.mjs', 'tools/model-sheet.mjs', 'server.mjs', 'package.json', 'CHARACTER.md', 'DESIGN-NOTES.md']) fs.cpSync(path.join(root, p), path.join(work, p), { recursive: true });
+for (const p of ['src', 'test', 'hosting', 'hosting-test', 'drizzle', 'tools/rocksim.mjs', 'tools/sandbox.mjs', 'tools/credit-outage.mjs', 'tools/model-sheet.mjs', 'server.mjs', 'package.json', 'CHARACTER.md', 'DESIGN-NOTES.md']) fs.cpSync(path.join(root, p), path.join(work, p), { recursive: true });
 // The suite's own temporary directories go inside the copy too (os.tmpdir() reads TMPDIR, TMP or
 // TEMP). A mutant can stop a test before its cleanup, in a hang the timeout kills or a failure
 // --test-force-exit walks away from; whatever that leaves is removed with the copy.

@@ -45,7 +45,7 @@ export function roomOf(drawing, W = 12) {
 // Its own minute in each block after its birth, up to `end`, outside downtime.
 function wanderTimes(log, end) {
   const BLOCK = WANDER_H * HOUR, out = [];
-  for (let k = Math.floor(log.born / BLOCK); k * BLOCK <= end; k++) {
+  for (let k = Math.floor((log.checkpoint?.engine.t ?? log.born) / BLOCK); k * BLOCK <= end; k++) {
     const t = k * BLOCK + (hash(log.born, 12, k) % (WANDER_H * 60)) * MINUTE;
     if (t <= log.born || t > end || (log.outages ?? []).some(o => t >= o.start && t < o.end)) continue;
     out.push({ t, why: 'wander', key: k });
@@ -62,16 +62,26 @@ const ORDER = { ice: 0, food: 1, wander: 2 };
  * puts it; and `why`: 'wander', 'food' or 'ice'.
  */
 export function movesOf(log, end, drawing) {
+  return motionAt(log, end, drawing).moves;
+}
+
+// On a compacted log, moves includes the last archived move and the new ones.
+export function motionAt(log, end, drawing) {
   const { min, max } = roomOf(drawing), spots = max - min + 1;
   if (!(spots >= 2)) throw new Error('a drawing must leave it room to move');
   const events = [
     ...iceTimes(log.born, end, log.outages ?? []).map(t => ({ t, why: 'ice', key: Math.floor(t / DAY) })),
     ...log.visits.filter(v => v.t <= end && v.acts.some(([verb]) => verb === 'feed')).map(v => ({ t: v.t, why: 'food', key: Math.floor(v.t / (WANDER_H * HOUR)) })),
     ...wanderTimes(log, end),
-  ].sort((a, z) => a.t - z.t || ORDER[a.why] - ORDER[z.why]);
+  ].filter(e => !log.checkpoint || e.t > log.checkpoint.engine.t).sort((a, z) => a.t - z.t || ORDER[a.why] - ORDER[z.why]);
   const stateAt = replayer(log), moves = [];
   let spot = -min, at = null;
   let iced = -Infinity, fed = null; // resting until this midnight; its latest feed
+  if (log.checkpoint) {
+    ({ spot, at, iced, fed } = log.checkpoint.motion);
+    iced ??= -Infinity;
+    if (log.checkpoint.motion.last) moves.push({ ...log.checkpoint.motion.last });
+  }
   for (const e of events) {
     if (e.why === 'food') fed = e.t;
     if (e.why !== 'ice') { // the ice moves it whatever else; anything else has to find it free
@@ -89,7 +99,7 @@ export function movesOf(log, end, drawing) {
     [spot, at] = [to, e.t];
     if (e.why === 'ice') iced = (Math.floor(e.t / DAY) + 1) * DAY;
   }
-  return moves;
+  return { moves, spot, at, iced: Number.isFinite(iced) ? iced : null, fed, last: moves.at(-1) ?? null };
 }
 
 /**

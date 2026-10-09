@@ -1,6 +1,6 @@
 # AGENTS.md — building Rock Pet
 
-The design is settled, and the game is built and playable locally (2026-10-06). What remains is hosting, and making death truly permanent. The owner has deferred both: "lets build this first and worry about the perma death/hosting later."
+The design is settled. On 2026-10-09 the owner requested public hosting. The Sites Worker + D1 adapter is in `hosting/` and `worker/`; read `HOSTING.md` for deployment, persistence, tests and verified outage recovery. The local game remains usable without hosting dependencies.
 
 - Read `DESIGN-NOTES.md` first. Its rules table is the spec, and "The build's choices" covers what the build settled.
 - `src/` is the game; `server.mjs` serves it locally; `node --test` checks it, including against `tools/rocksim.mjs`, the reference model the rules were tuned with.
@@ -39,7 +39,7 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 
 `src/` uses no platform APIs, so it should move to a Worker unchanged. Hosting means replacing `server.mjs`'s storage with the platform's and serving the same routes.
 
-## Hosting (deferred; the owner's direction when it comes)
+## Hosting
 **Host it on OpenAI Sites** (Worker + D1), the way `eccos-of-the-future` is hosted. That repo's `.openai/hosting.json`, `vite.config.ts` and `worker/index.ts` are a working example of a POST handler writing to D1 with `Cache-Control: no-store`.
 
 - **The fallback**, if Sites can't do something below, is a Cloudflare Worker + one SQLite-backed Durable Object on Cloudflare's free plan (see DESIGN-NOTES, "Is the fallback free?").
@@ -76,7 +76,7 @@ Status in brackets: what the local build does today.
    - Hunger and happiness are functions of elapsed time between events. Nothing depends on a scheduler running.
    - The one exception is outage credit, below: published, bounded, logged.
 3. **Every action is benevolent.** No verb, count or order can lower a stat. Only absence and load can hurt the rock. Do not add an overfeeding penalty, and feeding must not create messes. [built; a property test inserts random visits into random logs and checks none brings death sooner]
-4. **Strongly consistent writes.** [local: one process, read-decide-append with no await between; hosted: to do]
+4. **Strongly consistent writes.** [local: synchronous read-decide-append; hosted: primary D1 sessions, revision-checked transactional updates and event inserts]
    - Two simultaneous visits must both land.
    - With D1, append the visit row and update any cached state in one `batch()`, which is transactional.
    - A write batch alone does not protect an earlier read. Serialize the whole read/decide/write operation, or use a state revision check and retry conflicts before accepting the visit.
@@ -170,10 +170,11 @@ Status in brackets: what the local build does today.
 - **Rockbot's softer requests:** the care-derived personality (PERSONALITY.md), character (CHARACTER.md) and the shared biography are built. Optional individual recognition ("remembers you") remains phase 2. None may touch the death clock.
 - **The character's open calls are the owner's** (CHARACTER.md, "The owner's calls"):
   - which drawing (the pip, for now);
-- **Does OpenAI Sites fit the invariants?** Not researched on this side. If something above can't be met there (consistency, anonymous public access, no-store, uptime), say so in an issue before building around it.
+- **Hosting operations:** Sites provides anonymous public access, a Worker and D1. The adapter enforces consistency, no-store and permanent graves. Independent outage detection and pre-recovery gating remain manual; see `HOSTING.md`. Periodic external log exports are not yet scheduled.
 
 ## Working here
 - Commit identity: `StonePhilosopher <270513546+StonePhilosopher@users.noreply.github.com>`.
+- Hosting checks require Node 24; the local game still runs on Node 22.
 - `node --test` must pass. `node tools/mutate.mjs` must catch every mutant; add one when you add a rule.
 - A test cleans up even when it fails. Await anything that can throw (a start, a request) inside the `try` whose `finally` closes the server and removes the temporary directory. A server's `onError` collects; it never throws, since a throw there leaves its request unanswered, the test never reaches its `finally`, and a plain `node --test` never ends. `node tools/mutate.mjs` keeps the suite's temporary directories inside its copy, and stops if the unmutated suite leaves one behind.
 - A new line for the rock goes in `src/story.mjs` and must pass the voice test. If the drawing changes, paste `node tools/model-sheet.mjs` into CHARACTER.md.

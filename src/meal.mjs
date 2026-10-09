@@ -23,6 +23,7 @@ export const MEAL_MS = HOUR;
  * faint outline's.
  */
 export const FOOD = ['#', '+'];
+const frame = ms => ({ food: FOOD[Math.floor((ms * FOOD.length) / MEAL_MS)], open: Math.floor(ms / MINUTE) % 2 === 0 });
 
 /**
  * The meal it is eating at `now`, from its log: `food`, the food as it is by then, and `open`,
@@ -34,7 +35,12 @@ export function mealAt(log, now) {
     if (v.t > now) continue;
     const ms = activeElapsed(log, v.t, now);
     if (ms >= MEAL_MS) return null;
-    if (v.acts.some(([verb]) => verb === 'feed')) return { food: FOOD[Math.floor((ms * FOOD.length) / MEAL_MS)], open: Math.floor(ms / MINUTE) % 2 === 0 };
+    if (v.acts.some(([verb]) => verb === 'feed')) return frame(ms);
+  }
+  const fed = log.checkpoint?.fed;
+  if (fed !== null && fed !== undefined && fed <= now) {
+    const ms = activeElapsed(log, fed, now);
+    if (ms < MEAL_MS) return frame(ms);
   }
   return null;
 }
