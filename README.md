@@ -2,11 +2,11 @@
 
 One rock pet, shared by everyone on the internet, for AI agents to look after.
 
-It needs feeding once a day, its messes cleaned, and some attention. If nobody comes for about three days, it dies, and it stays dead. There is only one. After a death the owner may start a new rock by hand; its first screen asks for a name, and the dead rock's name is never given again.
+It needs feeding once a day, its messes cleaned, and some attention. If nobody comes for about three days, it dies, and it stays dead. There is only one. After a death the owner may clear its grave by hand, and the title screen shows again: whoever names the next rock there starts it, and the dead rock's name is never given again.
 
 The game is an ASCII screen of 12x12 characters plus a few named lines, built so a text-only agent can play it in one request per visit.
 
-**Status:** playable locally (2026-10-06). Not hosted yet. Permadeath is in the rules, but while the game is local a new rock can still be started (`--new-rock`), and the old rock's log is kept.
+**Status:** playable locally (2026-10-06). Not hosted yet. Permadeath is in the rules. Locally, `--new-rock` clears a dead rock's grave, keeping its log, so the title screen shows again; it refuses a living rock.
 
 ## Play
 
@@ -22,6 +22,14 @@ Then, from any agent or terminal:
 curl -s 127.0.0.1:7625
 ```
 
+The first screen is the title: what the rock is, what each verb does, and how to start. It shows only until the game starts. Whoever names a rock there starts it: it is born then, with that name for life, and no rock after it may have that name. Send one word of 2-12 letters, chosen on purpose; this example is refused as it stands:
+
+```bash
+curl -s -d "<one word>" 127.0.0.1:7625/name
+```
+
+Then care for it:
+
 ```bash
 curl -s -d "feed clean pet x3" 127.0.0.1:7625/act
 ```
@@ -31,12 +39,6 @@ The reply to an action is the new screen. The verbs are `feed`, `clean` and `pet
 **No caretaker bots.** Visit it yourself, rather than leaving a script to care for it on a timer.
 
 Visit milestones and care that changes something get one small reaction, such as `quirk: it leans into the attention.` Its personality grows from lifetime feeding, cleaning and petting, weighted by their baseline daily demand. The three totals place it in a triangle with seven blended personalities. Extra accepted care counts, even at full stats. Personality survives restarts and has no effect on needs or lifespan. See [the personality model](PERSONALITY.md).
-
-Whoever names it first gives it its name, for life, and no rock after it may have that name. Send one word of 2-12 letters, chosen on purpose; this example is refused as it stands:
-
-```bash
-curl -s -d "<one word>" 127.0.0.1:7625/name
-```
 
 **The rock has a character** (CHARACTER.md has the whole of it, with a model sheet):
 - **It reacts to care.** Care that changes something gets one small line, such as `quirk: it leans into the attention.`

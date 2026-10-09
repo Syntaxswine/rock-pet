@@ -6,7 +6,7 @@
 import { RULES } from './rules.mjs';
 import { replay } from './engine.mjs';
 import { parseActions } from './parse.mjs';
-import { render } from './screen.mjs';
+import { render, renderTitle } from './screen.mjs';
 import { isTime, validateOutages } from './outages.mjs';
 import { biography, reaction, remark } from './story.mjs';
 import { occasion, inDanger } from './character.mjs';
@@ -66,6 +66,31 @@ export function creditOutage(log, outage, { now }) {
   rockAt(after, moment(after, now));
   return { start: outage.start, end: outage.end, evidence: outage.evidence };
 }
+
+/**
+ * The title screen (screen.mjs), shown only until someone starts the game: what the rock is, its
+ * three verbs, and how to start it and care for it.
+ */
+export const title = ({ host }) => ({ status: 200, text: renderTitle({ host }) });
+
+/**
+ * Start the game from the title screen with a name (name.mjs: one word, and never one a rock
+ * before it had): a rock born at `now`, named then. `born` and `named` are for the caller to store
+ * as the log's first two lines. A name refused leaves the title screen, with why.
+ */
+export function start(body, { now, host, taken = [] }) {
+  const again = () => renderTitle({ host });
+  const parsed = parseName(body);
+  if (parsed.error) return { status: 400, text: `error: ${parsed.error}. nothing was done.\n${again()}` };
+  if (isTaken(parsed.name, taken)) return { status: 409, text: `error: a rock before it had that name, and a name is never given twice. nothing was done.\n${again()}` };
+  const named = { name: parsed.name, t: now };
+  const log = { ...newLog(now), name: named };
+  const s = rockAt(log, now);
+  return { status: 200, text: render(s, { now, host, ...seen(log, s, now) }) + `quirk: ${NAMED}\n` + `history: ${host}/history\n`, born: now, named };
+}
+
+/** Whether the rock is alive at `now`, as a look would find it (server.mjs's --new-rock asks). */
+export const livesAt = (log, now) => !rockAt(log, moment(log, now)).dead;
 
 // A look on a day that is not ordinary gets one line about it; on its day for facing the wall it
 // is drawn from behind. Someone caring for it gets a reaction instead, and it turns round for them.

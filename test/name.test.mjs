@@ -10,7 +10,7 @@ import path from 'node:path';
 import { parseName, isTaken, NAMED, RESERVED } from '../src/name.mjs';
 import { name, look, act, history, newLog, creditOutage } from '../src/rock.mjs';
 import { parseLog, birthLine, visitLine, nameLine, deathLine } from '../src/log.mjs';
-import { createRockServer, ensureRock, takenNames, bury } from '../server.mjs';
+import { createRockServer, takenNames, bury } from '../server.mjs';
 import { replay, HOUR } from '../src/engine.mjs';
 import { render } from '../src/screen.mjs';
 
@@ -41,6 +41,7 @@ test('no word the screen itself prints can be a name', () => {
   // Every kind of screen: a newborn, cared for just now, hungry, sad, at each extreme, mossy, many
   // messes, a grave of each cause, named and not; then look, act and their labelled lines. The
   // prose of the rock's lines and of errors is not the screen's vocabulary, so only their labels count.
+  // The title screen is left out: it shows only before there is a rock, so no name stands beside it.
   const words = new Set();
   const add = text => { for (const line of text.split('\n')) for (const w of (/^(quirk|error): /.test(line) ? line.slice(0, 6) : line).toLowerCase().match(/[a-z]{2,12}/g) ?? []) words.add(w); };
   const b = T - 41 * 24 * HOUR;
@@ -180,7 +181,7 @@ test('with the longest name, every screen still keeps to 390 bytes', () => {
 async function withServer(fn, { seed } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rockpet-name-'));
   const file = path.join(dir, 'rock.jsonl');
-  if (seed === undefined) ensureRock(file, T); else fs.writeFileSync(file, seed);
+  fs.writeFileSync(file, seed ?? birthLine(T));
   // The server's errors must be none, and are collected to say so. Thrown inside the server, one
   // left its request unanswered: the test waited for ever, never cleaned up, and kept the run open.
   const errors = [];
@@ -222,7 +223,7 @@ test('POST /name names it once; the log keeps it; the names of buried rocks are 
     assert.match((await req('GET', '/')).text, /^Pebble {2}age 1h /m);
     // A new rock in its place: the old one's name is in the graveyard, and taken.
     bury(file, T + HOUR);
-    ensureRock(file, T + HOUR);
+    fs.writeFileSync(file, birthLine(T + HOUR)); // an unnamed rock, as before the title screen
     assert.deepEqual(takenNames(file), ['Pebble']);
     assert.equal((await req('POST', '/name', 'PEBBLE')).status, 409, 'never given twice');
     assert.equal((await req('POST', '/name', 'flint')).status, 200);

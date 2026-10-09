@@ -638,7 +638,7 @@ The least-given care never shows, so at most two traces do. This is the personal
 
 ## Its name
 
-Whoever names it first gives it its name: `POST /name` with one word. It is the owner's rule: "the user names the rock and the name is single use, once that pet is gone that name can not be used again."
+Whoever names it first gives it its name: `POST /name` with one word, on the title screen, which so starts the game (DESIGN-NOTES, "Birth"). It is the owner's rule: "the user names the rock and the name is single use, once that pet is gone that name can not be used again."
 
 - **The name:** one word, 2–12 letters, a–z, kept capitalized. `pebble` and `PEBBLE` are both Pebble.
 - **Not an accident:** a name is for life, so some words are refused (400):
@@ -647,9 +647,9 @@ Whoever names it first gives it its name: `POST /name` with one word. It is the 
   - a client's empty values and probes: `null`, `undefined`, `test`, `string`, `hello`…;
   - the words for who is speaking, which an agent might read as a label: `system`, `assistant`, `user`…
 - **Once:** a rock is named once, for life. A second name is refused (409).
-- **Never twice:** a name a rock before it had is refused too (409), in any case. Locally, those rocks are the logs in `data/graveyard/`, which `--new-rock` moves the old rock into. Once hosted, the names must be kept as permanently as the rock.
+- **Never twice:** a name a rock before it had is refused too (409), in any case. Locally, those rocks are the logs in `data/graveyard/`, which `--new-rock` moves a dead rock into. Once hosted, the names must be kept as permanently as the rock.
 - **Where it shows:** the screen shows it in one place, first on the age line (`Pebble  age 41d …`). A grave reads `here lies Pebble`. `/history` says when it was named.
-- **Until then:** while it has no name and isn't at an extreme, the screen has a line `unnamed: POST <host>/name  body: a one-word name`. It costs about 55 bytes, until someone names it.
+- **Until then:** a rock started from the title screen is named from birth. One from before it, while it has no name and isn't at an extreme, has a line `unnamed: POST <host>/name  body: a one-word name`. It costs about 55 bytes, until someone names it.
 - **Naming isn't care.** It changes nothing about the rock but its name. None of its lines ever says the name.
 - **Its reply:** `quirk: it has a name now.`, except at an extreme, where, as always, it says nothing.
 
@@ -783,7 +783,7 @@ Ordinary care that changes no stats remains quiet but still contributes to perso
 The costs come from these places:
 - **The drawing:** nothing. The pip takes 31 bytes, one fewer than the first build's pebble; the lump took 11 more.
 - **The name:** its length plus 2 (8 bytes for Pebble).
-- **The naming line:** about 55 bytes, until someone names it.
+- **The naming line:** about 55 bytes, until someone names it. A rock started from the title screen never has it.
 - **The look line:** 38 bytes when there is one, on about a quarter of looks, so about 10 bytes a look overall.
 - **The ground:** nothing while its care is balanced, as it is when the act line's suggestion is followed every 3 to 10 hours. On the pip at home: 1 byte for sand at its foot (3 deeper); 9, 24 or 36 for one, two or three raked lines; 9, 13 or 22 for two, three or five footprints; up to 37 for two traces together. On any drawing, wherever it has wandered, 42 at most.
 - **A meal:** 1 byte, or none, for the hour after a feed.

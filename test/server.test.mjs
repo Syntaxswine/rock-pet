@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createRockServer, ensureRock, readLog, bury, main } from '../server.mjs';
+import { createRockServer, readLog, bury, main } from '../server.mjs';
 import { replay } from '../src/engine.mjs';
 import { RULES } from '../src/rules.mjs';
 
@@ -17,11 +17,11 @@ const ROW1_NEWBORN = '0' + ' '.repeat(9) + '10';
 const tmpDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'rockpet-'));
 
 // A server on a free port over a fresh log. `seed` is the log's starting text; with no seed the
-// rock is born at NOW, as the command line does at start. `errors` collects what went wrong.
+// rock is born at NOW, unnamed, as a rock from before the title screen was. `errors` collects what went wrong.
 async function withServer({ seed, now = () => NOW } = {}, fn) {
   const dir = tmpDir();
   const file = path.join(dir, 'rock.jsonl');
-  if (seed === undefined) ensureRock(file, NOW); else fs.writeFileSync(file, seed);
+  fs.writeFileSync(file, seed ?? birth(NOW));
   const errors = [];
   const server = createRockServer({ file, host: 'rock.test', now, onError: e => errors.push(e) });
   await new Promise(r => server.listen(0, '127.0.0.1', r));
@@ -294,7 +294,7 @@ test('the command line serves this machine only, and prints the address it serve
     assert.equal(server.address().address, '127.0.0.1');
     // Not "localhost": where that means ::1 first, PowerShell and Python wait 2s per request.
     assert.ok(said.at(-1).startsWith('Rock Pet on http://127.0.0.1:'), said.at(-1));
-    assert.equal(readLog(path.join(dir, 'rock.jsonl')).visits.length, 0, 'a rock is born at start');
+    assert.equal(fs.existsSync(path.join(dir, 'rock.jsonl')), false, 'no rock until someone names one on the title screen');
   } finally {
     if (server) await new Promise(r => server.close(r));
     fs.rmSync(dir, { recursive: true, force: true });
@@ -360,7 +360,7 @@ test('a log too broken to serve stops the start with the reason; --new-rock stil
     const [grave] = fs.readdirSync(path.join(dir, 'graveyard'));
     assert.match(grave, /^rock-unreadable-/);
     assert.equal(fs.readFileSync(path.join(dir, 'graveyard', grave), 'utf8'), torn);
-    assert.equal(readLog(file).visits.length, 0, 'a new rock');
+    assert.equal(fs.existsSync(file), false, 'its grave cleared: the title screen, until someone names the next');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -378,7 +378,7 @@ test('--new-rock keeps the old log in the graveyard, never over another', async 
       const graves = fs.readdirSync(path.join(dir, 'graveyard')).sort();
       assert.equal(graves.length, n);
       for (const g of graves) assert.equal(fs.readFileSync(path.join(dir, 'graveyard', g), 'utf8'), old);
-      assert.equal(readLog(file).visits.length, 0, 'a new rock');
+      assert.equal(fs.existsSync(file), false, 'its grave cleared: the title screen, until someone names the next');
     }
     assert.equal(bury(path.join(dir, 'none.jsonl')), null, 'nothing to bury');
   } finally {

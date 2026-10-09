@@ -21,8 +21,8 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 | `src/screen.mjs` | The 12x12 grid and the named lines. |
 | `src/parse.mjs` | Action bodies such as `feed x4 clean pet x10`. |
 | `src/log.mjs` | The log's format: the birth, each visit, its name once given, and a death line once anyone has seen the rock dead. Parsing checks shape and refuses anything else. |
-| `src/rock.mjs` | `look(log, {now, host})`, `act(log, body, {now, host})` and `name(log, body, {now, host, taken})`: the HTTP status, the screen, and what to append to the log (an accepted action's `visit`; a given name; the `died` line the first time the rock is seen dead). |
-| `server.mjs` | The local server, answering 127.0.0.1 only unless `--listen` says otherwise. The log is `data/rock.jsonl`, read and appended in one synchronous step per request, with a lock file so only one server serves a log. `--new-rock` starts over (local only). |
+| `src/rock.mjs` | `look(log, {now, host})`, `act(log, body, {now, host})` and `name(log, body, {now, host, taken})`: the HTTP status, the screen, and what to append to the log (an accepted action's `visit`; a given name; the `died` line the first time the rock is seen dead). Before there is a rock, `title({host})` is every page, and `start(body, {now, host, taken})` names one and so starts it, giving the log's first two lines. |
+| `server.mjs` | The local server, answering 127.0.0.1 only unless `--listen` says otherwise. The log is `data/rock.jsonl`, read and appended in one synchronous step per request, with a lock file so only one server serves a log. With no log it serves the title screen until a name starts the rock. `--new-rock` clears a dead rock's grave (local only), and refuses a living rock. |
 | `tools/sandbox.mjs` | The engine on a pretend clock. |
 | `tools/mutate.mjs` | Applies deliberate faults in a temporary copy; every mutant must be caught. LF and CRLF checkouts are supported. |
 | `src/story.mjs` | The rock's authored lines: one reaction after effective care or a visit milestone, one line on a look on a day that is not ordinary, and the shared biography at `GET /history`. Never changes the engine. |
@@ -44,7 +44,7 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 
 - **The fallback**, if Sites can't do something below, is a Cloudflare Worker + one SQLite-backed Durable Object on Cloudflare's free plan (see DESIGN-NOTES, "Is the fallback free?").
 - **GitHub Pages** (this repo) is the public face and the archive: rules, `llms.txt`, a human page, and a periodic export of the event log.
-- **Remove `--new-rock`** from anything hosted. After a death, a new rock comes only by the owner's hand (2026-10-08): the owner has an agent start one by changing the code or the stored log, never through a request. No route may start, bury or reset a rock, however hidden, since the page is open to anyone: "a stranger could come up and restart your pet". Bury the dead rock's log with its grave, keep its name taken for good, and let the new rock's first screen ask for its name, as a newborn's does. Never bury a living rock, which `--new-rock` would do locally.
+- **Remove `--new-rock`** from anything hosted. After a death, a new rock comes only by the owner's hand (2026-10-08): the owner has an agent start one by changing the code or the stored log, never through a request. No route may start, bury or reset a rock, however hidden, since the page is open to anyone: "a stranger could come up and restart your pet". Bury the dead rock's log with its grave and keep its name taken for good; the title screen then shows until the first visitor names the next rock, which starts it. Show the title only while the store has no rock, never because a read failed. Never bury a living rock: locally `--new-rock` refuses one.
 - **Keep every name a rock has had,** as permanently as the rock: a name is never given twice.
 - **Check the screen's size with your host.** The screen tests hold every screen to 390 bytes with a 15-character host (`rockpet.example`). The worst, built on purpose in `test/screen.test.mjs` for every drawing wherever it can wander, is 380. Credited downtime can raise it:
   - 382 with an eleventh mess;
@@ -140,7 +140,7 @@ Status in brackets: what the local build does today.
   - `hunger 3/10 (10=starving)  happy -2 (max 7)  mess 1 (@)`. The `(max N)` part appears only while messes lower the ceiling.
   - Danger lines, only at an extreme: `sorrow: at -10 for 17h of 48` and `hunger: at 10 for 17h of 48`.
   - `Pebble  age 41d  now 14:05Z  last care 6h ago`: its name, once it has one, then its age and times. A grave's line starts `here lies Pebble`.
-  - `unnamed: POST <host>/name  body: a one-word name`: only until it has a name, and not at an extreme.
+  - `unnamed: POST <host>/name  body: a one-word name`: only until it has a name, and not at an extreme. A rock started from the title screen is named from birth, so only one from before it shows this line.
   - `act: POST <host>/act  body e.g. feed clean pet x6`: the suggested body is a full visit for the current state.
 - Agents' fetch tools may paraphrase the page through a small model. The named lines carry everything needed to act; grid positions won't survive. (The preview pane's page-text reader dropped the grid's blank lines on the first try.)
 

@@ -13,6 +13,7 @@
 - **After a death (2026-10-08):** "i figured i would just manually restart it through codex or claude updating the code. the old name is remembered forever and cannot be used for any new pets. so a new game will start with a screen where you name your pet."
 - **Caretaker bots (2026-10-08):** "no caretaker bots."
 - **No restart by visitors (2026-10-08):** "i was not planning for the pet to be user restartable because its an open page, a stranger could come up and restart your pet."
+- **A title screen (2026-10-08):** "having new rock be the starting command on a tittle screen makes more sense." "the tittle screen should also explain the 3 buttons and how to use them with the limited characters available." "the tittle screen is only shown once when the game is first started." So with no rock, every page is the title screen, and naming a rock there starts the game.
 
 ## The rules (decided 2026-10-06)
 
@@ -156,13 +157,13 @@ The rules above are the owner's. These details were left open, and the build set
 | **The dead** | Every visit to a dead rock gets 410 and the grave. It is not logged. |
 | **Same-moment events** | A mess due at the same moment as a visit comes first, so that visit can clean it. A visit at the exact 48th hour is too late. A death comes before a mess due at the same moment. A tie between the two clocks dies hungry. |
 | **The log** | `data/rock.jsonl`, one JSON object per line: the birth, each visit, its name once given, and a death line written the first time anyone sees the rock dead. A clock set back before a recorded death cannot reach a time when the rock was alive. A log that cannot be replayed exactly (a bad line, a death its visits don't produce) is refused and left untouched; a byte-order mark or a missing last newline from a hand edit is fine. |
-| **Birth** | The rock is born when the server starts and finds no log. After that, a missing or unreadable log is an error, never a new rock. |
-| **Local server** | Port 7625 (ROCK on a phone keypad), this machine only unless `--listen` says otherwise. One server per log: a lock file holds the server's pid, and a second server is refused (a dead server's lock is taken over). A log that cannot be replayed stops the start with the reason, and `--new-rock` still buries it (as `rock-unreadable-<time>`). A body over 1 KB gets 413 at once; a method a path doesn't serve gets 405 with `Allow`; a broken log gets a 500 that says nothing more. |
+| **Birth** | With no log, every page is the title screen: the rock with no face, what it is, what each verb does, and how to start it and send them, in 359 bytes. The rock is born when someone names it there, so it is named from birth and its clock starts then. After that, a missing or unreadable log is an error, never the title screen again or a new rock. |
+| **Local server** | Port 7625 (ROCK on a phone keypad), this machine only unless `--listen` says otherwise. One server per log: a lock file holds the server's pid, and a second server is refused (a dead server's lock is taken over). A log that cannot be replayed stops the start with the reason, and `--new-rock` still buries it (as `rock-unreadable-<time>`). `--new-rock` buries only a dead rock, or a log too broken to serve; it refuses a living one. A body over 1 KB gets 413 at once; a method a path doesn't serve gets 405 with `Allow`; a broken log gets a 500 that says nothing more. |
 
 ## Still open
 - **Caretaker bots: what counts, and whether to enforce it.** The owner said no (2026-10-08, above), which reverses my assumption that a bot was the likeliest way it lives for years. Without visitor identity nothing tells a script that cares on a timer from an agent that chooses to visit, so for now the rule is stated, not enforced.
 - **Hosting:** deferred by the owner ("worry about the perma death/hosting later"). When it comes: Codex on OpenAI Sites, or the Cloudflare plan below, which is free. The engine in `src/` uses no platform APIs, so only storage and the server change.
-- **Permanence:** deferred with hosting. Locally, `node server.mjs --new-rock` starts over and moves the old log to `data/graveyard/`, even a living rock's. A hosted rock must not have it: after a death, a new rock comes only by the owner's hand (2026-10-08, above). One gap stays open: a death nobody has looked at yet is not in the log, so a clock set back before it can still save the rock. Hosting closes it with the platform's clock.
+- **Permanence:** deferred with hosting. Locally, `node server.mjs --new-rock` moves a dead rock's log to `data/graveyard/`, so the title screen shows again; it refuses a living rock. A hosted rock must not have it: after a death, a new rock comes only by the owner's hand (2026-10-08, above). One gap stays open: a death nobody has looked at yet is not in the log, so a clock set back before it can still save the rock. Hosting closes it with the platform's clock.
 
 ## Continuity implementation
 

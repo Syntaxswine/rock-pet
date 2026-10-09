@@ -159,3 +159,23 @@ export function render(s, { now, host, pose = 'front', name = null, drawing = DR
   }
   return lines.join('\n') + '\n';
 }
+
+/**
+ * The title screen, shown only until someone starts the game (rock.mjs, `title`): the rock, no
+ * one's yet and so with no face, then in as few lines as will do what it is, what each of its
+ * three verbs does, and how to start it, by naming it, and to send them. Its numbers are the rules'.
+ */
+export function renderTitle({ host, drawing = DRAWINGS[DRAWING] }) {
+  return [
+    'rock pet',
+    ...drawing.front.map(row => row.replaceAll('E', ' ').trimEnd()),
+    '',
+    'one rock, shared by everyone; it dies for good',
+    `after ${R.graceH}h at hunger 10 or at happy -10`,
+    `feed: hunger -${R.feed} (it rises ${R.hungerPerHour * 24} a day)`,
+    `clean: clears every mess @ (one each ${R.messEveryH}h)`,
+    `pet: happy +${R.pet} (it falls over time)`,
+    `new rock: POST ${host}/name  body: a one-word name`,
+    `act: POST ${host}/act  body e.g. feed clean pet x3`,
+  ].join('\n') + '\n';
+}
