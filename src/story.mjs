@@ -64,7 +64,7 @@ const VISITORS = [
   'it has a moth asleep on it.', 'it has a ladybird resting on it.',
 ];
 
-const SAILED = 'it moved this morning. no one saw it go.';
+const SAILED = 'it slid on the ice this morning.';
 const WALL = 'it is facing the wall today.';
 
 /** Every fixed line, for the voice test (which also tries the birthdays of every year). */

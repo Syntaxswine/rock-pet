@@ -9,7 +9,13 @@
 - **Death:** "i like the idea that it might say why it died on the top of the screen."
 - **Clean:** "all mess, this is mostly to be respectful of the players tokens."
 - **Hosting:** "there might be a free way for codex to host it … he can finish it up on his end." So Codex builds it and hosts it on OpenAI Sites; see `AGENTS.md`.
-- **Build first (later the same day):** "lets build this first and worry about the perma death/hosting later." So the game is built and playable locally (`server.mjs`), with the rules exactly as below. Death happens and shows its epitaph, but while the game is local `--new-rock` can still start a new rock (the old log is kept). Hosting, and making death truly permanent, come later.
+- **Build first (later the same day):** "lets build this first and worry about the perma death/hosting later." So the game is built and playable locally (`server.mjs`), with the rules exactly as below. Death happens and shows its epitaph. The later title-screen decision below also closes the local reset command. Hosting, and making death truly permanent, come later.
+- **After a death (2026-10-08):** "i figured i would just manually restart it through codex or claude updating the code. the old name is remembered forever and cannot be used for any new pets. so a new game will start with a screen where you name your pet."
+- **Caretaker bots (2026-10-08):** "no caretaker bots."
+- **No restart by visitors (2026-10-08):** "i was not planning for the pet to be user restartable because its an open page, a stranger could come up and restart your pet."
+- **A title screen (2026-10-08):** "having new rock be the starting command on a tittle screen makes more sense." "the tittle screen should also explain the 3 buttons and how to use them with the limited characters available." "the tittle screen is only shown once when the game is first started." So with no rock, every page is the title screen, and naming a rock there starts the game.
+
+- **Title screen only (2026-10-09):** "`--new-rock` should only work on the tittle screen, nowhere else, and thats only accessible untill the rock is named". The command cannot clear a grave or a begun mark; naming starts the game and closes the title screen.
 
 ## The rules (decided 2026-10-06)
 
@@ -121,7 +127,7 @@ last care 3d ago  it does not stir
 ```
 
 The rock in these mocks is the character from CHARACTER.md, which has every face, mark, pose and drawing, drawn as the pip (2026-10-08), small enough to wander. Before that it was the lump (2026-10-07), and before that a three-row pebble, `( -  - )`. The grave lies a column left of the middle, where it had wandered to.
-- **The name:** Pebble is a visitor's name for it. Until a rock has a name, a line `unnamed: POST <host>/name  body: a one-word name` stands above the act line.
+- **The name:** Pebble is a visitor's name for it. Until a rock from before the title screen has a name, a line `unnamed: POST <host>/name  body: a one-word name` stands above the act line; one started there is named from birth.
 - **The grave is a real life:** cared for every 8h for six weeks, then left. It died alone three days later, with those days' messes and moss, and the crystal its meals grew (the screen test replays it).
 - **The ground shows its personality** (CHARACTER.md, "Its ground"). The grave's care ran heavy on petting, so a path is worn up to it. The living rock in the first mock is even-tempered, so its ground is bare.
 - **Meals and hunger** (CHARACTER.md, "Its meals" and "When it is hungry"). For an hour after a feed its food lies beside it and it eats; from hunger 7 it is drawn faint. The living rock in the first mock was last cared for 6h ago at hunger 3, so neither shows.
@@ -153,13 +159,13 @@ The rules above are the owner's. These details were left open, and the build set
 | **The dead** | Every visit to a dead rock gets 410 and the grave. It is not logged. |
 | **Same-moment events** | A mess due at the same moment as a visit comes first, so that visit can clean it. A visit at the exact 48th hour is too late. A death comes before a mess due at the same moment. A tie between the two clocks dies hungry. |
 | **The log** | `data/rock.jsonl`, one JSON object per line: the birth, each visit, its name once given, and a death line written the first time anyone sees the rock dead. A clock set back before a recorded death cannot reach a time when the rock was alive. A log that cannot be replayed exactly (a bad line, a death its visits don't produce) is refused and left untouched; a byte-order mark or a missing last newline from a hand edit is fine. |
-| **Birth** | The rock is born when the server starts and finds no log. After that, a missing or unreadable log is an error, never a new rock. |
-| **Local server** | Port 7625 (ROCK on a phone keypad), this machine only unless `--listen` says otherwise. One server per log: a lock file holds the server's pid, and a second server is refused (a dead server's lock is taken over). A log that cannot be replayed stops the start with the reason, and `--new-rock` still buries it (as `rock-unreadable-<time>`). A body over 1 KB gets 413 at once; a method a path doesn't serve gets 405 with `Allow`; a broken log gets a 500 that says nothing more. |
+| **Birth** | With no log, every page is the title screen: the rock with no face, what it is, what each verb does, and how to start it and send them, in 365 bytes (at most 388 for any drawing with a 20-character host). The rock is born when someone names it there, so it is named from birth and its clock starts then. After that, a missing or unreadable log is an error, never the title screen again or a new rock: while the server runs, and after a restart too. A mark beside the log, `rock.jsonl.begun`, says a rock began here, and holds its birth and its name. When a log is lost, the mark preserves its name and keeps the title screen closed. Restore the log before serving; `--new-rock` cannot replace it. |
+| **Local server** | Port 7625 (ROCK on a phone keypad), this machine only unless `--listen` says otherwise. One server per log: a lock file holds the server's pid, and a second server is refused (a dead server's lock is taken over). A log that cannot be replayed stops the start with the reason. `--new-rock` only serves the initial title screen, before any rock begins. Any log or begun mark makes it refuse; a dead, unreadable or lost rock cannot be replaced with this command. A body over 1 KB gets 413 at once; a method a path doesn't serve gets 405 with `Allow`; a broken log gets a 500 that says nothing more. |
 
 ## Still open
-- **Is a caretaker bot allowed?** Not answered yet. I'm assuming yes. A bot is the most likely way the rock lives for years, and its history would show it.
+- **Caretaker bots: what counts, and whether to enforce it.** The owner said no (2026-10-08, above), which reverses my assumption that a bot was the likeliest way it lives for years. Without visitor identity nothing tells a script that cares on a timer from an agent that chooses to visit, so for now the rule is stated, not enforced.
 - **Hosting:** deferred by the owner ("worry about the perma death/hosting later"). When it comes: Codex on OpenAI Sites, or the Cloudflare plan below, which is free. The engine in `src/` uses no platform APIs, so only storage and the server change.
-- **Permanence:** deferred with hosting. Locally, `node server.mjs --new-rock` starts over and moves the old log to `data/graveyard/`. A hosted rock must not have it. One gap stays open: a death nobody has looked at yet is not in the log, so a clock set back before it can still save the rock. Hosting closes it with the platform's clock.
+- **Permanence:** deferred with hosting. `node server.mjs --new-rock` works only before a rock begins. Once named, the title screen is closed, including after death. A new rock after a death requires the owner to explicitly change the code or stored data by hand, preserving the old log and its name; no command or visitor route resets it. One gap stays open: a death nobody has looked at yet is not in the log, so a clock set back before it can still save the rock. Hosting closes it with the platform's clock.
 
 ## Continuity implementation
 

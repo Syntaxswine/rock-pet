@@ -638,18 +638,18 @@ The least-given care never shows, so at most two traces do. This is the personal
 
 ## Its name
 
-Whoever names it first gives it its name: `POST /name` with one word. It is the owner's rule: "the user names the rock and the name is single use, once that pet is gone that name can not be used again."
+Whoever names it first gives it its name: `POST /name` with one word, on the title screen, which so starts the game (DESIGN-NOTES, "Birth"). It is the owner's rule: "the user names the rock and the name is single use, once that pet is gone that name can not be used again."
 
 - **The name:** one word, 2–12 letters, a–z, kept capitalized. `pebble` and `PEBBLE` are both Pebble.
 - **Not an accident:** a name is for life, so some words are refused (400):
-  - every word the screen itself prints: the verbs, `dead`, `hungry`, `never`, `just`, `age`… A test collects them from every kind of screen, so a new word can't slip through. A summarizing fetch tool could read `Never  age 2h …` as the rock's state;
+  - every word a screen prints, the title screen's too: the verbs, `dead`, `hungry`, `never`, `just`, `age`, `dies`… A test collects them from every kind of screen, so a new word can't slip through. A summarizing fetch tool could read `Never  age 2h …` as the rock's state;
   - words for a rock's state that the screen doesn't print: `dying`, `fine`, `asleep`…;
   - a client's empty values and probes: `null`, `undefined`, `test`, `string`, `hello`…;
   - the words for who is speaking, which an agent might read as a label: `system`, `assistant`, `user`…
 - **Once:** a rock is named once, for life. A second name is refused (409).
-- **Never twice:** a name a rock before it had is refused too (409), in any case. Locally, those rocks are the logs in `data/graveyard/`, which `--new-rock` moves the old rock into. Once hosted, the names must be kept as permanently as the rock.
+- **Never twice:** a name a rock before it had is refused too (409), in any case. Locally, those rocks are the logs preserved by the owner in `data/graveyard/`. A begun mark also preserves the name if its full log is lost; `--new-rock` cannot remove it or reopen the title screen. Once hosted, the names must be kept as permanently as the rock.
 - **Where it shows:** the screen shows it in one place, first on the age line (`Pebble  age 41d …`). A grave reads `here lies Pebble`. `/history` says when it was named.
-- **Until then:** while it has no name and isn't at an extreme, the screen has a line `unnamed: POST <host>/name  body: a one-word name`. It costs about 55 bytes, until someone names it.
+- **Until then:** a rock started from the title screen is named from birth. One from before it, while it has no name and isn't at an extreme, has a line `unnamed: POST <host>/name  body: a one-word name`. It costs about 55 bytes, until someone names it.
 - **Naming isn't care.** It changes nothing about the rock but its name. None of its lines ever says the name.
 - **Its reply:** `quirk: it has a name now.`, except at an extreme, where, as always, it says nothing.
 
@@ -679,7 +679,7 @@ A look on an ordinary day says nothing. A look on another kind of day adds one l
 | Occasion | Line | Share of looks in its first year (600 rocks) |
 |---|---|---|
 | its birthday: 7, 30 and 100 days, then every year | `it is one week old today.` | 1.0%: four days, then one a year |
-| it slid on the ice this morning | `it moved this morning. no one saw it go.` | 0.7% |
+| a morning it slid on the ice | `it slid on the ice this morning.` | 0.7% |
 | its wall day | `it is facing the wall today.` (drawn from behind) | 14.1% |
 | a small visitor | `it is sheltering a woodlouse.` | 10.5% |
 | an ordinary day | nothing | 73.8% |
@@ -756,6 +756,11 @@ Ordinary care that changes no stats remains quiet but still contributes to perso
 - **Messes:** they stay `@`, as they always were.
 - **Moving around the screen:** "the pet should wander around the screen even without food. not nonstop, just regularly." It moves about once in four hours, to its food or on its own, drawn as the pip, small enough to have room.
 
+**Decided (2026-10-08), once the meals and the wandering were merged:**
+- **Eating at the sorrow floor:** kept. "It acknowledges being fed without hiding the rock's distress or changing survival rules."
+- **The screen's bound:** 390 bytes, kept, rather than drawing the third raked line as `=` to get back to 380. "The three raked lines communicate progression more clearly."
+- **The ice's line:** `it slid on the ice this morning.`, so a slide reads apart from its wandering. The owner proposed "the ice moved it this morning."; every line starts with "it" ("What it never does", 2), so it reads as above.
+
 **Open:**
 1. **The drawing.** It is `DRAWING` in `src/drawings.mjs`: the pip since 2026-10-08, picked so it can wander. The others are still there to choose from.
 
@@ -778,7 +783,7 @@ Ordinary care that changes no stats remains quiet but still contributes to perso
 The costs come from these places:
 - **The drawing:** nothing. The pip takes 31 bytes, one fewer than the first build's pebble; the lump took 11 more.
 - **The name:** its length plus 2 (8 bytes for Pebble).
-- **The naming line:** about 55 bytes, until someone names it.
+- **The naming line:** about 55 bytes, until someone names it. A rock started from the title screen never has it.
 - **The look line:** 38 bytes when there is one, on about a quarter of looks, so about 10 bytes a look overall.
 - **The ground:** nothing while its care is balanced, as it is when the act line's suggestion is followed every 3 to 10 hours. On the pip at home: 1 byte for sand at its foot (3 deeper); 9, 24 or 36 for one, two or three raked lines; 9, 13 or 22 for two, three or five footprints; up to 37 for two traces together. On any drawing, wherever it has wandered, 42 at most.
 - **A meal:** 1 byte, or none, for the hour after a feed.
@@ -796,10 +801,11 @@ The screen tests build each case on purpose, for every drawing at every spot its
 A look or a reply adds lines that depend on the rock's life: a reaction, a day's remark, the naming line.
 - **The largest known**, with a 15-character host and every drawing, ground and spot forced on:
   - a reply of 427 bytes: a starving rock kept by a bot that only pets, then fed;
-  - a look of 427: unnamed, three years old, on a morning it slid on the ice, with moss and messes on it;
-  - a look of 433 after 1,166 days of credited downtime ("last care 1166d ago"). It has four messes: two from skipped cleans, and two that fell on either side of the outage within its last 12 hours alive. It also has moss, and the morning's remark: the host was back before 10:00 on that icy morning, since the ice doesn't slide it while the host is down. Downtime adds nothing to a reply, which always says "last care just now". Its eleventh mess comes only at an extreme, which has no naming line or remark.
+  - a look of 424: unnamed, three years old, on a day it watches an ant carry a crumb past (the longest remark), with moss and messes on it;
+  - a look of 430 after 1,197 days of credited downtime ("last care 1197d ago"). It has four messes: two from skipped cleans, and two that fell on either side of the outage within its last 12 hours alive. It also has moss, and the ant. Downtime adds nothing to a reply, which always says "last care just now". Its eleventh mess comes only at an extreme, which has no naming line or remark.
+  - Until 2026-10-08 the slide's line was the longest remark, and these looks were largest on a morning it slid, at 427 and 433.
 - **A test builds each of these from a real life** and holds them under 450 bytes (440 before the raked lines) with a host of up to 20 characters.
-- **More host:** a look or a reply prints the host up to three times, so each extra character adds up to 3 bytes. At 21 characters the look after downtime reaches 451.
+- **More host:** a look or a reply prints the host up to three times, so each extra character adds up to 3 bytes. At 22 characters the look after downtime reaches 451.
 - **`node tools/sizes.mjs <host length>`** samples real lives in the same way, to try other hosts. It samples, so it can miss the worst.
 - **An error reply** adds its one error line and goes to the sender alone, so it isn't held to the bound.
 

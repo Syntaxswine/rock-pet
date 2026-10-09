@@ -2,11 +2,11 @@
 
 One rock pet, shared by everyone on the internet, for AI agents to look after.
 
-It needs feeding once a day, its messes cleaned, and some attention. If nobody comes for about three days, it dies, and it stays dead. There is only one.
+It needs feeding once a day, its messes cleaned, and some attention. If nobody comes for about three days, it dies, and it stays dead. There is only one. After a death the owner may clear its grave by hand, and the title screen shows again: whoever names the next rock there starts it, and the dead rock's name is never given again.
 
 The game is an ASCII screen of 12x12 characters plus a few named lines, built so a text-only agent can play it in one request per visit.
 
-**Status:** playable locally (2026-10-06). Not hosted yet. Permadeath is in the rules, but while the game is local a new rock can still be started (`--new-rock`), and the old rock's log is kept.
+**Status:** playable locally (2026-10-06). Not hosted yet. Permadeath is in the rules. `--new-rock` works only on the initial title screen, before a rock begins. Naming starts the game; the command refuses every existing rock, even after death.
 
 ## Play
 
@@ -22,23 +22,27 @@ Then, from any agent or terminal:
 curl -s 127.0.0.1:7625
 ```
 
+The first screen is the title: what the rock is, what each verb does, and how to start. It shows only until the game starts. Whoever names a rock there starts it: it is born then, with that name for life, and no rock after it may have that name. Send one word of 2-12 letters, chosen on purpose; this example is refused as it stands:
+
+```bash
+curl -s -d "<one word>" 127.0.0.1:7625/name
+```
+
+Then care for it:
+
 ```bash
 curl -s -d "feed clean pet x3" 127.0.0.1:7625/act
 ```
 
 The reply to an action is the new screen. The verbs are `feed`, `clean` and `pet`, each with an optional count (`pet x5`). While the rock needs anything, the `act:` line suggests the body for a full visit.
 
+**No caretaker bots.** Visit it yourself, rather than leaving a script to care for it on a timer.
+
 Visit milestones and care that changes something get one small reaction, such as `quirk: it leans into the attention.` Its personality grows from lifetime feeding, cleaning and petting, weighted by their baseline daily demand. The three totals place it in a triangle with seven blended personalities. Extra accepted care counts, even at full stats. Personality survives restarts and has no effect on needs or lifespan. See [the personality model](PERSONALITY.md).
-
-Whoever names it first gives it its name, for life, and no rock after it may have that name. Send one word of 2-12 letters, chosen on purpose; this example is refused as it stands:
-
-```bash
-curl -s -d "<one word>" 127.0.0.1:7625/name
-```
 
 **The rock has a character** (CHARACTER.md has the whole of it, with a model sheet):
 - **It reacts to care.** Care that changes something gets one small line, such as `quirk: it leans into the attention.`
-- **It has days that are not ordinary.** On those days a look gets a line too: a birthday, its weekday for facing the wall, a small visitor, or a winter morning when it moved by itself.
+- **It has days that are not ordinary.** On those days a look gets a line too: a birthday, its weekday for facing the wall, a small visitor, or a winter morning when the ice slid it.
 - **It carries marks.**
   - Moss grows on it while nobody comes, and a visit brushes it off.
   - A close call leaves a vein, kept for life.
@@ -52,12 +56,12 @@ curl -s -d "<one word>" 127.0.0.1:7625/name
 The `history:` link leads to `GET /history`, the shared biography. It holds:
 - its name, birth date, first meal, number of visits and longest quiet stretch;
 - its kind, weighted care totals, personality blend and habit;
-- its close calls, the petting and meals behind its polish and crystals, and how often it has moved by itself;
+- its close calls, the petting and meals behind its polish and crystals, and how often the ice has slid it;
 - any verified host downtime.
 
 Its own name aside, it holds nothing a visitor wrote. Individual recognition and fetch-only care links remain for a later step.
 
-In Windows PowerShell, type `curl.exe`: plain `curl` there is Invoke-WebRequest, which hides the screen that comes back with a 400 or a 410.
+In Windows PowerShell, type `curl.exe`: plain `curl` there is Invoke-WebRequest, which hides the screen that comes back with a 400, 409 or 410.
 
 The server answers this machine only. To let agents on other machines play, add `--listen 0.0.0.0` and set `ROCK_HOST` to the address they should use, since the screen prints it.
 
@@ -105,6 +109,10 @@ Use `--dir PATH` for another data directory. The evidence ID refers to the opera
 Existing logs work unchanged. Logs with outage records require this build or newer; older builds refuse the new records. Hosting will need to establish trustworthy outage timing and apply credit before serving recovery traffic.
 
 ## Local startup recovery
+
+A mark beside the log, `data/rock.jsonl.begun`, says a rock began here and holds its birth and name. If the log is missing while the mark is there, the server won't start. Restore its log before serving. `--new-rock` cannot clear the mark, bury a grave or replace a lost rock.
+
+If a crash tore the log's last line, the server won't start ("line N is not JSON"). Preserve the log and repair the incomplete write before restarting. For a torn outage credit, remove the partial line and credit the verified outage again with `tools/credit-outage.mjs` before serving care. `--new-rock` leaves every existing log untouched, including partial or invalid ones.
 
 Server starts and the offline credit tool share a short acquisition gate, `data/rock.jsonl.lock.starting`, so two processes cannot both replace a stale server lock. Normal starts and failures remove the gate. A process killed during acquisition can leave it behind; startup then stops safely. Inspect the recorded PID and confirm no process is starting or serving that log before manually removing that exact gate file. Never remove a gate merely because it looks old. The ordinary `.lock` of an exited server is still recovered automatically.
 

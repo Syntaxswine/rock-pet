@@ -364,8 +364,8 @@ test("while the host is down it neither wanders nor slides on the ice, when its 
     edges++;
   }
   assert.equal(edges, 3);
-  // The ice: down across 10:00, or from 10:00, there is no slide, no "it moved this morning" and
-  // nothing for /history; back at 10:00, it slides.
+  // The ice: down across 10:00, or from 10:00, there is no slide, no "it slid on the ice this
+  // morning" and nothing for /history; back at 10:00, it slides.
   let iced = 0;
   for (let b = Date.UTC(2026, 10, 20, 5); iced < 3 && b < Date.UTC(2027, 0, 20); b += 7 * HOUR) {
     const t = iceTimes(b, b + 80 * DAY, []).find(at => at > b + 4 * DAY);
@@ -381,13 +381,13 @@ test("while the host is down it neither wanders nor slides on the ice, when its 
       assert.deepEqual(iceTimes(b, t + 6 * HOUR, l.outages).filter(at => at === t), [], what);
       const now = t + 6 * HOUR;
       assert.notDeepEqual(occasion(replay(l, now), now, l.outages), { what: 'sailed' }, `down ${what}: no remark`);
-      assert.ok(!look(l, { now, host: 'h' }).text.includes('it moved this morning'), `down ${what}: the look says nothing of it`);
+      assert.ok(!look(l, { now, host: 'h' }).text.includes('it slid on the ice this morning'), `down ${what}: the look says nothing of it`);
       const n = iceTimes(b, now, []).length - 1;
       assert.match(history(l, { now }).text, new RegExp(`^slid on the ice: ${n === 1 ? 'once' : `${n} times`}$`, 'm'), `down ${what}: nor /history`);
     }
     const p = whereAt(until10, t, PIP);
     assert.deepEqual([p.why, p.at], ['ice', t], 'back at 10:00, it slides');
-    assert.ok(look(until10, { now: t + HOUR, host: 'h' }).text.includes('it moved this morning'));
+    assert.ok(look(until10, { now: t + HOUR, host: 'h' }).text.includes('it slid on the ice this morning'));
     iced++;
   }
   assert.equal(iced, 3);
