@@ -36,10 +36,21 @@ export const readLog = file => parseLog(fs.readFileSync(file, 'utf8'));
 // check that fails is an error, never "no rock".
 const present = file => fs.statSync(file, { throwIfNoEntry: false }) !== undefined;
 
-// The mark that a rock began beside `file`: written when a game starts, and by a server started
-// over a log from before; removed only when --new-rock clears that rock's grave. While it is there,
-// a missing log is a lost one, not a new game.
+// The mark that a rock began beside `file`: written when a game starts, and for a log from before
+// it, or one put back; cleared only by --new-rock. While it is there, a missing log is a lost one,
+// not a new game. It holds the rock's birth and, once it has one, its name, as its log's first
+// lines: if the log is lost, --new-rock moves it into the graveyard, so the name stays taken.
 export const begunOf = file => `${file}.begun`;
+const markOf = (born, named) => birthLine(born) + (named ? nameLine(named) : '');
+
+// Mark a log that has no mark yet, from its own first lines. One too broken to read can't be
+// marked, and nothing will serve it.
+function markOnce(file) {
+  if (present(begunOf(file))) return;
+  let log;
+  try { log = readLog(file); } catch { return; }
+  fs.writeFileSync(begunOf(file), markOf(log.born, log.name));
+}
 
 /**
  * The names the rocks in graveyard/ beside `file` had: a name is never given twice. Read line by
@@ -65,29 +76,39 @@ export function takenNames(file) {
  */
 export function createRockServer({ file, host, now = Date.now, onError = console.error }) {
   // With no log yet, the title screen, until there is one: the one a name starts there, or one
-  // that turns up. Once there, it stays so: a log lost later is an error, never a game anyone
-  // could start again.
+  // that is here already or turns up, which is marked. Once there, it stays so: a log lost later
+  // is an error, never a game anyone could start again.
   let started = present(file);
-  const isStarted = () => started || (started = present(file));
+  if (started) markOnce(file);
+  const isStarted = () => {
+    if (started) return true;
+    if (!present(file)) return false;
+    started = true;
+    markOnce(file);
+    return true;
+  };
 
   // One request's whole business with the log: read it, decide, append. It is synchronous, so
   // visits land one at a time and in time order.
   function withLog(decide) {
     const text = fs.readFileSync(file, 'utf8');
-    const r = decide(parseLog(text), now());
+    const log = parseLog(text);
+    const r = decide(log, now());
+    if (r.named) fs.writeFileSync(begunOf(file), markOf(log.born, r.named)); // the mark has the name first
     const lines = (r.visit ? visitLine(r.visit) : '') + (r.named ? nameLine(r.named) : '') + (r.died ? deathLine(r.died) : '');
     if (lines) fs.appendFileSync(file, (text.endsWith('\n') ? '' : '\n') + lines);
     return r;
   }
 
   // The title screen's one command: a name, and so a rock, born at this moment with it. From the
-  // moment a name is taken it is the rock, whatever the writes say, and never over a log.
+  // moment a name is taken it is the rock, whatever the writes say. The mark comes first, so a
+  // rock is never born without it, and neither is written over one already there.
   function begin(body) {
     const r = start(body, { now: now(), host, taken: () => takenNames(file) });
     if (r.born === undefined) return r;
     started = true;
+    fs.writeFileSync(begunOf(file), markOf(r.born, r.named), { flag: 'wx' });
     fs.writeFileSync(file, birthLine(r.born) + nameLine(r.named), { flag: 'wx' });
-    fs.writeFileSync(begunOf(file), `${r.born}\n`);
     return r;
   }
 
@@ -128,7 +149,7 @@ export function createRockServer({ file, host, now = Date.now, onError = console
 
     if (route === '/history') {
       if (req.method === 'GET' || req.method === 'HEAD') return either((log, t) => history(log, { now: t }), () => titled(200));
-      return send(405, 'error: GET /history to read the shared biography.\n', { allow: 'GET, HEAD' });
+      return reply(() => ({ status: 405, text: isStarted() ? 'error: GET /history to read the shared biography.\n' : `error: ${hint()}.\n` }), { allow: 'GET, HEAD' });
     }
 
     if (route === '/') {
@@ -160,14 +181,15 @@ export function createRockServer({ file, host, now = Date.now, onError = console
 }
 
 /**
- * Move the rock's log to graveyard/rock-<birth>.jsonl beside it, never over another; returns
+ * Move the rock's log to graveyard/<kind>-<birth>.jsonl beside it, never over another; returns
  * where it went. A log too broken to say when its rock was born is named for when it was
  * buried instead. With no log the server shows the title screen, where the next rock starts.
+ * A lost rock's mark goes the same way, as rock-lost, so its name stays taken.
  */
-export function bury(file, now = Date.now()) {
+export function bury(file, now = Date.now(), kind = 'rock') {
   if (!present(file)) return null;
   let stem;
-  try { stem = `rock-${new Date(readLog(file).born).toISOString()}`; } catch { stem = `rock-unreadable-${new Date(now).toISOString()}`; }
+  try { stem = `${kind}-${new Date(readLog(file).born).toISOString()}`; } catch { stem = `${kind}-unreadable-${new Date(now).toISOString()}`; }
   stem = stem.replace(/[:.]/g, '-');
   const grave = path.join(path.dirname(file), 'graveyard');
   fs.mkdirSync(grave, { recursive: true });
@@ -177,18 +199,28 @@ export function bury(file, now = Date.now()) {
   return to;
 }
 
-// What `file` holds now: 'none', a rock 'alive' or 'dead', or 'unknown'. A last line torn by a crash
-// was a visit never answered, so the rock is judged without it. A log still unreadable without
-// it, or one this build can't replay (other rules, a death its visits don't produce), is
-// 'unknown', and never taken for a grave.
+// Moved into the graveyard as a .jsonl, a log keeps its rock's name taken, wherever else it goes.
+const ASIDE = 'or, if its rock is surely gone, move it into data/graveyard/ as a .jsonl, which keeps its name taken';
+
+// What `file` holds now, for --new-rock: { state } 'none', 'alive' or 'dead', or 'refused' with why.
+// A last line that isn't JSON at all was torn by a crash, a write never answered, so the rock is
+// judged without it, unless it was an outage credit, which its rock may live by. Any other log
+// it can't read, or can't replay under this build, it can't tell dead, so it is never a grave.
 function judge(file) {
-  if (!present(file)) return 'none';
+  if (!present(file)) return { state: 'none' };
   const text = fs.readFileSync(file, 'utf8');
   let log;
-  try { log = parseLog(text); } catch {
-    try { log = parseLog(text.slice(0, text.lastIndexOf('\n') + 1)); } catch { return 'unknown'; }
+  try { log = parseLog(text); } catch (e) {
+    const cut = text.lastIndexOf('\n') + 1, tail = text.slice(cut).trim();
+    let torn = tail !== '';
+    try { JSON.parse(tail); torn = false; } catch { /* not JSON: torn */ }
+    if (!torn) return { state: 'refused', why: `the log in ${file} can't be read (${e.message}), so its rock can't be told dead. repair it, ${ASIDE}` };
+    if (tail.startsWith('{"outage"')) return { state: 'refused', why: `the log in ${file} ends in a torn outage credit, which its rock may live by. remove that line and credit the outage again (tools/credit-outage.mjs)` };
+    try { log = parseLog(text.slice(0, cut)); } catch (e2) { return { state: 'refused', why: `the log in ${file} can't be read (${e2.message}), so its rock can't be told dead. repair it, ${ASIDE}` }; }
   }
-  try { return livesAt(log, Date.now()) ? 'alive' : 'dead'; } catch { return 'unknown'; }
+  try { return { state: livesAt(log, Date.now()) ? 'alive' : 'dead' }; } catch (e) {
+    return { state: 'refused', why: `this build can't replay the log in ${file} (${e.message}), so its rock can't be told dead. use the build its rules need, ${ASIDE}` };
+  }
 }
 
 // One server per log: two would interleave their appends and break it. The lock holds the
@@ -233,17 +265,20 @@ export async function main(argv, { say = console.log } = {}) {
   try {
     // --new-rock clears a grave, so the title screen shows again; it never ends a life.
     if (argv.includes('--new-rock')) {
-      const was = judge(file);
-      if (was === 'alive') throw new Error(`the rock in ${file} is alive; --new-rock only clears a grave`);
-      if (was === 'unknown') throw new Error(`the log in ${file} can't be read, so its rock can't be told dead: --new-rock leaves it. repair it, or move it aside by hand`);
-      const to = bury(file);
-      fs.rmSync(begunOf(file), { force: true });
-      say(`${to ? `the old rock's log is now ${to}` : 'there was no rock to bury'}; the title screen shows until someone names the next`);
+      const { state, why } = judge(file);
+      if (state === 'alive') throw new Error(`the rock in ${file} is alive; --new-rock only clears a grave`);
+      if (state === 'refused') throw new Error(`--new-rock leaves it: ${why}`);
+      let done = 'there was no rock to bury';
+      if (state === 'dead') {
+        done = `the old rock's log is now ${bury(file)}`;
+        fs.rmSync(begunOf(file), { force: true });
+      } else if (present(begunOf(file))) {
+        done = `its log was lost, and its mark is now ${bury(begunOf(file), Date.now(), 'rock-lost')}, so its name stays taken`;
+      }
+      say(`${done}; the title screen shows until someone names the next`);
     }
     if (present(file)) {
-      const log = readLog(file);
-      look(log, { now: Date.now(), host }); // refuse to serve a log that cannot be replayed
-      if (!present(begunOf(file))) fs.writeFileSync(begunOf(file), `${log.born}\n`); // a rock from before the mark
+      look(readLog(file), { now: Date.now(), host }); // refuse to serve a log that cannot be replayed
     } else if (present(begunOf(file))) {
       throw new Error(`a rock began here, but its log ${file} is missing: put it back, or run --new-rock to start the next`);
     }

@@ -110,9 +110,14 @@ Existing logs work unchanged. Logs with outage records require this build or new
 
 ## Local startup recovery
 
-A mark beside the log, `data/rock.jsonl.begun`, says a rock began here. If the log is missing while the mark is there, the server won't start: the log was lost, and a title screen would let anyone start a new rock. Put the log back, or, if that rock is gone for good, run `--new-rock`, which clears the mark.
+A mark beside the log, `data/rock.jsonl.begun`, says a rock began here, and holds its birth and name. If the log is missing while the mark is there, the server won't start: the log was lost, and a title screen would let anyone start a new rock. Put the log back. If that rock is gone for good, run `--new-rock`, which moves the mark into `data/graveyard/`, so the lost rock's name stays taken.
 
-If a crash tore the log's last line, the server won't start ("line N is not JSON"). Remove that partial line: it was a visit never answered. `--new-rock` judges the rock without it, so it clears the grave of a rock that is truly dead.
+If a crash tore the log's last line, the server won't start ("line N is not JSON"). That line was a write never answered:
+- **A visit, a name or a death:** remove the partial line. `--new-rock` judges the rock without it, so it clears the grave of a rock that is truly dead.
+- **An outage credit:** `--new-rock` refuses, since the rock may live only by it. Remove the line and credit the outage again with `tools/credit-outage.mjs`.
+- **The log's only line:** the start it held was never answered. Delete the log, then run `--new-rock`, which moves the mark into the graveyard so its name stays taken.
+
+A log `--new-rock` can't read or replay, it leaves for you. Repair it, or, if its rock is surely gone, move it into `data/graveyard/` as a `.jsonl` file, which keeps its name taken. Anywhere else, its name is free again.
 
 Server starts and the offline credit tool share a short acquisition gate, `data/rock.jsonl.lock.starting`, so two processes cannot both replace a stale server lock. Normal starts and failures remove the gate. A process killed during acquisition can leave it behind; startup then stops safely. Inspect the recorded PID and confirm no process is starting or serving that log before manually removing that exact gate file. Never remove a gate merely because it looks old. The ordinary `.lock` of an exited server is still recovered automatically.
 

@@ -26,8 +26,8 @@ export const RESERVED = new Set([
   'just', 'last', 'care', 'never', 'post', 'body', 'nothing', 'needed', 'verbs', 'one', 'word', 'it', 'does',
   'not', 'stir', 'at', 'for', 'of',
   // the title screen's own words
-  'rock', 'shared', 'by', 'all', 'dies', 'good', 'after', 'in', 'row', 'or', 'rises', 'day', 'clears', 'every',
-  'each', 'falls', 'over', 'time', 'new', 'life',
+  'rock', 'shared', 'dies', 'good', 'after', 'in', 'row', 'or', 'rises', 'day', 'clears', 'every', 'which',
+  'saddens', 'falls', 'over', 'time', 'new', 'life',
   // a rock's state
   'dying', 'starved', 'fed', 'full', 'fine', 'ok', 'sad', 'sick', 'alive', 'gone', 'asleep', 'well', 'ill',
   // empty values and probes
