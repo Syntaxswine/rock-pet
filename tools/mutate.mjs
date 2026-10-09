@@ -65,15 +65,15 @@ const MUTANTS = [
   ['a missing log gives birth', 'server.mjs', "    const text = fs.readFileSync(file, 'utf8');\n    const r = decide", "    try { fs.writeFileSync(file, birthLine(now()), { flag: 'wx' }); } catch {}\n    const text = fs.readFileSync(file, 'utf8');\n    const r = decide"],
   ['the 500 says what went wrong', 'server.mjs', 'r = { status: 500, text: BROKEN };', 'r = { status: 500, text: `error: ${e.message}. nothing was changed.` };'],
   ['no cache-control', 'server.mjs', "'cache-control': 'no-store'", "'x-cache-control': 'no-store'"],
-  ['405 without Allow', 'server.mjs', "'error: GET / to see the rock; POST /act to care for it.\\n', { allow: 'GET, HEAD' }", "'error: GET / to see the rock; POST /act to care for it.\\n', {}"],
+  ["405 without Allow", "server.mjs", "return reply(() => ({ status: 405, text: `error: ${hint()}.\\n` }), { allow: 'GET, HEAD' });", "return reply(() => ({ status: 405, text: `error: ${hint()}.\\n` }));"],
   ['no body limit', 'server.mjs', 'if (size <= MAX_BODY) return void chunks.push(c);', 'return void chunks.push(c);'],
   ['the 413 waits for the end of the body', 'server.mjs', '        req.resume();', "        return void req.on('end', () => send(413, 'too big', { connection: 'close' }));"],
   ['the request path is parsed as a URL', 'server.mjs', "const route = (req.url ?? '/').split('?')[0];", "const route = new URL(req.url, 'http://localhost').pathname;"],
-  ['the screen prints the Host header', 'server.mjs', "answer((log, t) => look(log, { now: t, host })) : reply(() => titled(200));", "answer((log, t) => look(log, { now: t, host: req.headers.host })) : reply(() => titled(200));"],
+  ["the screen prints the Host header", "server.mjs", "either((log, t) => look(log, { now: t, host }), () => titled(200));", "either((log, t) => look(log, { now: t, host: req.headers.host }), () => titled(200));"],
   ["the title prints the Host header", 'server.mjs', "const titled = (status, error = '') => ({ status, text: error + title({ host }).text });", "const titled = (status, error = '') => ({ status, text: error + title({ host: req.headers.host }).text });"],
   ['listens on every interface', 'server.mjs', "opt('--listen') ?? '127.0.0.1'", "opt('--listen') ?? '::'"],
   // Round 2: behaviours from round 1 that no test could fail.
-  ["the server gives birth at start", 'server.mjs', "    if (fs.existsSync(file)) look(readLog(file), { now: Date.now(), host }); // refuse to serve a log that cannot be replayed\n", "    fs.writeFileSync(file, birthLine(Date.now()), { flag: 'wx' });\n    look(readLog(file), { now: Date.now(), host }); // refuse to serve a log that cannot be replayed\n"],
+  ["the server gives birth at start", "server.mjs", "    if (present(file)) {\n      const log = readLog(file);", "    if (!present(file)) fs.writeFileSync(file, birthLine(Date.now()), { flag: 'wx' });\n    if (present(file)) {\n      const log = readLog(file);"],
   ['a clock behind the birth is trusted', 'src/rock.mjs', 'Math.max(now, log.born, ', 'Math.max(now, '],
   ['a refused act never records the death', 'src/rock.mjs', "{ status: 410, text: render(s, { now: t, host, ...seen(log, s, t) }) + `history: ${host}/history\\n`, ...firstSight(log, s) }", "{ status: 410, text: render(s, { now: t, host, ...seen(log, s, t) }) + `history: ${host}/history\\n` }"],
   ['a recorded death at the wrong moment passes', 'src/rock.mjs', 's.dead.t === log.died.t && ', ''],
@@ -91,7 +91,7 @@ const MUTANTS = [
   ['closing keeps the lock', 'server.mjs', "server.on('close', () => { release(); process.off('exit', release); });", "server.on('close', () => { process.off('exit', release); });"],
   ['a refused start keeps the lock', 'server.mjs', '  } catch (e) {\n    release();\n    throw e;', '  } catch (e) {\n    throw e;'],
   ['a torn log cannot be buried', 'server.mjs', "catch { stem = `rock-unreadable-${new Date(now).toISOString()}`; }", 'catch (e) { throw e; }'],
-  ['a log that cannot be replayed is served', 'server.mjs', "    if (fs.existsSync(file)) look(readLog(file), { now: Date.now(), host }); // refuse to serve a log that cannot be replayed\n", ''],
+  ["a log that cannot be replayed is served", "server.mjs", "      look(log, { now: Date.now(), host }); // refuse to serve a log that cannot be replayed\n", ""],
   ['JSON bodies read as words', 'src/parse.mjs', "  try { json = /^[{\"]/.test(text) ? JSON.parse(text) : undefined; } catch { /* not JSON after all: words */ }\n", ''],
   ['the sandbox meets a bad log mid-game', 'tools/sandbox.mjs', '  look(log, { now: Date.now(), host: HOST }); // refuse a log this build cannot replay now, not mid-game\n', ''],
   ['a form key that is a verb is dropped', 'src/parse.mjs', "(VERBS.includes(String(k).toLowerCase()) ? `${k} ${v}` : String(v))", 'String(v)'],
@@ -167,7 +167,7 @@ const MUTANTS = [
   // Its name (CHARACTER.md, "Its name").
   ['a name can be given twice', 'src/rock.mjs', 'if (log.name) return { status: 409', 'if (false) return { status: 409'],
   ['a grave can be named', 'src/rock.mjs', 'if (s.dead) return { ...firstSight(log, s), status: 410', 'if (false) return { ...firstSight(log, s), status: 410'],
-  ['a taken name is given again', 'src/rock.mjs', "if (isTaken(parsed.name, taken)) return { status: 409, text: `error: a rock before it had that name, and a name is never given twice. nothing was done.\\n${screen()}` };", ''],
+  ["a taken name is given again", "src/rock.mjs", "if (isTaken(parsed.name, namesOf(taken))) return { status: 409, text: `error: a rock before it had that name, and a name is never given twice. nothing was done.\\n${screen()}` };", ""],
   ['taken names are matched by case', 'src/name.mjs', 'taken.some(t => t.toLowerCase() === name.toLowerCase())', 'taken.includes(name)'],
   ['a name may be any text', 'src/name.mjs', 'export const NAME = /^[A-Za-z]{2,12}$/;', 'export const NAME = /^[^\\n]{1,40}$/;'],
   ['a name is kept as it was sent', 'src/name.mjs', 'return { name: text[0].toUpperCase() + text.slice(1).toLowerCase() };', 'return { name: text };'],
@@ -334,21 +334,34 @@ const MUTANTS = [
   ['sand does not know a faint base', 'src/screen.mjs', 'drawGround(g, ground, rows, dx);', "drawGround(g, ground, pose === 'away' ? drawing.back : drawing.front, dx);"],
   ['a faint base in dots, like sand', 'src/drawings.mjs', `' :  E  E  :', " '________'"], back: ['', '     ...',`, `' :  E  E  :', " '........'"], back: ['', '     ...',`],
   ['a faint back out of step with its front', 'src/drawings.mjs', `back: ['', '    ....', "  .'    '.", ' :        :',`, `back: ['', '    ....', "  .'    '.", ' .        .',`],
-  ["a log that turns up is not served", "server.mjs", "const isStarted = () => started || (started = fs.existsSync(file));", "const isStarted = () => started;"],
-  ["a lost log brings back the title screen", "server.mjs", "const isStarted = () => started || (started = fs.existsSync(file));", "const isStarted = () => fs.existsSync(file);"],
+  ["a log that turns up is not served", "server.mjs", "const isStarted = () => started || (started = present(file));", "const isStarted = () => started;"],
+  ["a lost log brings back the title screen", "server.mjs", "const isStarted = () => started || (started = present(file));", "const isStarted = () => present(file);"],
   ["a start writes no name", "server.mjs", "birthLine(r.born) + nameLine(r.named)", "birthLine(r.born)"],
-  ["the title screen cares for no rock", "server.mjs", "        : reply(() => titled(409, 'error: there is no rock yet: name one to start it. nothing was done.\\n'))));", "        : answer((log, t) => act(log, body, { now: t, host }))));"],
-  ["--new-rock buries a living rock", "server.mjs", "      if (living(file)) throw new Error(", "      if (false) throw new Error("],
-  ["a log too broken stops --new-rock", "server.mjs", "  try { return livesAt(readLog(file), Date.now()); } catch { return false; }", "  return livesAt(readLog(file), Date.now());"],
-  ["the title screen gives a taken name", "src/rock.mjs", "  if (isTaken(parsed.name, taken)) return { status: 409, text: `error: a rock before it had that name, and a name is never given twice. nothing was done.\\n${again()}` };\n", ""],
+  ["the title screen cares for no rock", "server.mjs", "() => titled(409, 'error: there is no rock yet: name one to start it. nothing was done.\\n')", "() => withLog((log, t) => act(log, body, { now: t, host }))"],
+  ["--new-rock buries a living rock", "server.mjs", "      if (was === 'alive') throw new Error(", "      if (false) throw new Error("],
+  ["the title screen gives a taken name", "src/rock.mjs", "  if (isTaken(parsed.name, namesOf(taken))) return { status: 409, text: `error: a rock before it had that name, and a name is never given twice. nothing was done.\\n${again()}` };\n", ""],
   ["a started rock has no name", "src/rock.mjs", "const log = { ...newLog(now), name: named };", "const log = newLog(now);"],
   ["a rock is named after its birth", "src/rock.mjs", "const named = { name: parsed.name, t: now };", "const named = { name: parsed.name, t: now + 1 };"],
   ["the title screen says nothing of feeding", "src/screen.mjs", "    `feed: hunger -${R.feed} (it rises ${R.hungerPerHour * 24} a day)`,\n", ""],
+  ["a start is not the start at once", "server.mjs", "    started = true;\n    fs.writeFileSync(file, birthLine", "    fs.writeFileSync(file, birthLine"],
+  ["a start writes over a log", "server.mjs", "birthLine(r.born) + nameLine(r.named), { flag: 'wx' }", "birthLine(r.born) + nameLine(r.named), { flag: 'w' }"],
+  ["a start leaves no mark", "server.mjs", "    fs.writeFileSync(begunOf(file), `${r.born}\\n`);\n", ""],
+  ["a lost log at start is a new game", "server.mjs", "    } else if (present(begunOf(file))) {", "    } else if (false) {"],
+  ["a rock from before gets no mark", "server.mjs", "      if (!present(begunOf(file))) fs.writeFileSync(begunOf(file), `${log.born}\\n`); // a rock from before the mark\n", ""],
+  ["--new-rock leaves the mark", "server.mjs", "      fs.rmSync(begunOf(file), { force: true });\n", ""],
+  ["a failed check reads as no rock", "server.mjs", "const present = file => fs.statSync(file, { throwIfNoEntry: false }) !== undefined;", "const present = file => fs.existsSync(file);"],
+  ["a visit is routed on arrival", "server.mjs", "if (route === '/act') return withBody(body => either((log, t) => act(log, body, { now: t, host }), () => titled(409, 'error: there is no rock yet: name one to start it. nothing was done.\\n')));", "if (route === '/act') { const was = isStarted(); return withBody(body => reply(() => (was ? withLog((log, t) => act(log, body, { now: t, host })) : titled(409, 'error: there is no rock yet: name one to start it. nothing was done.\\n')))); }"],
+  ["a name is routed on arrival", "server.mjs", "return withBody(body => either((log, t) => name(log, body, { now: t, host, taken: () => takenNames(file) }), () => begin(body)));", "{ const was = isStarted(); return withBody(body => reply(() => (was ? withLog((log, t) => name(log, body, { now: t, host, taken: () => takenNames(file) })) : begin(body)))); }"],
+  ["a torn last line is not forgiven", "server.mjs", "    try { log = parseLog(text.slice(0, text.lastIndexOf('\\n') + 1)); } catch { return 'unknown'; }", "    return 'unknown';"],
+  ["a log that can't be judged is taken for a grave", "server.mjs", "  try { return livesAt(log, Date.now()) ? 'alive' : 'dead'; } catch { return 'unknown'; }", "  try { return livesAt(log, Date.now()) ? 'alive' : 'dead'; } catch { return 'dead'; }"],
+  ["an unreadable log is buried", "server.mjs", "      if (was === 'unknown') throw new Error(", "      if (false) throw new Error("],
+  ["--new-rock forgets the downtime", "server.mjs", "livesAt(log, Date.now())", "livesAt({ ...log, outages: [] }, Date.now())"],
+  ["a word of the title screen can be a name", "src/name.mjs", "'dies', ", ""],
 ];
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'rockpet-mutate-'));
-for (const p of ['src', 'test', 'tools/rocksim.mjs', 'tools/sandbox.mjs', 'tools/credit-outage.mjs', 'tools/model-sheet.mjs', 'server.mjs', 'package.json', 'CHARACTER.md']) fs.cpSync(path.join(root, p), path.join(work, p), { recursive: true });
+for (const p of ['src', 'test', 'tools/rocksim.mjs', 'tools/sandbox.mjs', 'tools/credit-outage.mjs', 'tools/model-sheet.mjs', 'server.mjs', 'package.json', 'CHARACTER.md', 'DESIGN-NOTES.md']) fs.cpSync(path.join(root, p), path.join(work, p), { recursive: true });
 // The suite's own temporary directories go inside the copy too (os.tmpdir() reads TMPDIR, TMP or
 // TEMP). A mutant can stop a test before its cleanup, in a hang the timeout kills or a failure
 // --test-force-exit walks away from; whatever that leaves is removed with the copy.

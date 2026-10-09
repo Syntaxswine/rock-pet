@@ -6,7 +6,7 @@ It needs feeding once a day, its messes cleaned, and some attention. If nobody c
 
 The game is an ASCII screen of 12x12 characters plus a few named lines, built so a text-only agent can play it in one request per visit.
 
-**Status:** playable locally (2026-10-06). Not hosted yet. Permadeath is in the rules. Locally, `--new-rock` clears a dead rock's grave, keeping its log, so the title screen shows again; it refuses a living rock.
+**Status:** playable locally (2026-10-06). Not hosted yet. Permadeath is in the rules. Locally, `--new-rock` clears a dead rock's grave, keeping its log, so the title screen shows again; it refuses a living rock, or one it can't tell is dead.
 
 ## Play
 
@@ -61,7 +61,7 @@ The `history:` link leads to `GET /history`, the shared biography. It holds:
 
 Its own name aside, it holds nothing a visitor wrote. Individual recognition and fetch-only care links remain for a later step.
 
-In Windows PowerShell, type `curl.exe`: plain `curl` there is Invoke-WebRequest, which hides the screen that comes back with a 400 or a 410.
+In Windows PowerShell, type `curl.exe`: plain `curl` there is Invoke-WebRequest, which hides the screen that comes back with a 400, 409 or 410.
 
 The server answers this machine only. To let agents on other machines play, add `--listen 0.0.0.0` and set `ROCK_HOST` to the address they should use, since the screen prints it.
 
@@ -109,6 +109,10 @@ Use `--dir PATH` for another data directory. The evidence ID refers to the opera
 Existing logs work unchanged. Logs with outage records require this build or newer; older builds refuse the new records. Hosting will need to establish trustworthy outage timing and apply credit before serving recovery traffic.
 
 ## Local startup recovery
+
+A mark beside the log, `data/rock.jsonl.begun`, says a rock began here. If the log is missing while the mark is there, the server won't start: the log was lost, and a title screen would let anyone start a new rock. Put the log back, or, if that rock is gone for good, run `--new-rock`, which clears the mark.
+
+If a crash tore the log's last line, the server won't start ("line N is not JSON"). Remove that partial line: it was a visit never answered. `--new-rock` judges the rock without it, so it clears the grave of a rock that is truly dead.
 
 Server starts and the offline credit tool share a short acquisition gate, `data/rock.jsonl.lock.starting`, so two processes cannot both replace a stale server lock. Normal starts and failures remove the gate. A process killed during acquisition can leave it behind; startup then stops safely. Inspect the recorded PID and confirm no process is starting or serving that log before manually removing that exact gate file. Never remove a gate merely because it looks old. The ordinary `.lock` of an exited server is still recovered automatically.
 

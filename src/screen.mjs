@@ -170,12 +170,12 @@ export function renderTitle({ host, drawing = DRAWINGS[DRAWING] }) {
     'rock pet',
     ...drawing.front.map(row => row.replaceAll('E', ' ').trimEnd()),
     '',
-    'one rock, shared by everyone; it dies for good',
-    `after ${R.graceH}h at hunger 10 or at happy -10`,
+    'one rock, shared by all; it dies for good',
+    `after ${R.graceH}h in a row at hunger 10 or happy -10`,
     `feed: hunger -${R.feed} (it rises ${R.hungerPerHour * 24} a day)`,
     `clean: clears every mess @ (one each ${R.messEveryH}h)`,
     `pet: happy +${R.pet} (it falls over time)`,
-    `new rock: POST ${host}/name  body: a one-word name`,
+    `new rock: POST ${host}/name  body: a one-word name, for life`,
     `act: POST ${host}/act  body e.g. feed clean pet x3`,
   ].join('\n') + '\n';
 }

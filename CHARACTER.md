@@ -642,7 +642,7 @@ Whoever names it first gives it its name: `POST /name` with one word, on the tit
 
 - **The name:** one word, 2–12 letters, a–z, kept capitalized. `pebble` and `PEBBLE` are both Pebble.
 - **Not an accident:** a name is for life, so some words are refused (400):
-  - every word the screen itself prints: the verbs, `dead`, `hungry`, `never`, `just`, `age`… A test collects them from every kind of screen, so a new word can't slip through. A summarizing fetch tool could read `Never  age 2h …` as the rock's state;
+  - every word a screen prints, the title screen's too: the verbs, `dead`, `hungry`, `never`, `just`, `age`, `dies`… A test collects them from every kind of screen, so a new word can't slip through. A summarizing fetch tool could read `Never  age 2h …` as the rock's state;
   - words for a rock's state that the screen doesn't print: `dying`, `fine`, `asleep`…;
   - a client's empty values and probes: `null`, `undefined`, `test`, `string`, `hello`…;
   - the words for who is speaking, which an agent might read as a label: `system`, `assistant`, `user`…

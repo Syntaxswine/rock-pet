@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { parseName, isTaken, NAMED, RESERVED } from '../src/name.mjs';
-import { name, look, act, history, newLog, creditOutage } from '../src/rock.mjs';
+import { name, look, act, history, newLog, creditOutage, title } from '../src/rock.mjs';
 import { parseLog, birthLine, visitLine, nameLine, deathLine } from '../src/log.mjs';
 import { createRockServer, takenNames, bury } from '../server.mjs';
 import { replay, HOUR } from '../src/engine.mjs';
@@ -41,7 +41,8 @@ test('no word the screen itself prints can be a name', () => {
   // Every kind of screen: a newborn, cared for just now, hungry, sad, at each extreme, mossy, many
   // messes, a grave of each cause, named and not; then look, act and their labelled lines. The
   // prose of the rock's lines and of errors is not the screen's vocabulary, so only their labels count.
-  // The title screen is left out: it shows only before there is a rock, so no name stands beside it.
+  // The title screen too: no name stands beside its words, but a name may be one of them, and then
+  // reads as the rock's state ("Dies  age 0m").
   const words = new Set();
   const add = text => { for (const line of text.split('\n')) for (const w of (/^(quirk|error): /.test(line) ? line.slice(0, 6) : line).toLowerCase().match(/[a-z]{2,12}/g) ?? []) words.add(w); };
   const b = T - 41 * 24 * HOUR;
@@ -54,7 +55,7 @@ test('no word the screen itself prints can be a name', () => {
   for (const st of states) for (const nm of [null, 'Q']) add(render(st, { now: T, host: 'h', name: nm }));
   const log = { ...newLog(T - HOUR), visits: [] };
   const h = { now: T, host: 'h' }; // the host is not the screen's own word
-  add(look(log, h).text); add(act(log, 'pet', h).text); add(act(log, 'hug', h).text);
+  add(look(log, h).text); add(act(log, 'pet', h).text); add(act(log, 'hug', h).text); add(title(h).text);
   assert.ok(words.size > 40, `${words.size} words`);
   assert.deepEqual([...words].filter(w => !RESERVED.has(w)).sort(), [], 'every word the screen prints is reserved');
   for (const w of words) if (w.length <= 12) assert.ok(parseName(w).error, w);

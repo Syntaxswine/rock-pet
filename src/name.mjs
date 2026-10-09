@@ -12,9 +12,9 @@ export const KEPT = /^[A-Z][a-z]{1,11}$/;
 export const NAMED = 'it has a name now.';
 /**
  * Words that cannot be names, because a name is for life and these would be accidents or worse:
- * - every word the screen itself prints, which a summarizing fetch tool could take for the
- *   rock's state ("Dead  age 1h ...", "Never  age 2h ..."); test/name.test.mjs collects the
- *   screen's words and fails if one is missing here;
+ * - every word the screen itself prints, the title screen's too, which a summarizing fetch tool
+ *   could take for the rock's state ("Dead  age 1h ...", "Never  age 2h ...", "Dies  age 0m ...");
+ *   test/name.test.mjs collects the screens' words and fails if one is missing here;
  * - words for a rock's state that the screen doesn't print;
  * - a client's empty values and probes;
  * - the words for who is speaking, which an agent might read as a label.
@@ -25,6 +25,9 @@ export const RESERVED = new Set([
   'starving', 'mess', 'max', 'quirk', 'error', 'act', 'history', 'unnamed', 'here', 'lies', 'age', 'now', 'ago',
   'just', 'last', 'care', 'never', 'post', 'body', 'nothing', 'needed', 'verbs', 'one', 'word', 'it', 'does',
   'not', 'stir', 'at', 'for', 'of',
+  // the title screen's own words
+  'rock', 'shared', 'by', 'all', 'dies', 'good', 'after', 'in', 'row', 'or', 'rises', 'day', 'clears', 'every',
+  'each', 'falls', 'over', 'time', 'new', 'life',
   // a rock's state
   'dying', 'starved', 'fed', 'full', 'fine', 'ok', 'sad', 'sick', 'alive', 'gone', 'asleep', 'well', 'ill',
   // empty values and probes

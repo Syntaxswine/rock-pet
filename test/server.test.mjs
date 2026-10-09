@@ -346,10 +346,10 @@ test('one server per log: a second is refused while the first runs; a dead one\'
   }
 });
 
-test('a log too broken to serve stops the start with the reason; --new-rock still gets out', async () => {
+test('a log too broken to serve stops the start with the reason; --new-rock clears it once its rock is told dead', async () => {
   const dir = tmpDir();
   const file = path.join(dir, 'rock.jsonl');
-  const torn = birth(NOW - HOUR) + '{"t":17913';
+  const torn = birth(Date.UTC(2026, 0, 1)) + '{"t":17913'; // long dead: judged without its torn last line
   fs.writeFileSync(file, torn);
   try {
     await refusedStart(['--port', '0', '--dir', dir], /line 2 is not JSON/);
@@ -361,6 +361,11 @@ test('a log too broken to serve stops the start with the reason; --new-rock stil
     assert.match(grave, /^rock-unreadable-/);
     assert.equal(fs.readFileSync(path.join(dir, 'graveyard', grave), 'utf8'), torn);
     assert.equal(fs.existsSync(file), false, 'its grave cleared: the title screen, until someone names the next');
+    // A log that reads but can't be replayed, here one written under other rules, is refused too.
+    const other = JSON.stringify({ born: NOW - HOUR, rules: RULES.version + 1 }) + '\n';
+    fs.writeFileSync(file, other);
+    await refusedStart(['--port', '0', '--dir', dir], new RegExp(`log written under rules v${RULES.version + 1}`));
+    assert.equal(fs.readFileSync(file, 'utf8'), other, 'and left alone');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

@@ -73,6 +73,9 @@ export function creditOutage(log, outage, { now }) {
  */
 export const title = ({ host }) => ({ status: 200, text: renderTitle({ host }) });
 
+// The names rocks before it had: a list, or a function giving it, asked only when a name needs it.
+const namesOf = taken => (typeof taken === 'function' ? taken() : taken);
+
 /**
  * Start the game from the title screen with a name (name.mjs: one word, and never one a rock
  * before it had): a rock born at `now`, named then. `born` and `named` are for the caller to store
@@ -82,7 +85,7 @@ export function start(body, { now, host, taken = [] }) {
   const again = () => renderTitle({ host });
   const parsed = parseName(body);
   if (parsed.error) return { status: 400, text: `error: ${parsed.error}. nothing was done.\n${again()}` };
-  if (isTaken(parsed.name, taken)) return { status: 409, text: `error: a rock before it had that name, and a name is never given twice. nothing was done.\n${again()}` };
+  if (isTaken(parsed.name, namesOf(taken))) return { status: 409, text: `error: a rock before it had that name, and a name is never given twice. nothing was done.\n${again()}` };
   const named = { name: parsed.name, t: now };
   const log = { ...newLog(now), name: named };
   const s = rockAt(log, now);
@@ -122,7 +125,7 @@ export function act(log, body, { now, host }) {
 
 /**
  * Give it a name (name.mjs): once, while it lives, and only a name no rock before it had.
- * `taken` is those names, from wherever the dead are kept. Naming it is not care: nothing about
+ * `taken` is those names, from wherever the dead are kept, or a function giving them. Naming it is not care: nothing about
  * the rock changes but its name. Like every line of character, its reply is kept back while the
  * rock is at an extreme.
  */
@@ -134,7 +137,7 @@ export function name(log, body, { now, host, taken = [] }) {
   if (log.name) return { status: 409, text: `error: it already has a name, for life. nothing was done.\n${screen()}` };
   const parsed = parseName(body);
   if (parsed.error) return { status: 400, text: `error: ${parsed.error}. nothing was done.\n${screen()}` };
-  if (isTaken(parsed.name, taken)) return { status: 409, text: `error: a rock before it had that name, and a name is never given twice. nothing was done.\n${screen()}` };
+  if (isTaken(parsed.name, namesOf(taken))) return { status: 409, text: `error: a rock before it had that name, and a name is never given twice. nothing was done.\n${screen()}` };
   const named = { name: parsed.name, t };
   const said = inDanger(s) ? '' : `quirk: ${NAMED}\n`;
   return { status: 200, text: render(s, { now: t, host, ...seen(log, s, t), name: named.name }) + said + `history: ${host}/history\n`, named };

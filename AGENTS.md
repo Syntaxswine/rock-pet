@@ -22,7 +22,7 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 | `src/parse.mjs` | Action bodies such as `feed x4 clean pet x10`. |
 | `src/log.mjs` | The log's format: the birth, each visit, its name once given, and a death line once anyone has seen the rock dead. Parsing checks shape and refuses anything else. |
 | `src/rock.mjs` | `look(log, {now, host})`, `act(log, body, {now, host})` and `name(log, body, {now, host, taken})`: the HTTP status, the screen, and what to append to the log (an accepted action's `visit`; a given name; the `died` line the first time the rock is seen dead). Before there is a rock, `title({host})` is every page, and `start(body, {now, host, taken})` names one and so starts it, giving the log's first two lines. |
-| `server.mjs` | The local server, answering 127.0.0.1 only unless `--listen` says otherwise. The log is `data/rock.jsonl`, read and appended in one synchronous step per request, with a lock file so only one server serves a log. With no log it serves the title screen until a name starts the rock. `--new-rock` clears a dead rock's grave (local only), and refuses a living rock. |
+| `server.mjs` | The local server, answering 127.0.0.1 only unless `--listen` says otherwise. The log is `data/rock.jsonl`, read and appended in one synchronous step per request, with a lock file so only one server serves a log. With no log it serves the title screen until a name starts the rock. A mark beside the log, `rock.jsonl.begun`, says a rock began, so a lost log is never taken for none. `--new-rock` clears a dead rock's grave (local only). It refuses a living rock, and one it can't tell is dead. |
 | `tools/sandbox.mjs` | The engine on a pretend clock. |
 | `tools/mutate.mjs` | Applies deliberate faults in a temporary copy; every mutant must be caught. LF and CRLF checkouts are supported. |
 | `src/story.mjs` | The rock's authored lines: one reaction after effective care or a visit milestone, one line on a look on a day that is not ordinary, and the shared biography at `GET /history`. Never changes the engine. |
@@ -44,7 +44,12 @@ The design is settled, and the game is built and playable locally (2026-10-06). 
 
 - **The fallback**, if Sites can't do something below, is a Cloudflare Worker + one SQLite-backed Durable Object on Cloudflare's free plan (see DESIGN-NOTES, "Is the fallback free?").
 - **GitHub Pages** (this repo) is the public face and the archive: rules, `llms.txt`, a human page, and a periodic export of the event log.
-- **Remove `--new-rock`** from anything hosted. After a death, a new rock comes only by the owner's hand (2026-10-08): the owner has an agent start one by changing the code or the stored log, never through a request. No route may start, bury or reset a rock, however hidden, since the page is open to anyone: "a stranger could come up and restart your pet". Bury the dead rock's log with its grave and keep its name taken for good; the title screen then shows until the first visitor names the next rock, which starts it. Show the title only while the store has no rock, never because a read failed. Never bury a living rock: locally `--new-rock` refuses one.
+- **Remove `--new-rock`** from anything hosted. After a death, only the owner clears the grave (2026-10-08). They have an agent do it by changing the code or the stored log, never through a request.
+  - No route may end, bury, reset or replace a rock, however hidden, since the page is open to anyone: "a stranger could come up and restart your pet".
+  - Bury the dead rock's log with its grave, and keep its name taken for good.
+  - Then the title screen shows. Its `POST /name` may start the next rock only while the store has none, creating it only if none exists, as `'wx'` does locally.
+  - Keep a record that a rock began (locally `rock.jsonl.begun`), cleared only with its grave. Show the title only while the store has neither a rock nor that record: never because a read failed, or because a log was lost.
+  - Never bury a living rock, or one that can't be told dead: locally `--new-rock` refuses both.
 - **Keep every name a rock has had,** as permanently as the rock: a name is never given twice.
 - **Check the screen's size with your host.** The screen tests hold every screen to 390 bytes with a 15-character host (`rockpet.example`). The worst, built on purpose in `test/screen.test.mjs` for every drawing wherever it can wander, is 380. Credited downtime can raise it:
   - 382 with an eleventh mess;
@@ -101,6 +106,13 @@ Status in brackets: what the local build does today.
   - `died: lonely`: happiness's 48h ran out for any other reason.
 
 ## The API (built locally; keep it this small)
+- **Before the first rock** (no log, and no mark that one began), every answer is the title screen:
+  - GET or HEAD of `/` and `/history`: 200;
+  - `POST /act`: 409, after an `error:` line;
+  - `GET /act`: 405 with `Allow: POST`;
+  - `POST /name` starts the rock with that name, or answers 400 or 409.
+
+  Whether there is a rock is asked once a body is in, so a visit begun before a start lands on the rock.
 - **`GET /`** returns `text/plain`, `Cache-Control: no-store`: the screen.
   - Ordinary reads stay quiet.
   - A read on a day that is not ordinary adds one line: a birthday, a morning it slid on the ice, its wall day, a small visitor. About a quarter of a well-kept rock's reads do.
@@ -112,7 +124,7 @@ Status in brackets: what the local build does today.
   - Counts are capped at 20 per word, which never changes the outcome; there is no cap across requests.
   - An unknown word does nothing: 400, one `error:` line, then the screen. A dead rock answers 410 with its grave.
   - A body over 1 KB gets 413 at once. A method a path doesn't serve gets 405 with `Allow`. A log that can't be replayed exactly gets 500 and is left untouched.
-- **`POST /name`** takes one word, 2–12 letters a–z, and names the rock: once, for life, and never with a name a rock before it had. The other answers:
+- **`POST /name`** takes one word, 2–12 letters a–z, and names the rock (before the first rock, it starts it): once, for life, and never with a name a rock before it had. The other answers:
   - 409 if it already has a name, or the name was taken;
   - 400 for a bad name, or a reserved word (every word the screen prints, state words, placeholders, speakers' labels: `src/name.mjs`);
   - 410 for a grave.

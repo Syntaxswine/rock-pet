@@ -7,7 +7,8 @@
 //   node server.mjs --listen 0.0.0.0  serve the local network too, and set ROCK_HOST to the
 //                                     address agents should use: the screen prints it
 //   node server.mjs --new-rock        move a dead rock's log to data/graveyard/, so the title
-//                                     screen shows again (a living rock is refused)
+//                                     screen shows again (a rock alive, or not to be told, is
+//                                     refused)
 //
 //   GET /        the screen (text/plain, no-store)
 //   GET /history the shared biography and verified downtime receipts
@@ -16,7 +17,8 @@
 //
 // With no log, every page is the title screen: what the rock is, its three verbs, and how to
 // start it. The rock is born when someone names it there (POST /name). After that, a missing or
-// unreadable log is an error, never the title screen again or a new rock.
+// unreadable log is an error, never the title screen again or a new rock: while the server runs,
+// and after, since a mark beside the log (rock.jsonl.begun) says a rock began here.
 
 import http from 'node:http';
 import fs from 'node:fs';
@@ -29,6 +31,15 @@ const MAX_BODY = 1024; // bytes; a full visit is under 30
 const BROKEN = "error: the rock's log could not be read. nothing was changed.\n";
 
 export const readLog = file => parseLog(fs.readFileSync(file, 'utf8'));
+
+// Whether `file` is there. Only its absence says no: any other failure to look is thrown, so a
+// check that fails is an error, never "no rock".
+const present = file => fs.statSync(file, { throwIfNoEntry: false }) !== undefined;
+
+// The mark that a rock began beside `file`: written when a game starts, and by a server started
+// over a log from before; removed only when --new-rock clears that rock's grave. While it is there,
+// a missing log is a lost one, not a new game.
+export const begunOf = file => `${file}.begun`;
 
 /**
  * The names the rocks in graveyard/ beside `file` had: a name is never given twice. Read line by
@@ -56,8 +67,8 @@ export function createRockServer({ file, host, now = Date.now, onError = console
   // With no log yet, the title screen, until there is one: the one a name starts there, or one
   // that turns up. Once there, it stays so: a log lost later is an error, never a game anyone
   // could start again.
-  let started = fs.existsSync(file);
-  const isStarted = () => started || (started = fs.existsSync(file));
+  let started = present(file);
+  const isStarted = () => started || (started = present(file));
 
   // One request's whole business with the log: read it, decide, append. It is synchronous, so
   // visits land one at a time and in time order.
@@ -69,11 +80,14 @@ export function createRockServer({ file, host, now = Date.now, onError = console
     return r;
   }
 
-  // The title screen's one command: a name, and so a rock, born at this moment with it. Never over
-  // a log: should one be there after all, it is left as it is.
+  // The title screen's one command: a name, and so a rock, born at this moment with it. From the
+  // moment a name is taken it is the rock, whatever the writes say, and never over a log.
   function begin(body) {
-    const r = start(body, { now: now(), host, taken: takenNames(file) });
-    if (r.born !== undefined) fs.writeFileSync(file, birthLine(r.born) + nameLine(r.named), { flag: 'wx' });
+    const r = start(body, { now: now(), host, taken: () => takenNames(file) });
+    if (r.born === undefined) return r;
+    started = true;
+    fs.writeFileSync(file, birthLine(r.born) + nameLine(r.named), { flag: 'wx' });
+    fs.writeFileSync(begunOf(file), `${r.born}\n`);
     return r;
   }
 
@@ -88,9 +102,12 @@ export function createRockServer({ file, host, now = Date.now, onError = console
       try { r = make(); } catch (e) { onError(e); r = { status: 500, text: BROKEN }; }
       send(r.status, r.text, headers);
     };
-    const answer = (decide, headers) => reply(() => withLog(decide), headers);
+    // The rock's answer, or before there is one, `before`. Whether there is one is asked inside the
+    // reply, so a check that fails is a 500, never the title.
+    const either = (decide, before, headers) => reply(() => (isStarted() ? withLog(decide) : before()), headers);
     // Before the first rock every page is the title screen, after what went wrong, if anything.
     const titled = (status, error = '') => ({ status, text: error + title({ host }).text });
+    const hint = () => (isStarted() ? 'GET / to see the rock; POST /act to care for it' : 'GET / for the title screen; POST /name to start the game');
     // A POST body, then `then(text)`. Over MAX_BODY: 413 at once, and stop listening, rather than
     // wait for a body that may never end.
     const withBody = then => {
@@ -110,32 +127,28 @@ export function createRockServer({ file, host, now = Date.now, onError = console
     const route = (req.url ?? '/').split('?')[0]; // never parsed as a URL, so a malformed one cannot throw
 
     if (route === '/history') {
-      if (req.method === 'GET' || req.method === 'HEAD') return isStarted() ? answer((log, t) => history(log, { now: t })) : reply(() => titled(200));
+      if (req.method === 'GET' || req.method === 'HEAD') return either((log, t) => history(log, { now: t }), () => titled(200));
       return send(405, 'error: GET /history to read the shared biography.\n', { allow: 'GET, HEAD' });
     }
 
     if (route === '/') {
-      if (req.method === 'GET' || req.method === 'HEAD') return isStarted() ? answer((log, t) => look(log, { now: t, host })) : reply(() => titled(200));
-      return send(405, 'error: GET / to see the rock; POST /act to care for it.\n', { allow: 'GET, HEAD' });
+      if (req.method === 'GET' || req.method === 'HEAD') return either((log, t) => look(log, { now: t, host }), () => titled(200));
+      return reply(() => ({ status: 405, text: `error: ${hint()}.\n` }), { allow: 'GET, HEAD' });
     }
     if (route === '/act' && req.method !== 'POST') {
       const error = 'error: /act takes POST, with a body like "feed clean pet x3".\n';
-      if (!isStarted()) return reply(() => titled(405, error), { allow: 'POST' });
-      return answer((log, t) => {
+      return either((log, t) => {
         const r = look(log, { now: t, host });
         return { ...r, status: 405, text: `${error}${r.text}` };
-      }, { allow: 'POST' });
+      }, () => titled(405, error), { allow: 'POST' });
     }
     // Whether it has started is asked when the body is in, since a start may come in between.
-    if (route === '/act') {
-      return withBody(body => (isStarted() ? answer((log, t) => act(log, body, { now: t, host }))
-        : reply(() => titled(409, 'error: there is no rock yet: name one to start it. nothing was done.\n'))));
-    }
+    if (route === '/act') return withBody(body => either((log, t) => act(log, body, { now: t, host }), () => titled(409, 'error: there is no rock yet: name one to start it. nothing was done.\n')));
     if (route === '/name') {
       if (req.method !== 'POST') return send(405, 'error: POST /name with a one-word name. it is named once, for life.\n', { allow: 'POST' });
-      return withBody(body => (isStarted() ? answer((log, t) => name(log, body, { now: t, host, taken: takenNames(file) })) : reply(() => begin(body))));
+      return withBody(body => either((log, t) => name(log, body, { now: t, host, taken: () => takenNames(file) }), () => begin(body)));
     }
-    send(404, 'not here. GET / to see the rock; POST /act to care for it.\n');
+    reply(() => ({ status: 404, text: `not here. ${hint()}.\n` }));
   }
 
   return http.createServer((req, res) => {
@@ -152,23 +165,30 @@ export function createRockServer({ file, host, now = Date.now, onError = console
  * buried instead. With no log the server shows the title screen, where the next rock starts.
  */
 export function bury(file, now = Date.now()) {
-  if (!fs.existsSync(file)) return null;
+  if (!present(file)) return null;
   let stem;
   try { stem = `rock-${new Date(readLog(file).born).toISOString()}`; } catch { stem = `rock-unreadable-${new Date(now).toISOString()}`; }
   stem = stem.replace(/[:.]/g, '-');
   const grave = path.join(path.dirname(file), 'graveyard');
   fs.mkdirSync(grave, { recursive: true });
   let to = path.join(grave, `${stem}.jsonl`);
-  for (let n = 2; fs.existsSync(to); n++) to = path.join(grave, `${stem}-${n}.jsonl`);
+  for (let n = 2; present(to); n++) to = path.join(grave, `${stem}-${n}.jsonl`);
   fs.renameSync(file, to);
   return to;
 }
 
-// Whether `file` holds a rock alive now. A log that can't be read or replayed says no: nothing can
-// serve it, and --new-rock is the way out of it.
-function living(file) {
-  if (!fs.existsSync(file)) return false;
-  try { return livesAt(readLog(file), Date.now()); } catch { return false; }
+// What `file` holds now: 'none', a rock 'alive' or 'dead', or 'unknown'. A last line torn by a crash
+// was a visit never answered, so the rock is judged without it. A log still unreadable without
+// it, or one this build can't replay (other rules, a death its visits don't produce), is
+// 'unknown', and never taken for a grave.
+function judge(file) {
+  if (!present(file)) return 'none';
+  const text = fs.readFileSync(file, 'utf8');
+  let log;
+  try { log = parseLog(text); } catch {
+    try { log = parseLog(text.slice(0, text.lastIndexOf('\n') + 1)); } catch { return 'unknown'; }
+  }
+  try { return livesAt(log, Date.now()) ? 'alive' : 'dead'; } catch { return 'unknown'; }
 }
 
 // One server per log: two would interleave their appends and break it. The lock holds the
@@ -213,11 +233,20 @@ export async function main(argv, { say = console.log } = {}) {
   try {
     // --new-rock clears a grave, so the title screen shows again; it never ends a life.
     if (argv.includes('--new-rock')) {
-      if (living(file)) throw new Error(`the rock in ${file} is alive; --new-rock only clears a grave`);
+      const was = judge(file);
+      if (was === 'alive') throw new Error(`the rock in ${file} is alive; --new-rock only clears a grave`);
+      if (was === 'unknown') throw new Error(`the log in ${file} can't be read, so its rock can't be told dead: --new-rock leaves it. repair it, or move it aside by hand`);
       const to = bury(file);
-      if (to) say(`the old rock's log is now ${to}`);
+      fs.rmSync(begunOf(file), { force: true });
+      say(`${to ? `the old rock's log is now ${to}` : 'there was no rock to bury'}; the title screen shows until someone names the next`);
     }
-    if (fs.existsSync(file)) look(readLog(file), { now: Date.now(), host }); // refuse to serve a log that cannot be replayed
+    if (present(file)) {
+      const log = readLog(file);
+      look(log, { now: Date.now(), host }); // refuse to serve a log that cannot be replayed
+      if (!present(begunOf(file))) fs.writeFileSync(begunOf(file), `${log.born}\n`); // a rock from before the mark
+    } else if (present(begunOf(file))) {
+      throw new Error(`a rock began here, but its log ${file} is missing: put it back, or run --new-rock to start the next`);
+    }
     const server = createRockServer({ file, host });
     await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, listen, resolve); });
     process.on('exit', release);
