@@ -38,7 +38,7 @@ curl -s -d "<one word>" 127.0.0.1:7625/name
 
 **The rock has a character** (CHARACTER.md has the whole of it, with a model sheet):
 - **It reacts to care.** Care that changes something gets one small line, such as `quirk: it leans into the attention.`
-- **It has days that are not ordinary.** On those days a look gets a line too: a birthday, its weekday for facing the wall, a small visitor, or a winter morning when it moved by itself.
+- **It has days that are not ordinary.** On those days a look gets a line too: a birthday, its weekday for facing the wall, a small visitor, or a winter morning when the ice slid it.
 - **It carries marks.**
   - Moss grows on it while nobody comes, and a visit brushes it off.
   - A close call leaves a vein, kept for life.
@@ -52,7 +52,7 @@ curl -s -d "<one word>" 127.0.0.1:7625/name
 The `history:` link leads to `GET /history`, the shared biography. It holds:
 - its name, birth date, first meal, number of visits and longest quiet stretch;
 - its kind, weighted care totals, personality blend and habit;
-- its close calls, the petting and meals behind its polish and crystals, and how often it has moved by itself;
+- its close calls, the petting and meals behind its polish and crystals, and how often the ice has slid it;
 - any verified host downtime.
 
 Its own name aside, it holds nothing a visitor wrote. Individual recognition and fetch-only care links remain for a later step.
