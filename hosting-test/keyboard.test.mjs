@@ -10,13 +10,19 @@ function browser(initialPhase = 'alive') {
     querySelector(id) { return elements[id] ??= { value: '', handlers: {}, disabled: false,
       addEventListener(type, fn) { this.handlers[type] = fn; },
       focus() { document.activeElement = this; }, blur() { if (document.activeElement === this) document.activeElement = null; } }; } };
-  let phase = initialPhase;
-  runInNewContext(SCRIPT, { document, fetch: async (url, options) => {
+  let phase = initialPhase, remoteText = 'ASCII rock', failing = false, deferNext = false, release;
+  let interval;
+  runInNewContext(SCRIPT, { document, AbortSignal, setInterval(fn, ms) { interval = { fn, ms }; }, fetch: async (url, options) => {
     calls.push({ url, ...options });
     if (url === '/name') phase = 'alive';
-    return { ok: true, status: 200, text: async () => 'ASCII rock', headers: { get: () => phase } };
+    const text = remoteText, nextPhase = phase, failed = failing;
+    if (deferNext) { deferNext = false; await new Promise(resolve => { release = resolve; }); }
+    return { ok: !failed, status: failed ? 503 : 200, text: async () => text, headers: { get: () => nextPhase } };
   } });
   return { calls, document, elements,
+    tick() { assert.equal(interval.ms, 15000); return interval.fn(); },
+    remote(text, failed = false) { remoteText = text; failing = failed; },
+    hold() { deferNext = true; }, release() { release(); },
     key(key, extra = {}) { document.handlers.keydown({ key, preventDefault() {}, ...extra }); },
     submit(value) { elements['#command'].value = value; elements['#terminal'].handlers.submit({ preventDefault() {} }); },
   };
@@ -59,4 +65,53 @@ test('keyboard: grave keys do nothing and rapid keys do not queue hidden care', 
   dead.key('f'); dead.key('c'); dead.key('p'); await settle(); assert.equal(dead.calls.length, 1);
   const ui = browser(); await settle();
   ui.key('f'); ui.key('c'); ui.key('p'); await settle(); assert.equal(ui.calls.length, 2);
+});
+
+test('refresh: shows other visitors care with GET only, preserving command text, focus and status', async () => {
+  const ui = browser(); await settle();
+  ui.key('Enter'); ui.elements['#command'].value = 'feed x4 clean';
+  ui.elements['#status'].textContent = 'help is still visible';
+  ui.remote('cleaned and cared for by someone else');
+  await ui.tick();
+  assert.equal(ui.elements['#rock'].textContent, 'cleaned and cared for by someone else');
+  assert.equal(ui.calls.at(-1).url, '/'); assert.equal(ui.calls.at(-1).method, 'GET');
+  assert.equal(ui.calls.at(-1).body, undefined);
+  assert.equal(ui.elements['#command'].value, 'feed x4 clean');
+  assert.equal(ui.document.activeElement, ui.elements['#command']);
+  assert.equal(ui.elements['#command'].disabled, false);
+  assert.equal(ui.elements['#status'].textContent, 'help is still visible');
+});
+
+test('refresh: hidden tabs pause, returning resumes, history stays open and failed reads retry', async () => {
+  const ui = browser(); await settle();
+  const count = ui.calls.length;
+  ui.document.hidden = true; await ui.tick(); assert.equal(ui.calls.length, count);
+  ui.remote('new screen'); ui.document.hidden = false;
+  ui.document.handlers.visibilitychange(); await settle();
+  assert.equal(ui.elements['#rock'].textContent, 'new screen');
+  ui.submit('history'); await settle();
+  ui.remote('new biography'); await ui.tick();
+  assert.equal(ui.calls.at(-1).url, '/history');
+  assert.equal(ui.elements['#rock'].textContent, 'new biography');
+  ui.remote('database unavailable', true); await ui.tick();
+  assert.equal(ui.elements['#rock'].textContent, 'new biography');
+  ui.remote('recovered biography'); await ui.tick();
+  assert.equal(ui.elements['#rock'].textContent, 'recovered biography');
+});
+
+test('refresh: one background request at a time and stale reads cannot overwrite a newer care reply', async () => {
+  const ui = browser(); await settle();
+  ui.remote('old snapshot'); ui.hold(); const pending = ui.tick();
+  const count = ui.calls.length;
+  await ui.tick(); assert.equal(ui.calls.length, count);
+  ui.remote('fresh care reply'); ui.key('p'); await settle();
+  assert.equal(ui.calls.at(-1).body, 'pet', 'background reads do not block manual care');
+  assert.equal(ui.elements['#rock'].textContent, 'fresh care reply');
+  ui.release(); await pending;
+  assert.equal(ui.elements['#rock'].textContent, 'fresh care reply');
+  ui.hold(); ui.key('c'); const duringCare = ui.calls.length;
+  await ui.tick(); assert.equal(ui.calls.length, duringCare, 'no polling during a foreground command');
+  ui.release(); await settle();
+  ui.remote('later screen'); await ui.tick();
+  assert.equal(ui.elements['#rock'].textContent, 'later screen');
 });

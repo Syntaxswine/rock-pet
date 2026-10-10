@@ -14,6 +14,15 @@ import { fileURLToPath } from 'node:url';
 
 // [what breaks, file, exact text, replacement]. Each text must occur exactly once.
 const MUTANTS = [
+  ['refresh submits instead of reading', 'hosting/page.mjs', "fetch(view,{method:'GET'", "fetch(view,{method:'POST'"],
+  ['refresh takes keyboard focus', 'hosting/page.mjs', 'refreshing=true; const before=revision;', 'refreshing=true; input.blur(); const before=revision;'],
+  ['refresh accepts a stale response', 'hosting/page.mjs', '||before!==revision', ''],
+  ['refresh polls hidden tabs', 'hosting/page.mjs', 'if(document.hidden||busy||refreshing)return;', 'if(busy||refreshing)return;'],
+  ['refresh overlaps background reads', 'hosting/page.mjs', 'if(document.hidden||busy||refreshing)return;', 'if(document.hidden||busy)return;'],
+  ['refresh discards the history view', 'hosting/page.mjs', 'fetch(view,{', "fetch('/',{"],
+  ['refresh displays a failed response', 'hosting/page.mjs', '!response.ok||before!==revision', 'before!==revision'],
+  ['refresh repeats POST documents', 'hosting/http.mjs', "route === '/' && ['GET', 'HEAD'].includes(request.method)", 'true'],
+  ['refresh omits the text page header', 'hosting/http.mjs', "{ refresh: status >= 400 ? '60' : '15' }", '{}'],
   ['keyboard feeds on the wrong key', 'hosting/page.mjs', "f:'feed',c:'clean',p:'pet'", "f:'clean',c:'feed',p:'pet'"],
   ['keyboard held keys automate care', 'hosting/page.mjs', 'event.repeat||', ''],
   ['keyboard typing a command triggers care', 'hosting/page.mjs', '||document.activeElement===input', ''],
