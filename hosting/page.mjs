@@ -5,24 +5,41 @@ export const PAGE = `<!doctype html>
 <body><main><pre id="rock" aria-live="polite">looking for the rock...</pre>
 <form id="terminal"><label for="command">&gt;</label><input id="command" name="command" aria-label="Command" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus placeholder="look"></form>
 <pre id="status" role="status"></pre><p class="help">F feed | C clean | P pet<br>Enter: type a command. Escape: return to hotkeys.<br>name &lt;one word&gt; | look | history | help<br>combine care: feed x4 clean pet x10</p>
-<p class="help">one shared rock. time passes even when nobody is here.<br>no automatic caretakers.</p>
+<p class="help">display refreshes every 15 seconds while this tab is visible.<br>one shared rock. time passes even when nobody is here.<br>no automatic caretakers.</p>
 <footer><a href="/">plain text API</a> &middot; <a href="/rules">rules</a> &middot; <a href="https://github.com/Syntaxswine/rock-pet">source</a></footer>
 </main></body></html>`;
 
 export const SCRIPT = String.raw`const rock=document.querySelector('#rock'), status=document.querySelector('#status'), input=document.querySelector('#command');
 const HOTKEYS={f:'feed',c:'clean',p:'pet'};
-let busy=false, phase='title';
+let busy=false, phase='title', view='/', revision=0, refreshing=false;
 async function visit(path='/', body) {
-  if(busy)return; busy=true; input.disabled=true; status.textContent='';
+  if(busy)return; busy=true; revision++; input.disabled=true; status.textContent='';
   try {
     const response=await fetch(path,{method:body===undefined?'GET':'POST',body,cache:'no-store',headers:body===undefined?{}:{'Content-Type':'text/plain'}});
     const text=await response.text(), nextPhase=response.headers.get('x-rock-phase');
-    if(nextPhase){phase=nextPhase;rock.textContent=text;input.placeholder=phase==='title'?'name <one word>':phase==='dead'?'history':'look';}
+    if(nextPhase){view=path==='/history'?'/history':'/';phase=nextPhase;rock.textContent=text;input.placeholder=phase==='title'?'name <one word>':phase==='dead'?'history':'look';}
     else status.textContent=text;
     if(nextPhase&&!response.ok)status.textContent=response.status===410?'its story stays here.':'nothing was changed.';
   } catch {status.textContent='could not reach the rock. please try again.';}
   finally {busy=false;input.disabled=false;if(phase==='title')input.focus();else input.blur();}
 }
+// Background reads never disable the prompt, take focus, or submit care. A
+// foreground command invalidates an older read so it cannot overwrite its reply.
+async function refresh() {
+  if(document.hidden||busy||refreshing)return;
+  refreshing=true; const before=revision;
+  try {
+    const response=await fetch(view,{method:'GET',cache:'no-store',signal:AbortSignal.timeout(10000)});
+    const text=await response.text(), nextPhase=response.headers.get('x-rock-phase');
+    if(!response.ok||before!==revision||document.hidden||!nextPhase)return;
+    phase=nextPhase;
+    if(rock.textContent!==text)rock.textContent=text;
+    input.placeholder=phase==='title'?'name <one word>':phase==='dead'?'history':'look';
+  } catch { /* Keep the last good screen; retry on the next interval. */ }
+  finally {refreshing=false;}
+}
+setInterval(refresh,15000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
 function command(text) {
   const value=text.trim();
   if(!value||value==='look')return visit();

@@ -5,6 +5,13 @@ Humans can use the keyboard terminal at [/play](https://rock-pet.vladimirs-lemon
 F feeds, C cleans, P pets. Enter focuses the command prompt; Escape leaves it.
 While typing a name or command, those letters never trigger care. Held keys do
 not repeat care. There are no buttons.
+The terminal refreshes its current rock/history display every 15 seconds while
+visible, and when returning to the tab. Background reads preserve typing and
+focus, never submit care, and cannot overwrite a newer command response. Failed
+reads retain the last screen and retry; each read times out after ten seconds.
+The plain-text root sends `Refresh: 15` for browser GET/HEAD requests (60 seconds
+on errors). POST replies never request a refresh. Ordinary API clients still get
+one plain-text response per request.
 The root remains plain text for agents. Links printed in that screen are relative
 to this origin, keeping the original 390-byte screen and 450-byte reply bounds.
 

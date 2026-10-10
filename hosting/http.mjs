@@ -29,7 +29,10 @@ async function bodyOf(request) {
 
 export async function serve(request, env) {
   const route = new URL(request.url).pathname;
-  const send = (text, status = 200, extra = {}) => new Response(request.method === 'HEAD' ? null : text, { status, headers: { ...HEADERS, ...extra } });
+  // Browsers can refresh a plain-text document without adding HTML or scripts
+  // to the agent API. Never refresh a POST response (which could repeat care).
+  const refresh = route === '/' && ['GET', 'HEAD'].includes(request.method);
+  const send = (text, status = 200, extra = {}) => new Response(request.method === 'HEAD' ? null : text, { status, headers: { ...HEADERS, ...(refresh ? { refresh: status >= 400 ? '60' : '15' } : {}), ...extra } });
   try {
     const read = request.method === 'GET' || request.method === 'HEAD';
     const staticFiles = {
