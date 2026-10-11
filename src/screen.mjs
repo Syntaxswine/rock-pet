@@ -139,6 +139,18 @@ export function render(s, { now, host, pose = 'front', name = null, drawing = DR
     const [a, z] = dx > from ? [left + from, left + dx - 1] : [right + dx + 1, right + from];
     for (let c = Math.max(0, a); c <= Math.min(W - 1, z); c++) g[5][c] = '~';
   }
+  // A display-only shuffle carries the whole rock and its immediate ground.
+  // Leave the needs row and the world's messes fixed. Refuse an unsafe frame
+  // rather than clipping moss, marks, or a mess at the edge of the scene.
+  const dy = place.dy ?? 0;
+  if (dy) {
+    const cells = g.flatMap((row, r) => r === 0 ? [] : row.flatMap((ch, c) => ch === ' ' ? [] : [[r, c, ch]]));
+    const blocked = new Set(MESS_SPOTS.slice(0, s.messes).map(([r, c]) => `${r},${c}`));
+    if (cells.every(([r, c]) => r + dy > 0 && r + dy < W && !blocked.has(`${r + dy},${c}`))) {
+      for (let r = 1; r < W; r++) g[r].fill(' ');
+      for (const [r, c, ch] of cells) g[r + dy][c] = ch;
+    }
+  }
   for (const [row, col] of MESS_SPOTS.slice(0, s.messes)) g[row][col] = '@';
   const lines = g.map(row => row.join('').trimEnd());
 

@@ -5,19 +5,42 @@ export const PAGE = `<!doctype html>
 <body><main><pre id="rock" aria-live="polite">looking for the rock...</pre>
 <form id="terminal"><label for="command">&gt;</label><input id="command" name="command" aria-label="Command" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus placeholder="look"></form>
 <pre id="status" role="status"></pre><p class="help">F feed | C clean | P pet<br>Enter: type a command. Escape: return to hotkeys.<br>name &lt;one word&gt; | look | history | help<br>combine care: feed x4 clean pet x10</p>
-<p class="help">display refreshes every 15 seconds while this tab is visible.<br>one shared rock. time passes even when nobody is here.<br>no automatic caretakers.</p>
-<footer><a href="/">plain text API</a> &middot; <a href="/rules">rules</a> &middot; <a href="https://github.com/Syntaxswine/rock-pet">source</a></footer>
+<p class="help">display refreshes every 15 seconds while this tab is visible.<br>the rock slides one space at a time. occasionally, a little shuffle.<br>one shared rock. time passes even when nobody is here.<br>no automatic caretakers.</p>
+<footer><a href="/?view=text">plain text API</a> &middot; <a href="/rules">rules</a> &middot; <a href="https://github.com/Syntaxswine/rock-pet">source</a></footer>
 </main></body></html>`;
 
 export const SCRIPT = String.raw`const rock=document.querySelector('#rock'), status=document.querySelector('#status'), input=document.querySelector('#command');
 const HOTKEYS={f:'feed',c:'clean',p:'pet'};
 let busy=false, phase='title', view='/', revision=0, refreshing=false;
+let frames=[], frameTimers=[], lastSceneAt=null, knownMoveAt=null;
+function stopFrames(){for(const timer of frameTimers)clearTimeout(timer);frameTimers=[];frames=[];}
+function paint(text,scene,started){
+  stopFrames();rock.textContent=text;
+  if(!scene||document.hidden||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  frames=scene.frames;
+  if(lastSceneAt!==null&&scene.recent&&scene.recent.at>lastSceneAt&&scene.recent.at!==knownMoveAt){
+    frames=[...scene.recent.frames,...frames.filter(frame=>frame.at>scene.recent.frames.at(-1).at)];
+  }
+  lastSceneAt=scene.at;knownMoveAt=scene.moveAt;
+  // Anchor the shared server clock to this response; local wall-clock skew
+  // cannot replay an old journey. Account for roughly half the round trip.
+  const elapsed=(performance.now()-started)/2;
+  for(const frame of frames){
+    const delay=frame.at-scene.at-elapsed;
+    if(delay<=0)rock.textContent=frame.text;
+    else frameTimers.push(setTimeout(()=>{if(!document.hidden)rock.textContent=frame.text;},delay));
+  }
+}
+async function contents(response){
+  return response.headers.get('content-type')?.includes('application/json')?response.json():{text:await response.text()};
+}
 async function visit(path='/', body) {
-  if(busy)return; busy=true; revision++; input.disabled=true; status.textContent='';
+  if(busy)return; busy=true; revision++; stopFrames(); input.disabled=true; status.textContent='';
+  const started=performance.now();
   try {
-    const response=await fetch(path,{method:body===undefined?'GET':'POST',body,cache:'no-store',headers:body===undefined?{}:{'Content-Type':'text/plain'}});
-    const text=await response.text(), nextPhase=response.headers.get('x-rock-phase');
-    if(nextPhase){view=path==='/history'?'/history':'/';phase=nextPhase;rock.textContent=text;input.placeholder=phase==='title'?'name <one word>':phase==='dead'?'history':'look';}
+    const response=await fetch(path,{method:body===undefined?'GET':'POST',body,cache:'no-store',headers:{Accept:'application/json',...(body===undefined?{}:{'Content-Type':'text/plain'})}});
+    const {text,scene}=await contents(response), nextPhase=response.headers.get('x-rock-phase');
+    if(nextPhase){view=path==='/history'?'/history':'/';phase=nextPhase;paint(text,scene,started);input.placeholder=phase==='title'?'name <one word>':phase==='dead'?'history':'look';}
     else status.textContent=text;
     if(nextPhase&&!response.ok)status.textContent=response.status===410?'its story stays here.':'nothing was changed.';
   } catch {status.textContent='could not reach the rock. please try again.';}
@@ -28,18 +51,19 @@ async function visit(path='/', body) {
 async function refresh() {
   if(document.hidden||busy||refreshing)return;
   refreshing=true; const before=revision;
+  const started=performance.now();
   try {
-    const response=await fetch(view,{method:'GET',cache:'no-store',signal:AbortSignal.timeout(10000)});
-    const text=await response.text(), nextPhase=response.headers.get('x-rock-phase');
+    const response=await fetch(view,{method:'GET',cache:'no-store',signal:AbortSignal.timeout(10000),headers:{Accept:'application/json'}});
+    const {text,scene}=await contents(response), nextPhase=response.headers.get('x-rock-phase');
     if(!response.ok||before!==revision||document.hidden||!nextPhase)return;
     phase=nextPhase;
-    if(rock.textContent!==text)rock.textContent=text;
+    paint(text,scene,started);
     input.placeholder=phase==='title'?'name <one word>':phase==='dead'?'history':'look';
   } catch { /* Keep the last good screen; retry on the next interval. */ }
   finally {refreshing=false;}
 }
 setInterval(refresh,15000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
+document.addEventListener('visibilitychange',()=>{stopFrames();if(!document.hidden)refresh();});
 function command(text) {
   const value=text.trim();
   if(!value||value==='look')return visit();

@@ -14,6 +14,18 @@ import { fileURLToPath } from 'node:url';
 
 // [what breaks, file, exact text, replacement]. Each text must occur exactly once.
 const MUTANTS = [
+  ['animation drops the care reaction', 'hosting/scene.mjs', "const reaction = reply.split('\\n').find(line => line.startsWith('quirk:'));", 'const reaction = null;'],
+  ['animation misses an unseen remote move', 'hosting/page.mjs', 'lastSceneAt!==null&&scene.recent', 'false&&scene.recent'],
+  ['animation repeats an already predicted journey', 'hosting/page.mjs', '&&scene.recent.at!==knownMoveAt', ''],
+  ['sliding skips intermediate columns', 'hosting/scene.mjs', 'STEP_MS = 500', 'STEP_MS = 1'],
+  ['sliding loses upcoming movements', 'hosting/scene.mjs', 'HORIZON_MS = 16000', 'HORIZON_MS = 0'],
+  ['a shuffle loses its vertical step', 'hosting/scene.mjs', 'dx: place.dx + dx, dy, furrow: false', 'dx: place.dx + dx, dy: 0, furrow: false'],
+  ['a shuffle never settles back', 'hosting/scene.mjs', 'now >= at + 2500', 'now >= at + 25000'],
+  ['a vertical shuffle erases a mess', 'src/screen.mjs', " && !blocked.has(`${r + dy},${c}`)", ''],
+  ['animation ignores reduced motion', 'hosting/page.mjs', "||matchMedia('(prefers-reduced-motion: reduce)').matches", ''],
+  ['animation leaves old frames after a command', 'hosting/page.mjs', 'revision++; stopFrames();', 'revision++;'],
+  ['animation ignores scheduled frames', 'hosting/page.mjs', 'for(const frame of frames){', 'for(const frame of []){'],
+  ['browser negotiation hides ASCII from text agents', 'hosting/http.mjs', "request.headers.get('sec-fetch-dest') === 'document' && ", ''],
   ['refresh submits instead of reading', 'hosting/page.mjs', "fetch(view,{method:'GET'", "fetch(view,{method:'POST'"],
   ['refresh takes keyboard focus', 'hosting/page.mjs', 'refreshing=true; const before=revision;', 'refreshing=true; input.blur(); const before=revision;'],
   ['refresh accepts a stale response', 'hosting/page.mjs', '||before!==revision', ''],

@@ -10,18 +10,30 @@ function browser(initialPhase = 'alive') {
     querySelector(id) { return elements[id] ??= { value: '', handlers: {}, disabled: false,
       addEventListener(type, fn) { this.handlers[type] = fn; },
       focus() { document.activeElement = this; }, blur() { if (document.activeElement === this) document.activeElement = null; } }; } };
-  let phase = initialPhase, remoteText = 'ASCII rock', failing = false, deferNext = false, release;
+  let phase = initialPhase, remoteText = 'ASCII rock', remoteScene, failing = false, deferNext = false, release;
+  let clock = 0, reduced = false, timerId = 0;
+  const timers = new Map();
   let interval;
-  runInNewContext(SCRIPT, { document, AbortSignal, setInterval(fn, ms) { interval = { fn, ms }; }, fetch: async (url, options) => {
+  runInNewContext(SCRIPT, { document, AbortSignal, performance: { now: () => clock },
+    matchMedia: () => ({ matches: reduced }),
+    setTimeout(fn, ms) { const id = ++timerId; timers.set(id, { fn, at: clock + ms }); return id; },
+    clearTimeout(id) { timers.delete(id); },
+    setInterval(fn, ms) { interval = { fn, ms }; }, fetch: async (url, options) => {
     calls.push({ url, ...options });
     if (url === '/name') phase = 'alive';
-    const text = remoteText, nextPhase = phase, failed = failing;
+    const text = remoteText, scene = url === '/history' ? undefined : remoteScene, nextPhase = phase, failed = failing;
     if (deferNext) { deferNext = false; await new Promise(resolve => { release = resolve; }); }
-    return { ok: !failed, status: failed ? 503 : 200, text: async () => text, headers: { get: () => nextPhase } };
+    return { ok: !failed, status: failed ? 503 : 200, text: async () => text, json: async () => ({ text, scene }),
+      headers: { get: key => key === 'x-rock-phase' ? nextPhase : 'application/json' } };
   } });
   return { calls, document, elements,
     tick() { assert.equal(interval.ms, 15000); return interval.fn(); },
     remote(text, failed = false) { remoteText = text; failing = failed; },
+    scene(frames) { remoteScene = { at: 100000, frames: frames.map(([offset, text]) => ({ at: 100000 + offset, text })) }; },
+    timeline(scene) { remoteScene = scene; },
+    reduced() { reduced = true; },
+    advance(ms) { clock += ms; for (const [id, timer] of [...timers]) if (timer.at <= clock) { timers.delete(id); timer.fn(); } },
+    timers,
     hold() { deferNext = true; }, release() { release(); },
     key(key, extra = {}) { document.handlers.keydown({ key, preventDefault() {}, ...extra }); },
     submit(value) { elements['#command'].value = value; elements['#terminal'].handlers.submit({ preventDefault() {} }); },
@@ -39,6 +51,59 @@ test('keyboard: F C P each submit one text action; holding a key or a modifier d
   for (const extra of [{ repeat: true }, { ctrlKey: true }, { metaKey: true }, { altKey: true }, { isComposing: true }]) ui.key('f', extra);
   await settle(); assert.equal(ui.calls.length, count);
   assert.doesNotMatch(PAGE, /<button\b/i);
+});
+
+test('animation: timed ASCII frames move without extra requests or disturbing a typed command', async () => {
+  const ui = browser(); await settle();
+  ui.key('Enter'); ui.elements['#command'].value = 'pet x';
+  ui.scene([[0, 'start'], [500, 'one space'], [1000, 'two spaces']]);
+  await ui.tick(); const calls = ui.calls.length;
+  assert.equal(ui.elements['#rock'].textContent, 'start');
+  ui.advance(500); assert.equal(ui.elements['#rock'].textContent, 'one space');
+  ui.advance(500); assert.equal(ui.elements['#rock'].textContent, 'two spaces');
+  assert.equal(ui.calls.length, calls);
+  assert.equal(ui.document.activeElement, ui.elements['#command']);
+  assert.equal(ui.elements['#command'].value, 'pet x');
+  assert.equal(ui.calls.at(-1).headers.Accept, 'application/json');
+});
+
+test('animation: commands, hidden tabs and newer snapshots cancel the old frames; reduced motion stays still', async () => {
+  const ui = browser(); await settle();
+  ui.scene([[0, 'old start'], [500, 'obsolete']]); await ui.tick();
+  ui.hold(); ui.key('p'); ui.advance(500);
+  assert.equal(ui.elements['#rock'].textContent, 'old start', 'a pending command cancels old frames immediately');
+  ui.release(); await settle();
+  ui.scene([[0, 'old start'], [500, 'obsolete']]); await ui.tick();
+  ui.remote('history'); ui.submit('history'); await settle();
+  ui.advance(500); assert.equal(ui.elements['#rock'].textContent, 'history');
+  ui.submit('look'); await settle();
+  ui.remote('current'); ui.scene([[0, 'current']]); await ui.tick();
+  ui.advance(1000); assert.equal(ui.elements['#rock'].textContent, 'current');
+  ui.scene([[0, 'start'], [500, 'hidden frame']]); await ui.tick();
+  ui.document.hidden = true; ui.document.handlers.visibilitychange();
+  assert.equal(ui.timers.size, 0); ui.advance(500);
+  assert.equal(ui.elements['#rock'].textContent, 'start');
+  ui.document.hidden = false; ui.reduced(); ui.remote('destination'); await ui.tick();
+  assert.equal(ui.elements['#rock'].textContent, 'destination'); assert.equal(ui.timers.size, 0);
+});
+
+test('animation: an unseen remote move catches up once, but a predicted move or first visit never replays', async () => {
+  const ui = browser(); await settle();
+  const prior = { at: 100000, moveAt: null, frames: [{ at: 100000, text: 'before' }] };
+  const next = { at: 115000, moveAt: 110000, frames: [{ at: 115000, text: 'settled' }],
+    recent: { at: 110000, frames: [{ at: 115000, text: 'from' }, { at: 115500, text: 'middle' }, { at: 116000, text: 'settled' }] } };
+  ui.timeline(prior); await ui.tick();
+  ui.timeline(next); await ui.tick();
+  assert.equal(ui.elements['#rock'].textContent, 'from');
+  ui.advance(500); assert.equal(ui.elements['#rock'].textContent, 'middle');
+  ui.advance(500); assert.equal(ui.elements['#rock'].textContent, 'settled');
+  await ui.tick(); assert.equal(ui.elements['#rock'].textContent, 'settled');
+  const predicted = browser(); await settle();
+  predicted.timeline({ ...prior, moveAt: 110000 }); await predicted.tick();
+  predicted.timeline(next); await predicted.tick();
+  assert.equal(predicted.elements['#rock'].textContent, 'settled');
+  const first = browser(); await settle(); first.timeline(next); await first.tick();
+  assert.equal(first.elements['#rock'].textContent, 'settled');
 });
 
 test('keyboard: typing names and commands never triggers care hotkeys; Escape restores them', async () => {
