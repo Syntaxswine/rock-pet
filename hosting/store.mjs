@@ -3,6 +3,7 @@
 import { start, title, look, act, name, history, newLog, creditOutage } from '../src/rock.mjs';
 import { compact, readCheckpoint } from '../src/checkpoint.mjs';
 import { birthLine, nameLine, visitLine, deathLine, outageLine } from '../src/log.mjs';
+import { sceneAt } from './scene.mjs';
 
 export const MAX_OUTAGE_MS = 7 * 86400000;
 export class Busy extends Error {}
@@ -16,7 +17,7 @@ export async function limited(db, now) {
   return row.count > 600;
 }
 
-export async function operate(binding, route, body, { now = Date.now(), outage } = {}) {
+export async function operate(binding, route, body, { now = Date.now(), outage, animate = false } = {}) {
   // Start each request at the primary, never at a stale replica's title screen.
   const db = binding.withSession('first-primary');
   if (await limited(db, now)) throw new Busy('rate');
@@ -80,7 +81,8 @@ export async function operate(binding, route, body, { now = Date.now(), outage }
     if (!head) statements.push(db.prepare(`INSERT INTO rock_names (name, born)
       SELECT ?, ? FROM rock WHERE id = 1 AND token = ?`).bind(log.name.name, log.born, token));
     const saved = await db.batch(statements);
-    if (saved[0].meta.changes === 1) return { ...result, phase: log.died ? 'dead' : 'alive' };
+    if (saved[0].meta.changes === 1) return { ...result, phase: log.died ? 'dead' : 'alive',
+      ...(animate && route !== '/history' && result.status === 200 ? { scene: sceneAt(log, t, result.text, route === '/act' || route === '/name') } : {}) };
     // A competing visit won. Recompute from its committed state, including death.
   }
   throw new Busy('contention');

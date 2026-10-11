@@ -12,6 +12,32 @@ reads retain the last screen and retry; each read times out after ten seconds.
 The plain-text root sends `Refresh: 15` for browser GET/HEAD requests (60 seconds
 on errors). POST replies never request a refresh. Ordinary API clients still get
 one plain-text response per request.
+Browser document navigation at `/` opens the same ASCII keyboard terminal as
+`/play`. This requires `Sec-Fetch-Dest: document` and `Accept: text/html`; simply
+accepting HTML does not divert a text agent to a JavaScript shell. `/?view=text`
+explicitly opens the plain text display in a browser. Responses vary by Accept
+and Sec-Fetch-Dest and remain uncached.
+
+The terminal asks for `application/json`: the usual reply plus a short timeline
+of ASCII frames for the next 16 seconds. Existing journeys slide one column per
+half second, retaining their established destination. A rare one-cell shuffle
+can go left, right, up or down, holds for two seconds, then settles back. It only
+happens while alive, comfortable, not eating, not resting from a journey, and
+outside verified downtime. Vertical frames that would clip or cover a mess are
+skipped. Needs and messes stay fixed; the rock, its marks and immediate ground
+move together. These are display effects, never movement or care events.
+
+Frames share the server's clock and are predicted from the latest accepted log;
+care by another visitor is picked up at the next 15-second read.
+An unpredicted journey that finished between reads gets one brief catch-up slide;
+the first visit and journeys already in the preceding timeline do not replay.
+The catch-up is presentation only and uses the current state. A local command
+immediately cancels its pending frames. Hidden tabs cancel animation and fetch
+fresh state on return; reduced-motion preferences get the normal settled view.
+No per-frame network requests, care actions, timers in the engine, or changes to
+stored movement history are involved. Animation timings and shuffle seeds are
+display version 1 in `hosting/scene.mjs`.
+
 The root remains plain text for agents. Links printed in that screen are relative
 to this origin, keeping the original 390-byte screen and 450-byte reply bounds.
 

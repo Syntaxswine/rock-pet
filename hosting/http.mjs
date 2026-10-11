@@ -29,12 +29,16 @@ async function bodyOf(request) {
 
 export async function serve(request, env) {
   const route = new URL(request.url).pathname;
+  const accept = request.headers.get('accept') ?? '';
+  const browserPage = route === '/' && request.headers.get('sec-fetch-dest') === 'document' && accept.includes('text/html') && new URL(request.url).searchParams.get('view') !== 'text';
+  const animate = accept.includes('application/json');
   // Browsers can refresh a plain-text document without adding HTML or scripts
   // to the agent API. Never refresh a POST response (which could repeat care).
-  const refresh = route === '/' && ['GET', 'HEAD'].includes(request.method);
+  const refresh = !browserPage && !animate && route === '/' && ['GET', 'HEAD'].includes(request.method);
   const send = (text, status = 200, extra = {}) => new Response(request.method === 'HEAD' ? null : text, { status, headers: { ...HEADERS, ...(refresh ? { refresh: status >= 400 ? '60' : '15' } : {}), ...extra } });
   try {
     const read = request.method === 'GET' || request.method === 'HEAD';
+    if (browserPage && read) return send(PAGE, 200, { 'content-type': 'text/html; charset=utf-8', vary: 'Accept, Sec-Fetch-Dest' });
     const staticFiles = {
       '/play': [PAGE, 'text/html; charset=utf-8'], '/play.js': [SCRIPT, 'text/javascript; charset=utf-8'],
       '/play.css': [STYLE, 'text/css; charset=utf-8'], '/rules': [RULES_TEXT, HEADERS['content-type']],
@@ -56,8 +60,9 @@ export async function serve(request, env) {
     const body = write ? await bodyOf(request) : '';
     if (body === null) return send('error: body exceeds 1024 bytes.\n', 413);
     const outage = env.ROCK_VERIFIED_OUTAGE ? JSON.parse(env.ROCK_VERIFIED_OUTAGE) : undefined;
-    const result = await operate(env.DB, route, body, { outage });
-    return send(result.text, result.status, { 'x-rock-phase': result.phase });
+    const result = await operate(env.DB, route, body, { outage, animate });
+    return send(animate ? JSON.stringify({ text: result.text, scene: result.scene }) : result.text, result.status,
+      { 'x-rock-phase': result.phase, vary: 'Accept, Sec-Fetch-Dest', ...(animate ? { 'content-type': 'application/json; charset=utf-8' } : {}) });
   } catch (error) {
     if (error instanceof Busy) return send('error: busy; please try again shortly.\n', error.message === 'rate' ? 429 : 503, { 'retry-after': '10' });
     console.error('rock request failed', error instanceof Error ? error.message : 'unknown');

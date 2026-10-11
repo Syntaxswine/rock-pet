@@ -822,3 +822,23 @@ So a host of up to 20 characters keeps every screen within 390 bytes, and every 
 - the hunger from which it is drawn faint.
 
 Every one is computed again from the log on every request. If one has to change, it needs a version, the way `RULES.version` guards the rules. `test/days.test.mjs` pins one rock's winter of slides and where each took it, two days of its moves with a walk to its food among them, and a year of moves for three rocks at three paces, so a change can't happen by accident.
+
+## Watching it move (2026-10-10)
+
+The hosted ASCII terminal shows the journey between the established positions,
+one character column every half second. The owner's request: "the whole pet
+moving one space over in any direction," mostly animating the existing moves,
+with an occasional one-space step as an Easter egg.
+
+Display version 1 adds a rare shuffle: one chance in three in each eight-hour
+block, at a birth-seeded minute and in one of four cardinal directions. It holds
+the neighboring cell for two seconds and returns. A boundary or occupied vertical
+destination can prevent it. It does not shuffle while eating, at an extreme, dead,
+within the hour after a journey, or during verified downtime. Its marks and nearby
+ground move with it; needs and messes keep their positions.
+
+These frames are a hosted presentation layer (`hosting/scene.mjs`), not new
+events in the rock's life. They never change the frozen formulas above, its final
+destinations, care, or its stored history. Plain text fetches and reduced-motion
+viewers retain the settled view. The existing model sheet shows those settled
+positions; animation tests check the intermediate frames and every direction.

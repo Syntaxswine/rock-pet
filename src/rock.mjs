@@ -94,12 +94,12 @@ export function start(body, { now, host, taken = [] }) {
 
 // A look on a day that is not ordinary gets one line about it; on its day for facing the wall it
 // is drawn from behind. Someone caring for it gets a reaction instead, and it turns round for them.
-export function look(log, { now, host }) {
+export function look(log, { now, host, displayPlace, displayPose }) {
   const t = moment(log, now);
   const s = rockAt(log, t);
   const o = occasion(s, t, log.outages ?? []);
   const pose = o?.what === 'wall' ? 'away' : 'front';
-  return { status: 200, text: render(s, { now: t, host, pose, ...seen(log, s, t) }) + remark(o) + `history: ${host}/history\n`, ...firstSight(log, s) };
+  return { status: 200, text: render(s, { now: t, host, pose: displayPose ?? pose, ...seen(log, s, t), ...(displayPlace ? { place: displayPlace } : {}) }) + remark(o) + `history: ${host}/history\n`, ...firstSight(log, s) };
 }
 
 export function history(log, { now }) {

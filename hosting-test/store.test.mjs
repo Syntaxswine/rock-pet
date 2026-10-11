@@ -43,6 +43,32 @@ const send = (db, path = '/', body, extra = {}) => serve(new Request('https://ho
   method: body === undefined ? 'GET' : 'POST', body,
 }), { DB: db, ...extra });
 
+test('browser navigation gets the ASCII terminal; text clients stay plain and animation reads never record care', async t => {
+  const db = database(t);
+  const page = await serve(new Request('https://rock.example/', { headers: { Accept: 'text/html', 'Sec-Fetch-Dest': 'document' } }), { DB: db });
+  assert.match(page.headers.get('content-type'), /text\/html/);
+  assert.equal(page.headers.get('refresh'), null);
+  assert.equal(page.headers.get('vary'), 'Accept, Sec-Fetch-Dest');
+  const agent = await serve(new Request('https://rock.example/', { headers: { Accept: 'text/html' } }), { DB: db });
+  assert.match(agent.headers.get('content-type'), /text\/plain/);
+  const text = await serve(new Request('https://rock.example/?view=text', { headers: { Accept: 'text/html', 'Sec-Fetch-Dest': 'document' } }), { DB: db });
+  assert.match(text.headers.get('content-type'), /text\/plain/);
+  assert.equal(text.headers.get('refresh'), '15');
+  await operate(db, '/name', 'Pebble', { now: BORN });
+  const before = db.sql.prepare('SELECT COUNT(*) AS n FROM rock_events').get().n;
+  const scene = await operate(db, '/', '', { now: BORN + HOUR, animate: true });
+  assert.ok(scene.scene.frames.length > 0);
+  assert.equal(scene.scene.at, BORN + HOUR);
+  assert.equal(db.sql.prepare('SELECT COUNT(*) AS n FROM rock_events').get().n, before);
+  assert.equal(state(db).visits.length, 0);
+  const response = await serve(new Request('https://rock.example/', { headers: { Accept: 'application/json' } }), { DB: db });
+  assert.match(response.headers.get('content-type'), /application\/json/);
+  assert.equal(response.headers.get('refresh'), null);
+  assert.ok((await response.json()).scene.frames.length > 0);
+  const biography = await operate(db, '/history', '', { now: Date.now(), animate: true });
+  assert.equal(biography.scene, undefined);
+});
+
 test('the public title creates nothing; exactly one competing name starts one shared rock', async t => {
   const db = database(t);
   assert.equal((await operate(db, '/', '', { now: BORN })).phase, 'title');
